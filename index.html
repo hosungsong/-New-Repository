@@ -1,73 +1,69 @@
-import os
-import base64
-import requests
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse  # <-- 화면을 보여주기 위한 도구 추가
-import smtplib
-from email.mime.text import MIMEText
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 텍스트 스캐너</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f7f6; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 10px; shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { font-size: 1.2rem; color: #333; margin-bottom: 10px; }
+        #pasteArea { border: 2px dashed #4CAF50; height: 120px; display: flex; align-items: center; justify-content: center; background: #fafafa; margin-bottom: 10px; cursor: pointer; color: #999; }
+        #pasteArea img { max-height: 100%; }
+        textarea, input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem; margin-bottom: 10px; }
+        .btn-extract { background-color: #4CAF50; color: white; }
+        .btn-mail { background-color: #008CBA; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>1. 이미지 붙여넣기 (Ctrl+V)</h2>
+    <div id="pasteArea">클릭 후 이미지를 붙여넣으세요</div>
+    <button class="btn-extract" onclick="extractText()">✨ 텍스트 추출</button>
 
-app = FastAPI()
+    <h2>2. 결과 수정 및 내용 추가</h2>
+    <textarea id="resultText" style="height: 150px;" placeholder="추출된 텍스트가 여기에 나타납니다."></textarea>
+    <textarea id="extraComment" style="height: 80px;" placeholder="추가할 내용을 적어주세요."></textarea>
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    <h2>3. 메일 전송</h2>
+    <input type="email" id="emailTo" placeholder="받는 사람 이메일">
+    <button class="btn-mail" onclick="sendMail()">📧 메일 전송 (홀드 상태)</button>
+</div>
 
-# 깃허브 보안을 위해 환경변수로 숨긴 API 키
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+<script>
+    let fileToUpload = null;
 
-# [핵심 추가] 사용자가 웹사이트 주소로 들어오면 index.html 화면을 보여줍니다!
-@app.get("/")
-async def serve_frontend():
-    return FileResponse("index.html")
-
-@app.post("/ocr")
-async def extract_text(file: UploadFile = File(...)):
-    try:
-        content = await file.read()
-        image_content = base64.b64encode(content).decode("utf-8")
-
-        url = f"https://vision.googleapis.com/v1/images:annotate?key={GOOGLE_API_KEY}"
-        payload = {
-            "requests": [{
-                "image": {"content": image_content},
-                "features": [{"type": "TEXT_DETECTION"}]
-            }]
+    document.getElementById('pasteArea').addEventListener('paste', (e) => {
+        const item = e.clipboardData.items[0];
+        if (item.type.indexOf("image") !== -1) {
+            fileToUpload = item.getAsFile();
+            const url = URL.createObjectURL(fileToUpload);
+            document.getElementById('pasteArea').innerHTML = `<img src="${url}">`;
         }
+    });
 
-        response = requests.post(url, json=payload)
-        result = response.json()
+    async function extractText() {
+        if (!fileToUpload) return alert("이미지를 먼저 붙여넣으세요!");
+        const out = document.getElementById('resultText');
+        out.value = "분석 중... ⏳";
 
-        if 'responses' in result and 'fullTextAnnotation' in result['responses'][0]:
-            extracted_text = result['responses'][0]['fullTextAnnotation']['text']
-            return {"text": extracted_text}
-        else:
-            return {"text": "이미지에서 글자를 찾지 못했습니다. 다시 시도해 주세요."}
+        const formData = new FormData();
+        formData.append("file", fileToUpload);
 
-    except Exception as e:
-        return {"text": f"서버 오류 발생: {str(e)}"}
+        try {
+            const res = await fetch("/ocr", { method: "POST", body: formData });
+            const data = await res.json();
+            out.value = data.text;
+        } catch (e) {
+            alert("오류 발생!");
+            out.value = "";
+        }
+    }
 
-@app.post("/send-email")
-async def send_email(email_to: str = Form(...), content: str = Form(...)):
-    sender_email = "본인의_지메일@gmail.com" 
-    sender_password = "여기에_앱_비밀번호_입력" 
-
-    msg = MIMEText(content)
-    msg['Subject'] = 'AI가 추출한 텍스트입니다'
-    msg['From'] = sender_email
-    msg['To'] = email_to
-
-    try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, email_to, msg.as_string())
-        return {"status": "success", "message": "메일이 성공적으로 전송되었습니다!"}
-    except Exception as e:
-        return {"status": "error", "message": f"메일 전송 실패: {str(e)}"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    function sendMail() {
+        alert("메일 전송 기능은 파이썬 코드의 '앱 비밀번호' 설정 후 작동합니다.");
+    }
+</script>
+</body>
+</html>
