@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 이미지 텍스트 추출기</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #f4f7f6; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        /* 붙여넣기 안내 박스 스타일 추가 */
+        .paste-area { border: 2px dashed #007bff; padding: 20px; text-align: center; border-radius: 5px; margin-bottom: 15px; background-color: #f8fbff; }
+        textarea { width: 100%; height: 200px; margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;}
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; font-size: 16px;}
+        button:disabled { background-color: #ccc; }
+        input[type="text"] { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #ddd; box-sizing: border-box;}
+        #status { font-weight: bold; color: #d9534f; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📷 사진 올리고 메일 보내기</h2>
+        
+        <div class="paste-area">
+            <p><strong>아무 곳에서나 화면을 캡처하고 Ctrl+V (붙여넣기) 해보세요!</strong></p>
+            <p style="font-size: 14px; color: #666;">또는 아래 버튼으로 파일을 선택하세요.</p>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+
+        <p id="status"></p>
+        
+        <textarea id="resultText" placeholder="사진을 올리거나 붙여넣으면 여기에 글자가 나타납니다..."></textarea>
+        
+        <input type="text" id="emailTo" placeholder="받는 사람 이메일 주소">
+        <button id="sendBtn">메일 전송하기</button>
+    </div>
+
+    <script>
+        // 로컬 테스트용 주소
+        const API_BASE = "http://localhost:8080"; 
+
+        // 공통 이미지 처리 함수
+        async function processImage(file) {
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            document.getElementById('status').innerText = "AI가 분석 중입니다... 잠시만 기다려주세요.";
+            
+            try {
+                const response = await fetch(`${API_BASE}/ocr`, { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                document.getElementById('resultText').value = data.text;
+                document.getElementById('status').innerText = "분석 완료! (결과를 확인하고 수정할 수 있습니다.)";
+                document.getElementById('status').style.color = "#5cb85c"; // 성공 시 초록색으로 변경
+            } catch (error) {
+                document.getElementById('status').innerText = "분석 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.";
+                console.error(error);
+            }
+        }
+
+        // 1. 파일 선택 버튼으로 업로드할 때
+        document.getElementById('imageInput').addEventListener('change', (e) => {
+            processImage(e.target.files[0]);
+        });
+
+        // 2. [핵심 추가 기능] Ctrl+V (붙여넣기) 할 때
+        document.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            
+            // 붙여넣은 데이터 중 이미지가 있는지 찾기
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file' && item.type.includes('image')) {
+                    const blob = item.getAsFile();
+                    processImage(blob); // 찾은 이미지를 서버로 전송
+                    return; // 이미지 하나 찾았으면 종료
+                }
+            }
+        });
+
+        // 3. 메일 전송
+        document.getElementById('sendBtn').addEventListener('click', async () => {
+            const emailTo = document.getElementById('emailTo').value;
+            const content = document.getElementById('resultText').value;
+
+            if(!emailTo || !content) {
+                alert("이메일 주소와 보낼 텍스트 내용을 모두 확인해주세요.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('email_to', emailTo);
+            formData.append('content', content);
+
+            document.getElementById('sendBtn').innerText = "전송 중...";
+
+            try {
+                const response = await fetch(`${API_BASE}/send-email`, { method: 'POST', body: formData });
+                const data = await response.json();
+                alert(data.message);
+            } catch (error) {
+                alert("전송 실패: " + error);
+            } finally {
+                document.getElementById('sendBtn').innerText = "메일 전송하기";
+            }
+        });
+    </script>
+</body>
+</html>
