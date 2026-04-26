@@ -17,54 +17,71 @@
         
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
         
-        .static-fields { display: flex; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        /* 상단 고정 필드: 1:1:1:1 비율 및 줄바꿈 절대 방지 */
+        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-        .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); }
+        .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; white-space: nowrap; }
         
-        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; }
-        .input-group input[type="text"] { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; min-width: 0; }
+        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; box-sizing: border-box; }
+        .input-group input[type="text"] { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
+        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); display: flex; align-items: center; justify-content: center; height: 100%; box-sizing: border-box; }
         
-        .leg-box { padding: 0 5px; gap: 2px; }
-        .leg-box input { text-align: center; font-weight: bold; font-size: 11px; }
+        .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
+        .leg-box input { flex: 1; min-width: 0; text-align: center; font-weight: bold; text-transform: uppercase; padding: 0; font-size: 12px; }
 
+        /* 동적 결함 영역 */
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
-        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        .defect-grid { display: grid; grid-template-columns: 110px 1fr 140px 90px 30px; gap: 10px; align-items: start; }
-        .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
+        /* 🚨 [수정] 결함 그리드 레이아웃 (너비 배분 조정하여 Overlap 방지) */
+        .defect-grid { display: grid; grid-template-columns: 100px 1fr 160px 100px 35px; gap: 10px; align-items: start; }
+        
+        .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); align-items: center; }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
-        .defect-row:last-child { border-bottom: none; }
+        .defect-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         
-        .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
-        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 18px; text-align: right; }
+        .row-item { display: flex; flex-direction: column; position: relative; }
+        
+        /* 번호(1.) + AS/AP 토글 박스 묶음 */
+        .as-ap-wrapper { display: flex; align-items: center; gap: 5px; height: 38px; width: 100%; box-sizing: border-box; }
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 18px; text-align: right; flex-shrink: 0; }
         .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
-        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; padding: 0; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        .defect-row input, .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-size: 13px; min-height: 38px; }
+        /* 🚨 [수정] 입력창에 min-width 추가하여 겹침 방지 */
+        .defect-row input, .defect-row textarea { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; }
         .defect-row textarea { resize: none; overflow: hidden; line-height: 1.4; } 
         
         .ata-wrapper { position: relative; }
         .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 0; display: none; white-space: nowrap; }
-
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; }
-        #pasteArea img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; }
         
-        .btn-reset-all { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; z-index: 10; }
+        /* 🚨 [수정] 빼기 버튼 빨간색 디자인 복구 */
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .btn-remove:hover { background: #c0392b; }
+
+        /* 오른쪽 AI 및 사진 영역 */
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; text-align: center; position: relative; box-sizing: border-box; }
+        
+        /* 🚨 [수정] 세로 사진이 과도하게 커지는 현상 방지 (max-height 제한) */
+        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: zoom-in; transition: opacity 0.2s; }
+        
+        .btn-reset-all { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-size: 16px; cursor: pointer; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
         .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-        .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
+        /* 하단 버튼 */
+        .bottom-section { display: flex; gap: 10px; margin-top: 10px; width: 100%; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; }
-        .modal-img { max-width: 90vw; max-height: 90vh; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: zoom-out; }
+        .modal-img { max-width: 90vw; max-height: 90vh; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -108,6 +125,7 @@
                     <span>결함 및 조치내역</span>
                     <button class="btn-add" onclick="addRow()">+</button>
                 </div>
+                
                 <div class="defect-grid defect-header-row">
                     <span>AS/AP</span>
                     <span>DEFECT</span>
@@ -115,12 +133,13 @@
                     <span>ATA</span>
                     <span></span>
                 </div>
+
                 <div id="defectRowsContainer"></div>
             </div>
         </div>
 
         <div class="right-panel">
-            <div id="pasteArea">📋 이미지를 붙여넣으세요</div>
+            <div id="pasteArea">📋 이미지를 붙여넣으세요<br>(Ctrl+V)</div>
             <button class="btn-extract" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
         </div>
     </div>
@@ -142,7 +161,7 @@
     let rowIdCounter = 0;
     let DB = { flights: {}, ataDatabase: [] };
 
-    // 🎯 [수정됨] CSV 파싱: B열(코드) 빈칸 기억 로직 적용, C열(키워드)
+    // CSV 파싱 로직 (A열: 구분, B열: 코드, C열: 키워드)
     function handleCSVUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -151,31 +170,25 @@
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
             let newAta = [], newFlights = {};
-            let lastAtaCode = ""; // 이전 코드를 기억할 변수
+            let lastAtaCode = "";
             
             lines.forEach(line => {
                 const parts = line.split(',');
                 if (parts.length >= 2) {
                     const type = parts[0].trim().toUpperCase();
-                    let val = parts[1].trim(); // B열: 코드 또는 편명
-                    const key = parts.length >= 3 ? parts[2].trim().toUpperCase() : ""; // C열: 키워드 또는 구간
+                    let val = parts[1].trim(); 
+                    const key = parts.length >= 3 ? parts[2].trim().toUpperCase() : ""; 
                     
                     if (type === 'ATA') {
-                        // B열(코드) 값이 있으면 기억하고, 비어있으면 이전 코드를 가져옴
-                        if (val !== "") {
-                            lastAtaCode = val;
-                        } else {
-                            val = lastAtaCode;
-                        }
-                        
-                        // 헤더(제목줄) 무시하고 데이터만 푸시
-                        if (key && val && key !== 'KEYWORD' && key !== '키워드' && val !== 'CODE' && val !== '코드') {
+                        if (val !== "") lastAtaCode = val;
+                        else val = lastAtaCode;
+                        if (key && val && key !== 'KEYWORD' && val !== 'CODE') {
                             newAta.push({ keyword: key, code: val });
                         }
                     } 
                     else if (type === 'FLIGHT') {
                         if (key && val && key !== '구간' && val !== '편명') {
-                            newFlights[key] = val; // key=구간, val=편명
+                            newFlights[key] = val;
                         }
                     }
                 }
@@ -184,7 +197,7 @@
             DB.ataDatabase = newAta;
             DB.flights = newFlights;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
-            alert(`✅ DB 세팅 완료!\n- ATA 키워드: ${newAta.length}개\n- 구간 정보: ${Object.keys(newFlights).length}개`);
+            alert(`✅ DB 세팅 완료!`);
             location.reload(); 
         };
         reader.readAsText(file);
@@ -198,6 +211,17 @@
     function autoResize(el) {
         el.style.height = '38px';
         el.style.height = el.scrollHeight + 'px';
+    }
+
+    // 🚨 [수정] 빼기 버튼 동작: 최소 1개 유지 로직 추가
+    function removeDefectRow(btn) {
+        const container = document.getElementById('defectRowsContainer');
+        if (container.querySelectorAll('.defect-row').length > 1) {
+            btn.parentElement.remove();
+            updateNums();
+        } else {
+            alert("최소 1개의 결함 행은 남겨두어야 합니다.");
+        }
     }
 
     function addRow(data = {}) {
@@ -224,7 +248,7 @@
                 <input type="text" id="ata-${id}" value="${data.ata || ''}" oninput="checkATA(${id})">
                 <span id="warning-${id}" class="ata-warning">⚠️ DB와 상이</span>
             </div>
-            <button class="btn-remove" onclick="this.parentElement.remove(); updateNums();">-</button>
+            <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
         `;
         container.appendChild(row);
         updateNums();
