@@ -132,7 +132,7 @@
             DB.ataDatabase = newAta;
             DB.flights = newFlights;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
-            alert(`✅ DB 세팅 완료!`);
+            alert(`✅ DB 세팅 완료! (ATA: ${newAta.length}개)`);
             location.reload(); 
         };
         reader.readAsText(file);
@@ -196,7 +196,10 @@
     function matchATA(id, aiSuggestedAta = null) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
+        
+        // 부분 일치라도 찾을 수 있도록 유연하게 검색
         let found = DB.ataDatabase.find(item => text.includes(item.keyword));
+        
         if (found) {
             ataInput.value = found.code;
         } else if (aiSuggestedAta && !ataInput.value) {
@@ -243,31 +246,23 @@
         const btn = document.querySelector('.btn-extract');
         btn.innerText = "분석 중... ⏳";
         btn.disabled = true; 
+        
         const formData = new FormData();
         formData.append("file", fileToUpload);
-        
-        if (DB.ataDatabase && DB.ataDatabase.length > 0) {
-            formData.append("db", JSON.stringify(DB.ataDatabase));
-        }
+        // 💡 주의: 방대한 DB를 서버로 보내지 않습니다! (서버 과부하 원인 제거)
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
             
-            // 🚨 서버 자체 통신 에러 방어
             if (!res.ok) {
-                alert("⚠️ 서버 응답 오류가 발생했습니다. 파이썬 서버를 재시작 해주세요.");
+                alert("⚠️ 서버 오류가 발생했습니다. 파이썬 서버를 확인해주세요.");
                 return;
             }
 
             const data = await res.json();
             
-            // 🚨 파이썬 내부 에러나 422 밸리데이션 에러 발생 시 명확히 알림
             if (data.error) {
                 alert("⚠️ AI 분석 오류:\n" + data.error);
-                return;
-            }
-            if (data.detail) {
-                alert("⚠️ 시스템 오류(422) 발생. 파이썬 코드가 최신인지 확인해주세요.");
                 return;
             }
             
@@ -278,12 +273,11 @@
             document.getElementById('defectRowsContainer').innerHTML = "";
             rowIdCounter = 0;
             
-            // 🚨 추출된 항목이 없으면 조용히 넘어가지 않고 팝업으로 안내!
             if (data.items && data.items.length > 0) {
                 data.items.forEach(item => addRow(item)); 
             } else { 
                 addRow(); 
-                alert("🔍 이미지에서 DEFER(이월) 대상 항목을 찾지 못했습니다.\n\n[참고] 'Action Taken' 칸에 조치 내용이 적혀있거나, DEFER No.가 체크되어 있지 않으면 추출을 생략합니다.");
+                alert("🔍 이미지에서 추출할 결함 내역을 찾지 못했습니다.");
             }
         } catch (e) { 
             alert("⚠️ 네트워크 연결 또는 서버 통신에 실패했습니다."); 
