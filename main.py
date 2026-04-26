@@ -45,13 +45,14 @@ async def extract_text(file: UploadFile = File(...)):
            - CABIN LOG: DEFECT 란에 'LEG' 칸이 없고, DEFER NO. 체크 항목이 3개(MEL, NEF, AMM)인 경우.
         
         4. items: 결함 배열 (DEFER 번호와 숫자가 적혀있는 항목만 추출)
-           - [AS/AP 판단 - 매우 엄격한 위치 확인 요망]: 
+           - [AS/AP 판단]: 
              - CABIN LOG는 무조건 'AS'.
-             - FLIGHT LOG인 경우: **반드시 왼쪽 'DEFECT AND WORK ORDER' 영역 하단에 있는 'ENTERED BY' 칸만 확인하세요.** (경고: 오른쪽 'ACTION TAKEN' 란에 있는 서명이나 도장에는 절대 현혹되지 마십시오.)
-               -> 왼쪽 'ENTERED BY' 칸이 비어있거나(공란) 손글씨 서명만 있다면 무조건 'AP'입니다.
-               -> 왼쪽 'ENTERED BY' 칸에 타원형 도장(Stamp)이 찍혀 있을 때만 'AS'입니다.
+             - FLIGHT LOG인 경우: 반드시 왼쪽 'DEFECT AND WORK ORDER' 영역 하단에 있는 'ENTERED BY' 칸만 확인하세요. (오른쪽 'ACTION TAKEN' 란의 서명/도장은 절대 무시할 것)
+               -> 왼쪽 'ENTERED BY' 칸이 공란이거나 손글씨 서명만 있다면 'AP'.
+               -> 왼쪽 'ENTERED BY' 칸에 타원형 도장(Stamp)이 찍혀 있을 때만 'AS'.
            - defect: DEFECT 내용 전체.
-           - reason: 체크된 항목과 숫자 조합 (예: "NEF 99-00-00").
+           - reason: DEFER No. 란에 체크된 항목과 그 옆의 숫자 조합. 
+             **[매우 중요 포맷 규칙]: 숫자를 연결할 때 마침표(.)는 절대 사용하지 마십시오. 인식된 마침표나 쉼표는 모두 대시(-)로 변환하여 출력하세요.** (예시: "MEL XX-XX-XX", "NEF XX-XX-XX", "AMM XX-XX-XX-XX-X")
            - ata: ATA CODE 란에 숫자가 써있으면 추출, 없으면 "".
         
         응답은 순수 JSON만 출력하세요:
