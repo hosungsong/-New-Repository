@@ -3,10 +3,9 @@ import io
 import json
 from PIL import Image
 import google.generativeai as genai
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from typing import Optional
 
 app = FastAPI()
 
@@ -27,44 +26,37 @@ async def keep_alive_ping():
     return {"status": "awake"}
 
 @app.post("/ocr")
-async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(None)):
+async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY:
         return {"error": "API Key not set."}
     
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
+        
         model = genai.GenerativeModel('gemini-1.5-flash') 
 
-        db_context = ""
-        if db:
-            try:
-                db_data = json.loads(db)
-                db_context = f"\n[User Custom ATA Database (Reference)]\n{json.dumps(db_data, ensure_ascii=False)}\n"
-            except:
-                pass
-
-        prompt = f"""
+        prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
         
         [Rules]
-        - Extract items if: 1. Defer No. is checked OR 2. Action Taken is empty.
-        {db_context}
-        
-        [Data Mapping]
         - regNo: Aircraft reg (starting with HL).
         - legFrom/legTo: 3-letter codes.
-        - reason: ONLY extract written Defer No. If blank, output "". NEVER guess MEL/NEF codes.
-        - ata: 
-          1. If written on paper, extract it exactly.
-          2. If NOT written, look at the '[User Custom ATA Database]' provided above. Read the 'defect' text and act smart and flexible. Find the most conceptually similar keyword in the database and return its corresponding code.
-          3. ONLY if the defect is completely unrelated to anything in the database, use your general aviation knowledge to infer.
+        
+        🚨🚨 [CRITICAL: EXTRACTION CONDITION] 🚨🚨
+        - Extract ALL defect entries from the 'Defects and Work Order' section IF the 'Action Taken' section is empty/blank.
+        - DO NOT CARE if the Defer No. is checked or not. IF there is text in the defect box, EXTRACT IT!
+        
+        [Data Mapping]
+        - defect: Full text of the defect.
+        - reason: ONLY extract written Defer No. If blank, output "". NEVER guess MEL/NEF.
+        - ata: If written, extract exactly. If NOT written, use your general aviation knowledge to infer the most likely 2 or 4 digit ATA code.
           
         Output pure JSON only:
-        {{
+        {
           "regNo": "", "legFrom": "", "legTo": "",
-          "items": [ {{"asAp": "AP", "defect": "", "reason": "", "ata": ""}} ]
-        }}
+          "items": [ {"asAp": "AP", "defect": "", "reason": "", "ata": ""} ]
+        }
         """
 
         response = model.generate_content(
@@ -72,7 +64,7 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
             generation_config={"response_mime_type": "application/json"}
         )
         
-        # 💡 [핵심 보완] 어떤 찌꺼기가 붙어와도 완벽하게 JSON 괄호 부분만 추출합니다.
+        # JSON 껍데기 벗겨내기 안전장치
         text = response.text.strip()
         start_idx = text.find('{')
         end_idx = text.rfind('}')
