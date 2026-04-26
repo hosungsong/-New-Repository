@@ -33,24 +33,23 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 결함 Row 디자인 */
-        .defect-row { display: grid; grid-template-columns: 85px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
+        /* 결함 Row 디자인 - 번호(1.) 공간 확보를 위해 첫번째 칼럼 살짝 늘림 */
+        .defect-row { display: grid; grid-template-columns: 100px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
         
         .row-item { display: flex; flex-direction: column; gap: 5px; position: relative; }
         .row-item label { font-size: 11px; font-weight: bold; color: #7f8c8d; }
         
-        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 38px; }
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 38px; flex: 1; }
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 12px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 높이 통일 및 텍스트 상자 설정 */
-        .row-item input, .row-item textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; height: 38px; min-height: 38px; }
-        .row-item textarea { resize: vertical; line-height: 1.4; } 
+        /* 입력창 디자인 (textarea 수동 리사이즈 끄고 스크롤 숨김) */
+        .row-item input, .row-item textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; }
+        .row-item input { height: 38px; }
+        .row-item textarea { resize: none; overflow: hidden; line-height: 1.4; } /* 알아서 늘어나도록 스크롤바 숨김 */
         
-        /* [수정됨] 경고 텍스트 최적화: 줄바꿈 방지 및 위치 하단으로 완전히 내림 */
         .ata-warning { color: var(--warning); font-size: 11px; font-weight: bold; position: absolute; bottom: -18px; left: 0; display: none; white-space: nowrap; }
-
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; margin-top: 17px; }
 
         /* 오른쪽 AI 영역 */
@@ -144,6 +143,12 @@
         ]
     };
 
+    // [추가됨] Textarea 내용 길이에 따라 자동으로 높이를 맞춰주는 함수
+    function autoResize(element) {
+        element.style.height = '38px'; // 일단 기본 높이로 초기화
+        element.style.height = (element.scrollHeight) + 'px'; // 스크롤 높이만큼 늘림
+    }
+
     function addRow(data = {}) {
         rowIdCounter++;
         const id = rowIdCounter;
@@ -157,19 +162,23 @@
         const apClass = isAp ? 'active' : '';
         const hiddenVal = isAp ? 'AP' : 'AS';
 
-        // [수정됨] 경고 문구를 요청하신 대로 변경
+        // [수정됨] 넘버링(1.)을 라벨에서 빼고 버튼 왼쪽으로 이동
+        // textarea에 autoResize() 함수 연동
         row.innerHTML = `
             <div class="row-item">
-                <label><span class="idx-num"></span> AS/AP</label>
-                <div class="toggle-box">
-                    <button type="button" class="toggle-btn ${asClass}" id="btn-as-${id}" onclick="setAsAp(${id}, 'AS')">AS</button>
-                    <button type="button" class="toggle-btn ${apClass}" id="btn-ap-${id}" onclick="setAsAp(${id}, 'AP')">AP</button>
+                <label>AS/AP</label>
+                <div style="display: flex; align-items: center; gap: 8px; height: 38px;">
+                    <span class="idx-num" style="font-weight: bold; color: var(--secondary); font-size: 14px;"></span>
+                    <div class="toggle-box">
+                        <button type="button" class="toggle-btn ${asClass}" id="btn-as-${id}" onclick="setAsAp(${id}, 'AS')">AS</button>
+                        <button type="button" class="toggle-btn ${apClass}" id="btn-ap-${id}" onclick="setAsAp(${id}, 'AP')">AP</button>
+                    </div>
                 </div>
                 <input type="hidden" id="asAp-${id}" value="${hiddenVal}">
             </div>
             <div class="row-item">
                 <label>DEFECT</label>
-                <textarea id="defect-${id}" oninput="runATAMatching(${id})">${data.defect || ''}</textarea>
+                <textarea id="defect-${id}" oninput="autoResize(this); runATAMatching(${id});">${data.defect || ''}</textarea>
             </div>
             <div class="row-item">
                 <label>적용근거</label>
@@ -185,6 +194,10 @@
         container.appendChild(row);
         
         updateRowNumbers();
+        
+        // 데이터가 로드된 직후 높이 자동 조절 트리거
+        const textarea = document.getElementById(`defect-${id}`);
+        setTimeout(() => autoResize(textarea), 10);
         
         if(data.defect) runATAMatching(id, data.ata);
     }
@@ -213,10 +226,7 @@
         
         let suggestedATA = "";
         for (const item of DB.ataDatabase) {
-            if (text.includes(item.keyword)) {
-                suggestedATA = item.code;
-                break; 
-            }
+            if (text.includes(item.keyword)) { suggestedATA = item.code; break; }
         }
 
         if (!ataInput.value && suggestedATA) {
