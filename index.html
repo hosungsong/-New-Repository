@@ -5,57 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Log Scanner PRO</title>
     <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --border: #dcdde1; --bg: #f4f7f6; --warning: #e67e22; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .main-container { width: 100%; max-width: 1350px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        .main-container { width: 100%; max-width: 1350px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
         
         .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); }
         .top-section { display: flex; gap: 25px; margin-bottom: 20px; }
         
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; }
         
-        /* 상단 고정 필드 */
-        .static-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
-        .input-group { display: flex; flex-direction: column; gap: 5px; }
-        .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
-        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; }
-        .input-group input { flex: 1; border: none; padding: 0 10px; outline: none; font-size: 14px; }
+        /* 상단 고정 필드 칼각 정렬 */
+        .static-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 13px; font-weight: bold; color: var(--primary); padding-left: 2px; line-height: 1; }
         
-        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 10px; font-size: 13px; border-right: 1px solid var(--border); display: flex; align-items: center; }
+        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 40px; box-sizing: border-box; align-items: center; }
+        .input-group input[type="text"] { flex: 1; border: none; padding: 0 12px; outline: none; font-size: 14px; height: 100%; background: transparent; }
         
-        /* 구간 스왑 */
-        .leg-box { display: flex; align-items: center; justify-content: space-between; padding: 0 5px; width: 100%; }
-        .leg-box input { width: 40%; text-align: center; font-weight: bold; text-transform: uppercase; border: none !important; outline: none; }
-        .btn-swap { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--primary); padding: 0; }
+        .checkbox-box { justify-content: center; cursor: pointer; }
+        .checkbox-box input[type="checkbox"] { width: 20px; height: 20px; margin: 0; cursor: pointer; }
+        
+        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 12px; font-size: 13px; border-right: 1px solid var(--border); display: flex; align-items: center; justify-content: center; height: 100%; box-sizing: border-box; }
+        
+        .leg-box { padding: 0 10px; justify-content: space-between; }
+        .leg-box input { width: 40%; text-align: center; font-weight: bold; text-transform: uppercase; padding: 0; }
+        .btn-swap { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--primary); padding: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
 
         /* 동적 결함 영역 */
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
-        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        /* 결함 Row 디자인 - 번호(1.) 공간 확보를 위해 첫번째 칼럼 살짝 늘림 */
-        .defect-row { display: grid; grid-template-columns: 100px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
+        /* [수정] 결함 Row 디자인 - 첫번째 칼럼 85px로 최적화 */
+        .defect-row { display: grid; grid-template-columns: 85px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
         
         .row-item { display: flex; flex-direction: column; gap: 5px; position: relative; }
         .row-item label { font-size: 11px; font-weight: bold; color: #7f8c8d; }
         
-        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 38px; flex: 1; }
+        /* [수정] AS/AP 버튼 박스 폭을 100%로 꽉 채움 */
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 38px; width: 100%; box-sizing: border-box; }
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 12px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 입력창 디자인 (textarea 수동 리사이즈 끄고 스크롤 숨김) */
         .row-item input, .row-item textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; }
         .row-item input { height: 38px; }
-        .row-item textarea { resize: none; overflow: hidden; line-height: 1.4; } /* 알아서 늘어나도록 스크롤바 숨김 */
+        .row-item textarea { resize: none; overflow: hidden; line-height: 1.4; } 
         
         .ata-warning { color: var(--warning); font-size: 11px; font-weight: bold; position: absolute; bottom: -18px; left: 0; display: none; white-space: nowrap; }
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; margin-top: 17px; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; margin-top: 17px; display: flex; align-items: center; justify-content: center; }
 
-        /* 오른쪽 AI 영역 */
+        /* 오른쪽 AI 및 사진 영역 */
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; cursor: pointer; color: #7f8c8d; font-weight: bold; overflow: hidden; min-height: 350px; text-align: center; }
-        #pasteArea img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; color: #7f8c8d; font-weight: bold; overflow: hidden; min-height: 350px; text-align: center; position: relative; }
+        
+        #pasteArea img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; transition: opacity 0.2s; }
+        #pasteArea img:hover { opacity: 0.8; }
+        
+        .btn-reset-all { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn-reset-all:hover { background: #c0392b; transform: scale(1.1); }
+
         .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
         /* 하단 버튼 */
@@ -67,6 +76,10 @@
         .bg-icn { background: #16a085; }  
         .bg-gmp { background: #8e44ad; }  
         .bg-duty { background: #e67e22; } 
+
+        /* 사진 확대 모달 창 CSS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: zoom-out; }
+        .modal-img { max-width: 90vw; max-height: 90vh; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -83,8 +96,8 @@
                 </div>
                 <div class="input-group">
                     <label>위탁</label>
-                    <div class="box" style="justify-content:center; align-items:center; border:none; background:transparent;">
-                        <input type="checkbox" id="handover" style="width:22px; height:22px;">
+                    <div class="box checkbox-box" onclick="document.getElementById('handover').click();">
+                        <input type="checkbox" id="handover" onclick="event.stopPropagation();">
                     </div>
                 </div>
                 <div class="input-group">
@@ -124,6 +137,10 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="imageModal" onclick="closeModal()">
+    <img src="" class="modal-img" id="modalImg">
+</div>
+
 <script>
     let fileToUpload = null;
     let rowIdCounter = 0;
@@ -143,10 +160,9 @@
         ]
     };
 
-    // [추가됨] Textarea 내용 길이에 따라 자동으로 높이를 맞춰주는 함수
     function autoResize(element) {
-        element.style.height = '38px'; // 일단 기본 높이로 초기화
-        element.style.height = (element.scrollHeight) + 'px'; // 스크롤 높이만큼 늘림
+        element.style.height = '38px'; 
+        element.style.height = (element.scrollHeight) + 'px'; 
     }
 
     function addRow(data = {}) {
@@ -162,17 +178,15 @@
         const apClass = isAp ? 'active' : '';
         const hiddenVal = isAp ? 'AP' : 'AS';
 
-        // [수정됨] 넘버링(1.)을 라벨에서 빼고 버튼 왼쪽으로 이동
-        // textarea에 autoResize() 함수 연동
+        // [수정] 번호(idx-num)를 다시 라벨 위치로 올리고 깔끔하게 맞춤
         row.innerHTML = `
             <div class="row-item">
-                <label>AS/AP</label>
-                <div style="display: flex; align-items: center; gap: 8px; height: 38px;">
-                    <span class="idx-num" style="font-weight: bold; color: var(--secondary); font-size: 14px;"></span>
-                    <div class="toggle-box">
-                        <button type="button" class="toggle-btn ${asClass}" id="btn-as-${id}" onclick="setAsAp(${id}, 'AS')">AS</button>
-                        <button type="button" class="toggle-btn ${apClass}" id="btn-ap-${id}" onclick="setAsAp(${id}, 'AP')">AP</button>
-                    </div>
+                <label style="display:flex; align-items:center; gap:3px;">
+                    <span class="idx-num" style="color: var(--secondary); font-size: 13px;"></span> AS/AP
+                </label>
+                <div class="toggle-box">
+                    <button type="button" class="toggle-btn ${asClass}" id="btn-as-${id}" onclick="setAsAp(${id}, 'AS')">AS</button>
+                    <button type="button" class="toggle-btn ${apClass}" id="btn-ap-${id}" onclick="setAsAp(${id}, 'AP')">AP</button>
                 </div>
                 <input type="hidden" id="asAp-${id}" value="${hiddenVal}">
             </div>
@@ -195,7 +209,6 @@
         
         updateRowNumbers();
         
-        // 데이터가 로드된 직후 높이 자동 조절 트리거
         const textarea = document.getElementById(`defect-${id}`);
         setTimeout(() => autoResize(textarea), 10);
         
@@ -247,11 +260,7 @@
             }
         }
 
-        if (currentVal && suggested && currentVal !== suggested) {
-            warning.style.display = "block";
-        } else {
-            warning.style.display = "none";
-        }
+        warning.style.display = (currentVal && suggested && currentVal !== suggested) ? "block" : "none";
     }
 
     function swapLegs() {
@@ -266,12 +275,44 @@
         if(DB.flights[route]) document.getElementById('flightNo').value = DB.flights[route];
     });
 
+    function openModal(imgSrc) {
+        document.getElementById('modalImg').src = imgSrc;
+        document.getElementById('imageModal').style.display = 'flex';
+    }
+    
+    function closeModal() {
+        document.getElementById('imageModal').style.display = 'none';
+        document.getElementById('modalImg').src = '';
+    }
+
+    function resetForm(event) {
+        if(event) event.stopPropagation();
+        
+        fileToUpload = null;
+        document.getElementById('pasteArea').innerHTML = `📋<br>이미지를 붙여넣으세요 (Ctrl+V)`;
+        
+        document.getElementById('regNo').value = '';
+        document.getElementById('handover').checked = false;
+        document.getElementById('legFrom').value = '';
+        document.getElementById('legTo').value = '';
+        document.getElementById('flightNo').value = '';
+        
+        document.getElementById('defectRowsContainer').innerHTML = "";
+        rowIdCounter = 0;
+        addRow();
+    }
+
     window.onload = () => addRow();
-    document.getElementById('pasteArea').addEventListener('paste', (e) => {
+
+    document.body.addEventListener('paste', (e) => {
         const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
         if (item) {
             fileToUpload = item.getAsFile();
-            document.getElementById('pasteArea').innerHTML = `<img src="${URL.createObjectURL(fileToUpload)}">`;
+            const imgUrl = URL.createObjectURL(fileToUpload);
+            document.getElementById('pasteArea').innerHTML = `
+                <button class="btn-reset-all" onclick="resetForm(event)" title="초기화">✖</button>
+                <img src="${imgUrl}" onclick="openModal('${imgUrl}')" title="클릭하여 확대">
+            `;
         }
     });
 
@@ -279,6 +320,7 @@
         if (!fileToUpload) return alert("이미지를 먼저 붙여넣으세요!");
         const btn = document.querySelector('.btn-extract');
         btn.innerText = "분석 및 매칭 중... ⏳";
+        btn.disabled = true;
         
         const formData = new FormData();
         formData.append("file", fileToUpload);
@@ -301,7 +343,10 @@
                 data.items.forEach(item => addRow(item));
             } else { addRow(); alert("DEFER 항목을 찾지 못했습니다."); }
         } catch (e) { alert("통신 실패!"); }
-        finally { btn.innerText = "✨ AI 데이터 분석 및 ATA 매칭"; }
+        finally { 
+            btn.innerText = "✨ AI 데이터 분석 및 ATA 매칭"; 
+            btn.disabled = false;
+        }
     }
 </script>
 </body>
