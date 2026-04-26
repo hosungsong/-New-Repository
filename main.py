@@ -35,12 +35,12 @@ async def extract_text(file: UploadFile = File(...)):
         return {"text": "서버에 GEMINI_API_KEY가 설정되지 않았습니다. Render 환경 변수를 확인해주세요."}
     
     try:
-        # 1. 업로드된 이미지를 파이썬이 읽을 수 있게 변환 (Pillow 라이브러리 사용)
+        # 1. 업로드된 이미지를 파이썬이 읽을 수 있게 변환
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        # 2. 에러가 나지 않는 최신 모델명으로 변경!
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # 2. [수정됨] 현재 구글의 최신 표준 모델인 2.5 버전으로 변경!
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         # 3. AI에게 내리는 강력한 프롬프트 (손글씨만 추출하라는 지시)
         prompt = """
