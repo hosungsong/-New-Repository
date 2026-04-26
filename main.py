@@ -33,24 +33,17 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-        
         model = genai.GenerativeModel('gemini-1.5-flash') 
 
         prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
         
         [Rules]
-        - regNo: Aircraft reg (starting with HL).
+        - Extract ALL defect entries if 'Action Taken' is empty.
+        - regNo: Aircraft registration (starting with HL).
         - legFrom/legTo: 3-letter codes.
-        
-        🚨🚨 [CRITICAL: EXTRACTION CONDITION] 🚨🚨
-        - Extract ALL defect entries from the 'Defects and Work Order' section IF the 'Action Taken' section is empty/blank.
-        - DO NOT CARE if the Defer No. is checked or not. IF there is text in the defect box, EXTRACT IT!
-        
-        [Data Mapping]
-        - defect: Full text of the defect.
-        - reason: ONLY extract written Defer No. If blank, output "". NEVER guess MEL/NEF.
-        - ata: If written, extract exactly. If NOT written, use your general aviation knowledge to infer the most likely 2 or 4 digit ATA code.
+        - reason: ONLY literal Defer No. written on paper. If blank, "".
+        - ata: If written, extract it. If NOT, use your knowledge to infer the best 4-digit ATA code.
           
         Output pure JSON only:
         {
@@ -59,21 +52,15 @@ async def extract_text(file: UploadFile = File(...)):
         }
         """
 
-        response = model.generate_content(
-            [prompt, image],
-            generation_config={"response_mime_type": "application/json"}
-        )
+        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json"})
         
-        # JSON 껍데기 벗겨내기 안전장치
         text = response.text.strip()
-        start_idx = text.find('{')
-        end_idx = text.rfind('}')
-        
-        if start_idx != -1 and end_idx != -1:
-            json_str = text[start_idx:end_idx+1]
-            return json.loads(json_str)
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1:
+            return json.loads(text[start:end+1])
         else:
-            return {"error": "AI 응답에서 JSON을 찾을 수 없습니다."}
+            return {"error": "JSON data not found in AI response."}
 
     except Exception as e:
         return {"error": str(e)}
