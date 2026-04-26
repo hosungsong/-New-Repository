@@ -6,130 +6,200 @@
     <title>AI Log Scanner PRO</title>
     <style>
         :root {
-            --primary: #2c3e50; --secondary: #3498db; --success: #27ae60;
-            --danger: #e74c3c; --bg: #f1f3f5; --border: #dee2e6;
+            --primary: #2c3e50; --secondary: #3498db; --border: #dcdde1; --bg: #f4f7f6;
         }
-        body { font-family: 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 1200px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .main-container { width: 100%; max-width: 1300px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
         
-        .layout { display: flex; gap: 20px; margin-bottom: 20px; }
-        .form-area { flex: 1.3; }
-        .ai-area { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
-
+        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); }
+        .top-section { display: flex; gap: 25px; margin-bottom: 20px; }
+        
+        /* 왼쪽 패널 */
+        .left-panel { flex: 1.2; display: flex; flex-direction: column; gap: 15px; }
+        
         /* 상단 고정 필드 */
-        .grid-header { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
-        .field { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 4px; background: white; overflow: hidden; }
-        .field label { width: 80px; background: var(--primary); color: white; padding: 10px; font-size: 13px; font-weight: bold; text-align: center; }
-        .field input { flex: 1; border: none; padding: 10px; outline: none; font-size: 14px; }
-
-        /* 구간 & 편명 특수 */
-        .leg-box { display: flex; align-items: center; gap: 5px; padding: 0 10px; }
-        .leg-box input { width: 50px !important; text-align: center; border-bottom: 2px solid var(--border) !important; flex: none; font-weight: bold; }
+        .static-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        .input-group { display: flex; align-items: center; background: white; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .input-group label { background: var(--primary); color: white; padding: 10px; font-weight: bold; font-size: 13px; width: 60px; text-align: center; }
+        .input-group input[type="text"] { flex: 1; border: none; padding: 10px; outline: none; }
         
-        /* 동적 테이블 */
-        .dynamic-section { border: 1px solid var(--primary); border-radius: 8px; overflow: hidden; }
-        .section-bar { background: var(--primary); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-add { background: var(--secondary); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-weight: bold; }
+        /* 편명 OZ 프리픽스 */
+        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 10px; border-right: 1px solid var(--border); }
         
-        .row-item { display: grid; grid-template-columns: 70px 1fr 150px 80px; gap: 10px; padding: 10px; border-bottom: 1px solid var(--border); background: white; }
-        .row-item input, .row-item textarea { border: 1px solid var(--border); padding: 8px; border-radius: 4px; font-size: 13px; }
-        .row-item textarea { height: 40px; resize: vertical; }
+        /* 구간 (Leg) */
+        .leg-inputs { display: flex; align-items: center; padding: 0 10px; }
+        .leg-inputs input { width: 50px; text-align: center; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid var(--border) !important; border-radius: 0; padding: 5px; }
+        .leg-inputs span { margin: 0 10px; color: #7f8c8d; }
 
-        /* AI 패널 */
-        #pasteArea { flex: 1; border: 3px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fdfdfd; cursor: pointer; min-height: 300px; color: #adb5bd; font-weight: bold; text-align: center; overflow: hidden; }
+        /* 동적 결함 영역 */
+        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; }
+        .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
+        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+        
+        /* 결함 Row 디자인 */
+        .defect-row { display: grid; grid-template-columns: 100px 1fr 140px 70px 30px; gap: 10px; align-items: start; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
+        .defect-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        
+        /* AS/AP 토글버튼 & 넘버링 */
+        .idx-wrapper { display: flex; align-items: center; gap: 8px; }
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px;}
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 32px; width: 70px;}
+        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; padding: 0;}
+        .toggle-btn.active { background: var(--primary); color: white; }
+
+        .defect-row input[type="text"], .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; }
+        .defect-row textarea { resize: vertical; min-height: 40px; }
+        
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 32px; font-weight: bold; cursor: pointer; }
+
+        /* 오른쪽 AI 영역 */
+        .right-panel { flex: 0.8; display: flex; flex-direction: column; gap: 15px; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; cursor: pointer; color: #7f8c8d; font-weight: bold; overflow: hidden; min-height: 300px; text-align: center; }
         #pasteArea img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .btn-run { background: var(--success); color: white; border: none; padding: 18px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-run:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-        /* 하단 버튼 */
-        .footer-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
-        .btn-send { background: #34495e; color: white; border: none; padding: 15px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
-        .btn-duty { background: var(--danger); }
+        /* 하단 버튼 (4가지 세련된 색상) */
+        .bottom-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px; }
+        .btn-mail { color: white; border: none; padding: 15px 10px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-mail:hover { transform: translateY(-2px); opacity: 0.9; }
+        
+        .bg-occ { background: #2980b9; }  /* 세련된 블루 */
+        .bg-icn { background: #16a085; }  /* 청록색 */
+        .bg-gmp { background: #8e44ad; }  /* 보라색 */
+        .bg-duty { background: #e67e22; } /* 오렌지색 */
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="layout">
-        <div class="form-area">
-            <div class="grid-header">
-                <div class="field"><label>기번</label><input type="text" id="regNo"></div>
-                <div class="field" style="background:transparent; border:none;">
+<div class="main-container">
+    <div class="header"><h2>✈️ AI Log Scanner PRO</h2></div>
+
+    <div class="top-section">
+        <div class="left-panel">
+            <div class="static-fields">
+                <div class="input-group"><label>기번</label><input type="text" id="regNo"></div>
+                <div class="input-group" style="background:transparent; border:none;">
                     <label style="border-radius:4px 0 0 4px">위탁</label>
                     <div style="padding-left:15px; display:flex; align-items:center;">
                         <input type="checkbox" id="handover" style="width:20px; height:20px;">
                     </div>
                 </div>
-                <div class="field">
+                <div class="input-group">
                     <label>구간</label>
-                    <div class="leg-box">
-                        <input type="text" id="legFrom" maxlength="3" placeholder="ICN">
+                    <div class="leg-inputs">
+                        <input type="text" id="legFrom" maxlength="3" placeholder="FROM">
                         <span>▶</span>
-                        <input type="text" id="legTo" maxlength="3" placeholder="SFO">
+                        <input type="text" id="legTo" maxlength="3" placeholder="TO">
                     </div>
                 </div>
-                <div class="field"><label>편명</label><input type="text" id="flightNo" readonly style="background:#eee;"></div>
+                <div class="input-group">
+                    <label>편명</label>
+                    <span class="prefix">OZ</span>
+                    <input type="text" id="flightNo">
+                </div>
             </div>
 
-            <div class="dynamic-section">
-                <div class="section-bar">
-                    <span>결함 및 조치내역</span>
+            <div class="dynamic-container">
+                <div class="dynamic-header">
+                    <span>결함 및 조치내역 (Defect & Action)</span>
                     <button class="btn-add" onclick="addRow()">+</button>
                 </div>
-                <div id="rowContainer"></div>
+                <div id="defectRowsContainer"></div>
             </div>
         </div>
 
-        <div class="ai-area">
-            <div id="pasteArea">클릭 후 이미지를 붙여넣으세요 (Ctrl+V)</div>
-            <button class="btn-run" onclick="processAI()">✨ AI 데이터 자동 입력</button>
+        <div class="right-panel">
+            <div id="pasteArea">📋<br>여기를 클릭하고 이미지를 붙여넣으세요</div>
+            <button class="btn-extract" onclick="extractText()">✨ AI 데이터 추출 및 분류</button>
         </div>
     </div>
 
-    <div class="footer-btns">
-        <button class="btn-send" onclick="alert('OCC 전송')">DISPATCH APPROVAL<br>TO OCC</button>
-        <button class="btn-send" onclick="alert('ICN 전송')">DISPATCH APPROVAL<br>TO ICN</button>
-        <button class="btn-send" onclick="alert('GMP 전송')">DISPATCH APPROVAL<br>TO GMP</button>
-        <button class="btn-send btn-duty" onclick="alert('DUTY 전송')">DEFER 전송<br>TO DUTY</button>
+    <div class="bottom-section">
+        <button class="btn-mail bg-occ" onclick="alert('OCC 전송')">DISPATCH APPROVAL<br>TO OCC</button>
+        <button class="btn-mail bg-icn" onclick="alert('ICN 전송')">DISPATCH APPROVAL<br>TO ICN</button>
+        <button class="btn-mail bg-gmp" onclick="alert('GMP 전송')">DISPATCH APPROVAL<br>TO GMP</button>
+        <button class="btn-mail bg-duty" onclick="alert('DUTY 전송')">DEFER 전송<br>TO DUTY</button>
     </div>
 </div>
 
 <script>
-    let pastedFile = null;
-    let count = 0;
+    let fileToUpload = null;
+    let rowIdCounter = 0;
 
-    // --- 엑셀 데이터 매칭용 DB ---
     const DB = {
-        flights: { "ICN-SFO": "OZ212", "SFO-ICN": "OZ211", "ICN-LHR": "OZ521" },
-        ata: { "INTERPHONE": "23", "TIRE": "32", "BRAKE": "32", "ENGINE": "72" }
+        flights: { "ICN-SFO": "212", "SFO-ICN": "211", "ICN-LAX": "202" },
+        ata: { "INTERPHONE": "23", "TIRE": "32", "BRAKE": "32" }
     };
 
-    function addRow() {
-        count++;
-        const container = document.getElementById('rowContainer');
-        const div = document.createElement('div');
-        div.className = 'row-item';
-        div.innerHTML = `
-            <input type="text" id="asAp-${count}" placeholder="AS/AP" style="text-align:center">
-            <textarea id="defect-${count}" placeholder="DEFECT 내용" oninput="matchATA(${count})"></textarea>
-            <input type="text" id="reason-${count}" placeholder="적용 근거">
-            <input type="text" id="ata-${count}" placeholder="ATA">
+    // --- 행(Row) 조작 함수 ---
+    function addRow(data = {}) {
+        rowIdCounter++;
+        const id = rowIdCounter;
+        const container = document.getElementById('defectRowsContainer');
+        const row = document.createElement('div');
+        row.className = 'defect-row';
+        row.id = `row-${id}`;
+        
+        // AS/AP 기본값 설정
+        const isAp = data.asAp === 'AP';
+        const asClass = isAp ? '' : 'active';
+        const apClass = isAp ? 'active' : '';
+        const hiddenVal = isAp ? 'AP' : 'AS';
+
+        row.innerHTML = `
+            <div class="idx-wrapper">
+                <span class="idx-num"></span>
+                <div class="toggle-box">
+                    <button type="button" class="toggle-btn ${asClass}" id="btn-as-${id}" onclick="setAsAp(${id}, 'AS')">AS</button>
+                    <button type="button" class="toggle-btn ${apClass}" id="btn-ap-${id}" onclick="setAsAp(${id}, 'AP')">AP</button>
+                </div>
+                <input type="hidden" id="asAp-${id}" value="${hiddenVal}">
+            </div>
+            <textarea id="defect-${id}" placeholder="DEFECT 내용" oninput="matchATA(${id})">${data.defect || ''}</textarea>
+            <input type="text" id="reason-${id}" placeholder="적용근거" value="${data.reason || ''}">
+            <input type="text" id="ata-${id}" placeholder="ATA" value="${data.ata || ''}">
+            <button class="btn-remove" onclick="removeRow(${id})">-</button>
         `;
-        container.appendChild(div);
+        container.appendChild(row);
+        updateRowNumbers();
+        
+        if(!data.ata && data.defect) matchATA(id);
     }
 
-    // 구간 자동 이동 및 편명 매칭
+    function removeRow(id) {
+        const rows = document.querySelectorAll('.defect-row');
+        if(rows.length <= 1) return alert("최소 1개의 항목은 필요합니다.");
+        document.getElementById(`row-${id}`).remove();
+        updateRowNumbers();
+    }
+
+    function updateRowNumbers() {
+        document.querySelectorAll('.defect-row').forEach((row, index) => {
+            row.querySelector('.idx-num').innerText = `${index + 1}.`;
+        });
+    }
+
+    // AS / AP 토글 동작
+    function setAsAp(id, type) {
+        document.getElementById(`btn-as-${id}`).classList.remove('active');
+        document.getElementById(`btn-ap-${id}`).classList.remove('active');
+        document.getElementById(`btn-${type.toLowerCase()}-${id}`).classList.add('active');
+        document.getElementById(`asAp-${id}`).value = type;
+    }
+
+    // --- 부가 기능 (매칭 및 자동 탭) ---
     document.getElementById('legFrom').addEventListener('input', function() {
         if(this.value.length === 3) document.getElementById('legTo').focus();
     });
+    
     document.getElementById('legTo').addEventListener('input', function() {
         if(this.value.length === 3) {
             const route = document.getElementById('legFrom').value.toUpperCase() + "-" + this.value.toUpperCase();
-            document.getElementById('flightNo').value = DB.flights[route] || "매칭없음";
+            // DB에 있으면 넣고, 없으면 빈칸 (사용자가 직접 입력하도록)
+            if(DB.flights[route]) document.getElementById('flightNo').value = DB.flights[route];
         }
     });
 
-    // ATA 자동 매칭
     function matchATA(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         for (const [key, val] of Object.entries(DB.ata)) {
@@ -140,54 +210,56 @@
         }
     }
 
-    // 이미지 붙여넣기
+    // --- AI 통신 ---
+    window.onload = () => addRow();
+
     document.getElementById('pasteArea').addEventListener('paste', (e) => {
+        e.preventDefault();
         const items = (e.clipboardData || e.originalEvent.clipboardData).items;
         for (const item of items) {
             if (item.type.indexOf("image") !== -1) {
-                pastedFile = item.getAsFile();
-                const url = URL.createObjectURL(pastedFile);
+                fileToUpload = item.getAsFile();
+                const url = URL.createObjectURL(fileToUpload);
                 document.getElementById('pasteArea').innerHTML = `<img src="${url}">`;
+                break;
             }
         }
     });
 
-    // AI 프로세싱
-    async function processAI() {
-        if (!pastedFile) return alert("이미지를 먼저 붙여넣으세요.");
-        const btn = document.querySelector('.btn-run');
-        btn.innerText = "분석 중... ⏳";
+    async function extractText() {
+        if (!fileToUpload) return alert("이미지를 먼저 붙여넣으세요!");
+        const btn = document.querySelector('.btn-extract');
+        btn.innerText = "데이터 분석 중... ⏳";
         
         const formData = new FormData();
-        formData.append("file", pastedFile);
+        formData.append("file", fileToUpload);
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
             const data = await res.json();
+            
+            if(data.error) throw new Error(data.error);
 
+            // 고정 필드 채우기
             document.getElementById('regNo').value = data.regNo || "";
             document.getElementById('handover').checked = data.isHandover || false;
             document.getElementById('legFrom').value = data.legFrom || "";
             document.getElementById('legTo').value = data.legTo || "";
-            // 편명 자동 업데이트 트리거
-            document.getElementById('legTo').dispatchEvent(new Event('input'));
+            document.getElementById('legTo').dispatchEvent(new Event('input')); // 편명 매칭
 
-            const container = document.getElementById('rowContainer');
-            container.innerHTML = ""; count = 0;
-            
-            data.items.forEach(item => {
+            // 동적 행 초기화 후 채우기
+            document.getElementById('defectRowsContainer').innerHTML = "";
+            if(data.items && data.items.length > 0) {
+                data.items.forEach(item => addRow(item));
+            } else {
                 addRow();
-                document.getElementById(`asAp-${count}`).value = item.asAp;
-                document.getElementById(`defect-${count}`).value = item.defect;
-                document.getElementById(`reason-${count}`).value = item.reason;
-                document.getElementById(`ata-${count}`).value = item.ata;
-                matchATA(count);
-            });
-        } catch (e) { alert("분석 실패!"); }
-        finally { btn.innerText = "✨ AI 데이터 자동 입력"; }
+            }
+        } catch (e) {
+            alert("서버 통신 실패: " + e.message);
+        } finally {
+            btn.innerText = "✨ AI 데이터 추출 및 분류";
+        }
     }
-
-    window.onload = addRow;
 </script>
 </body>
 </html>
