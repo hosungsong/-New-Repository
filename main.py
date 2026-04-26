@@ -21,6 +21,11 @@ if GEMINI_API_KEY:
 async def serve_frontend():
     return FileResponse("index.html")
 
+# 💡 [추가됨] 서버가 잠들지 않게 주기적으로 찔러볼 수 있는 가벼운 Ping 엔드포인트
+@app.get("/ping")
+async def keep_alive_ping():
+    return {"status": "awake"}
+
 @app.post("/ocr")
 async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY:
