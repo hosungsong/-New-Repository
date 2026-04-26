@@ -4,9 +4,10 @@ import json
 import csv
 from PIL import Image
 import google.generativeai as genai
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from typing import Optional
 
 app = FastAPI()
 
@@ -18,15 +19,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-def load_db_from_csv(filename):
-    data = []
-    if os.path.exists(filename):
-        with open(filename, mode='r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                data.append(row)
-    return data
-
 @app.get("/")
 async def serve_frontend():
     return FileResponse("index.html")
@@ -35,51 +27,47 @@ async def serve_frontend():
 async def keep_alive_ping():
     return {"status": "awake"}
 
-@app.get("/get_db")
-async def get_database():
-    ata_db = load_db_from_csv("ata_db.csv")
-    flight_db = load_db_from_csv("flight_db.csv")
-    return {"ata_db": ata_db, "flight_db": flight_db}
-
+# 💡 [핵심 업데이트] 프론트엔드에서 사진과 함께 사용자의 DB를 같이 넘겨받습니다.
 @app.post("/ocr")
-async def extract_text(file: UploadFile = File(...)):
+async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(None)):
     if not GEMINI_API_KEY:
         return {"error": "API Key not set."}
     
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-
-        # 💡 [수정] 분석 속도가 빠른 gemini-1.5-flash 모델로 변경
         model = genai.GenerativeModel('gemini-1.5-flash') 
 
-        prompt = """
-        You are an aviation maintenance log expert. Extract data into JSON format.
-        
-        [General Rules]
-        - Extract only from Deferment/Carry-over item rows.
-        - regNo: Aircraft registration starting with 'HL'.
-        - legFrom/legTo: 3-letter airport codes.
-        
-        [Items Extraction Rules]
-        - Items: Array of objects.
-        
-        - [💡CRITICAL LOGIC UPDATE - Extract items if]:
-          1. Any Defer No. checkbox is checked. OR
-          2. [Target Empty Items]: All Defer No. checkboxes are UNCHECKED AND 'Action Taken' field is explicitly EMPTY/BLANK.
-          (Do NOT skip rows where Action Taken is empty if no Defer is checked; treat them as missing entries and extract the defect).
+        # 사용자가 올린 DB 족보 세팅
+        db_context = ""
+        if db:
+            try:
+                db_data = json.loads(db)
+                db_context = f"\n[User Custom ATA Database (Reference)]\n{json.dumps(db_data, ensure_ascii=False)}\n"
+            except:
+                pass
 
-        - Data Mapping for Items:
-          - asAp: "AS" for Cabin Log (no 'Leg' column in Defects), default to "AP" for Flight Log.
-          - defect: Full text from 'Defects and Work Order' description.
-          - reason: The Defer Number string. (Replace '.' or ',' with '-' in numbers).
-          - ata: ATA Code string if present.
+        prompt = f"""
+        You are an aviation maintenance log expert. Extract data into JSON.
+        
+        [Rules]
+        - Extract items if: 1. Defer No. is checked OR 2. Action Taken is empty.
+        {db_context}
+        
+        [Data Mapping]
+        - regNo: Aircraft reg (starting with HL).
+        - legFrom/legTo: 3-letter codes.
+        - reason: ONLY extract written Defer No. If blank, output "". NEVER guess MEL/NEF codes.
+        - ata: 
+          1. If written on paper, extract it exactly.
+          2. If NOT written, look at the '[User Custom ATA Database]' provided above. Read the 'defect' text and act smart and flexible (e.g., handle synonyms, related parts, typos). Find the most conceptually similar keyword in the database and return its corresponding code.
+          3. ONLY if the defect is completely unrelated to anything in the database, use your general aviation knowledge to infer.
           
         Output pure JSON only:
-        {
+        {{
           "regNo": "", "legFrom": "", "legTo": "",
-          "items": [ {"asAp": "AS", "defect": "", "reason": "", "ata": ""} ]
-        }
+          "items": [ {{"asAp": "AP", "defect": "", "reason": "", "ata": ""}} ]
+        }}
         """
 
         response = model.generate_content(
