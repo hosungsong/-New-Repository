@@ -23,7 +23,7 @@
         
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 10px; font-size: 13px; border-right: 1px solid var(--border); display: flex; align-items: center; }
         
-        /* 구간 스왑 (언더바 제거 및 디자인 최적화) */
+        /* 구간 스왑 */
         .leg-box { display: flex; align-items: center; justify-content: space-between; padding: 0 5px; width: 100%; }
         .leg-box input { width: 40%; text-align: center; font-weight: bold; text-transform: uppercase; border: none !important; outline: none; }
         .btn-swap { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--primary); padding: 0; }
@@ -33,7 +33,7 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 결함 Row 디자인 (위쪽 기준 정렬로 변경) */
+        /* 결함 Row 디자인 */
         .defect-row { display: grid; grid-template-columns: 85px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
         
@@ -46,12 +46,12 @@
 
         /* 높이 통일 및 텍스트 상자 설정 */
         .row-item input, .row-item textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; height: 38px; min-height: 38px; }
-        .row-item textarea { resize: vertical; line-height: 1.4; } /* 세로로만 늘어날 수 있게 설정 */
+        .row-item textarea { resize: vertical; line-height: 1.4; } 
         
-        /* 경고 텍스트 스타일 */
-        .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 2px; display: none; }
+        /* [수정됨] 경고 텍스트 최적화: 줄바꿈 방지 및 위치 하단으로 완전히 내림 */
+        .ata-warning { color: var(--warning); font-size: 11px; font-weight: bold; position: absolute; bottom: -18px; left: 0; display: none; white-space: nowrap; }
 
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; margin-top: 17px; } /* 버튼 높이 맞춤 */
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; margin-top: 17px; }
 
         /* 오른쪽 AI 영역 */
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
@@ -157,7 +157,7 @@
         const apClass = isAp ? 'active' : '';
         const hiddenVal = isAp ? 'AP' : 'AS';
 
-        // 영문 라벨 제거, 번호 자동 카운팅 유지
+        // [수정됨] 경고 문구를 요청하신 대로 변경
         row.innerHTML = `
             <div class="row-item">
                 <label><span class="idx-num"></span> AS/AP</label>
@@ -178,13 +178,13 @@
             <div class="row-item">
                 <label>ATA</label>
                 <input type="text" id="ata-${id}" value="${data.ata || ''}" oninput="checkATAConflict(${id})">
-                <span id="warning-${id}" class="ata-warning">⚠️ DB와 다름 (확인)</span>
+                <span id="warning-${id}" class="ata-warning">⚠️ DB와 상이(확인 요)</span>
             </div>
             <button class="btn-remove" onclick="removeRow(${id})">-</button>
         `;
         container.appendChild(row);
         
-        updateRowNumbers(); // 번호 업데이트 로직 호출
+        updateRowNumbers();
         
         if(data.defect) runATAMatching(id, data.ata);
     }
@@ -192,10 +192,9 @@
     function removeRow(id) {
         if(document.querySelectorAll('.defect-row').length <= 1) return;
         document.getElementById(`row-${id}`).remove();
-        updateRowNumbers(); // 삭제 시에도 번호 재정렬
+        updateRowNumbers(); 
     }
 
-    // 결함 번호 동적 업데이트 함수
     function updateRowNumbers() {
         document.querySelectorAll('.defect-row').forEach((row, index) => {
             row.querySelector('.idx-num').innerText = `${index + 1}.`;
@@ -258,4 +257,42 @@
     });
 
     window.onload = () => addRow();
-    document.getElementById('pasteArea
+    document.getElementById('pasteArea').addEventListener('paste', (e) => {
+        const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
+        if (item) {
+            fileToUpload = item.getAsFile();
+            document.getElementById('pasteArea').innerHTML = `<img src="${URL.createObjectURL(fileToUpload)}">`;
+        }
+    });
+
+    async function extractText() {
+        if (!fileToUpload) return alert("이미지를 먼저 붙여넣으세요!");
+        const btn = document.querySelector('.btn-extract');
+        btn.innerText = "분석 및 매칭 중... ⏳";
+        
+        const formData = new FormData();
+        formData.append("file", fileToUpload);
+
+        try {
+            const res = await fetch("/ocr", { method: "POST", body: formData });
+            const data = await res.json();
+            
+            let reg = data.regNo || "";
+            document.getElementById('regNo').value = reg.toUpperCase().replace(/^HL/, '').trim();
+            
+            document.getElementById('legFrom').value = data.legFrom || "";
+            document.getElementById('legTo').value = data.legTo || "";
+            document.getElementById('legTo').dispatchEvent(new Event('input'));
+
+            document.getElementById('defectRowsContainer').innerHTML = "";
+            rowIdCounter = 0; 
+            
+            if(data.items && data.items.length > 0) {
+                data.items.forEach(item => addRow(item));
+            } else { addRow(); alert("DEFER 항목을 찾지 못했습니다."); }
+        } catch (e) { alert("통신 실패!"); }
+        finally { btn.innerText = "✨ AI 데이터 분석 및 ATA 매칭"; }
+    }
+</script>
+</body>
+</html>
