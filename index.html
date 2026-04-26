@@ -30,7 +30,6 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 결함 그리드 레이아웃 */
         .defect-grid { display: grid; grid-template-columns: 110px 1fr 160px 100px 35px; gap: 10px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -43,13 +42,13 @@
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 입력창 38px 고정 (초기 뚱뚱해짐 방지) */
         .defect-row input, .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; height: 38px; min-height: 38px; }
         .defect-row textarea { resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; } 
         
         .ata-wrapper { position: relative; }
         .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 0; display: none; white-space: nowrap; }
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-remove:hover { background: #c0392b; }
 
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; }
@@ -57,6 +56,7 @@
         
         .btn-reset-all { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; }
         .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
 
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -196,9 +196,7 @@
     function matchATA(id, aiSuggestedAta = null) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
-        
         let found = DB.ataDatabase.find(item => text.includes(item.keyword));
-        
         if (found) {
             ataInput.value = found.code;
         } else if (aiSuggestedAta && !ataInput.value) {
@@ -244,6 +242,7 @@
         if (!fileToUpload) return alert("사진을 먼저 붙여넣으세요!");
         const btn = document.querySelector('.btn-extract');
         btn.innerText = "분석 중... ⏳";
+        btn.disabled = true; 
         const formData = new FormData();
         formData.append("file", fileToUpload);
         
@@ -253,11 +252,22 @@
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
+            
+            // 🚨 서버 자체 통신 에러 방어
+            if (!res.ok) {
+                alert("⚠️ 서버 응답 오류가 발생했습니다. 파이썬 서버를 재시작 해주세요.");
+                return;
+            }
+
             const data = await res.json();
             
-            // 🚨 서버에서 발생한 에러를 사용자에게 명확히 알려줌
+            // 🚨 파이썬 내부 에러나 422 밸리데이션 에러 발생 시 명확히 알림
             if (data.error) {
-                alert("⚠️ AI 분석 중 오류가 발생했습니다:\n" + data.error);
+                alert("⚠️ AI 분석 오류:\n" + data.error);
+                return;
+            }
+            if (data.detail) {
+                alert("⚠️ 시스템 오류(422) 발생. 파이썬 코드가 최신인지 확인해주세요.");
                 return;
             }
             
@@ -268,15 +278,18 @@
             document.getElementById('defectRowsContainer').innerHTML = "";
             rowIdCounter = 0;
             
-            if(data.items && data.items.length > 0) {
+            // 🚨 추출된 항목이 없으면 조용히 넘어가지 않고 팝업으로 안내!
+            if (data.items && data.items.length > 0) {
                 data.items.forEach(item => addRow(item)); 
             } else { 
                 addRow(); 
+                alert("🔍 이미지에서 DEFER(이월) 대상 항목을 찾지 못했습니다.\n\n[참고] 'Action Taken' 칸에 조치 내용이 적혀있거나, DEFER No.가 체크되어 있지 않으면 추출을 생략합니다.");
             }
         } catch (e) { 
-            alert("서버 통신에 실패했습니다. (인터넷 연결이나 서버 상태를 확인하세요)"); 
+            alert("⚠️ 네트워크 연결 또는 서버 통신에 실패했습니다."); 
         } finally { 
             btn.innerText = "✨ AI 분석 및 자동 매칭"; 
+            btn.disabled = false;
         }
     }
 </script>
