@@ -39,8 +39,8 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        # 2. 가장 빠르고 똑똑한 최신 모델 선택
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # 2. 에러가 나지 않는 최신 모델명으로 변경!
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
         # 3. AI에게 내리는 강력한 프롬프트 (손글씨만 추출하라는 지시)
         prompt = """
