@@ -142,7 +142,7 @@
     let rowIdCounter = 0;
     let DB = { flights: {}, ataDatabase: [] };
 
-    // 🎯 [핵심] CSV 읽기 로직: 빈칸이면 이전 코드를 기억해서 덮어씌움!
+    // 🎯 [수정됨] CSV 파싱: B열(코드) 빈칸 기억 로직 적용, C열(키워드)
     function handleCSVUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -157,23 +157,26 @@
                 const parts = line.split(',');
                 if (parts.length >= 2) {
                     const type = parts[0].trim().toUpperCase();
-                    const key = parts[1].trim().toUpperCase();
-                    let val = parts.length >= 3 ? parts[2].trim() : "";
+                    let val = parts[1].trim(); // B열: 코드 또는 편명
+                    const key = parts.length >= 3 ? parts[2].trim().toUpperCase() : ""; // C열: 키워드 또는 구간
                     
                     if (type === 'ATA') {
-                        // 💡 값이 있으면 기억하고, 빈칸이면 기억해둔 값을 꺼내 씀!
+                        // B열(코드) 값이 있으면 기억하고, 비어있으면 이전 코드를 가져옴
                         if (val !== "") {
                             lastAtaCode = val;
                         } else {
                             val = lastAtaCode;
                         }
                         
-                        if (key && val) {
+                        // 헤더(제목줄) 무시하고 데이터만 푸시
+                        if (key && val && key !== 'KEYWORD' && key !== '키워드' && val !== 'CODE' && val !== '코드') {
                             newAta.push({ keyword: key, code: val });
                         }
                     } 
                     else if (type === 'FLIGHT') {
-                        if (key && val) newFlights[key] = val;
+                        if (key && val && key !== '구간' && val !== '편명') {
+                            newFlights[key] = val; // key=구간, val=편명
+                        }
                     }
                 }
             });
