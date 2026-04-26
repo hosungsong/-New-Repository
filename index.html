@@ -47,8 +47,7 @@
         
         .ata-wrapper { position: relative; }
         .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 0; display: none; white-space: nowrap; }
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-remove:hover { background: #c0392b; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; }
 
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; }
@@ -56,7 +55,6 @@
         
         .btn-reset-all { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; }
         .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
 
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -129,10 +127,14 @@
                     }
                 }
             });
+            
+            // 🎯 [핵심] 긴 문구(사례)부터 매칭되도록 길이에 따라 내림차순 정렬
+            newAta.sort((a, b) => b.keyword.length - a.keyword.length);
+            
             DB.ataDatabase = newAta;
             DB.flights = newFlights;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
-            alert(`✅ DB 세팅 완료! (ATA: ${newAta.length}개)`);
+            alert(`✅ DB 세팅 완료! (ATA 규칙: ${newAta.length}개)`);
             location.reload(); 
         };
         reader.readAsText(file);
@@ -140,7 +142,11 @@
 
     function loadDB() {
         const saved = localStorage.getItem('integratedDB');
-        if (saved) DB = JSON.parse(saved);
+        if (saved) {
+            DB = JSON.parse(saved);
+            // 로드 시에도 정렬 보장
+            DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length);
+        }
     }
 
     function autoResize(el) {
@@ -155,8 +161,6 @@
         if (container.querySelectorAll('.defect-row').length > 1) {
             btn.parentElement.remove();
             updateNums();
-        } else {
-            alert("최소 1개의 결함 행은 남겨두어야 합니다.");
         }
     }
 
@@ -193,28 +197,55 @@
         document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🎯 [핵심] 스마트 매칭 엔진: 단어 경계 검사 + 긴 문구 우선순위
     function matchATA(id, aiSuggestedAta = null) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
+        let foundCode = null;
+
+        for (const item of DB.ataDatabase) {
+            const keyword = item.keyword.trim();
+            if (!keyword) continue;
+
+            // 1. 단어의 길이가 5자 이상이면 (장황한 사례 문장), 부분 일치(includes)로 스마트하게 매칭
+            if (keyword.length >= 5) {
+                if (text.includes(keyword)) {
+                    foundCode = item.code;
+                    break;
+                }
+            } 
+            // 2. 짧은 핵심 키워드(TIRE 등)는 독립된 단어일 때만 매칭 (RETIRE 방지)
+            else {
+                const regex = new RegExp("\\b" + keyword + "\\b", "i");
+                if (regex.test(text)) {
+                    foundCode = item.code;
+                    break;
+                }
+            }
+        }
         
-        // 부분 일치라도 찾을 수 있도록 유연하게 검색
-        let found = DB.ataDatabase.find(item => text.includes(item.keyword));
-        
-        if (found) {
-            ataInput.value = found.code;
+        if (foundCode) {
+            ataInput.value = foundCode;
         } else if (aiSuggestedAta && !ataInput.value) {
             ataInput.value = aiSuggestedAta;
         }
-        checkATA(id, found ? found.code : aiSuggestedAta);
+        checkATA(id, foundCode || aiSuggestedAta);
     }
 
     function checkATA(id, suggested = null) {
         const val = document.getElementById(`ata-${id}`).value.trim();
         const warn = document.getElementById(`warning-${id}`);
         if (!suggested) {
+            // 경고 표시를 위한 재검색 (현재 입력값과 DB 추천값 비교)
             const text = document.getElementById(`defect-${id}`).value.toUpperCase();
-            let found = DB.ataDatabase.find(item => text.includes(item.keyword));
-            suggested = found ? found.code : null;
+            for (const item of DB.ataDatabase) {
+                const kw = item.keyword.trim();
+                const regex = new RegExp("\\b" + kw + "\\b", "i");
+                if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) {
+                    suggested = item.code;
+                    break;
+                }
+            }
         }
         warn.style.display = (val && suggested && val !== suggested) ? "block" : "none";
     }
@@ -246,25 +277,13 @@
         const btn = document.querySelector('.btn-extract');
         btn.innerText = "분석 중... ⏳";
         btn.disabled = true; 
-        
         const formData = new FormData();
         formData.append("file", fileToUpload);
-        // 💡 주의: 방대한 DB를 서버로 보내지 않습니다! (서버 과부하 원인 제거)
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
-            
-            if (!res.ok) {
-                alert("⚠️ 서버 오류가 발생했습니다. 파이썬 서버를 확인해주세요.");
-                return;
-            }
-
             const data = await res.json();
-            
-            if (data.error) {
-                alert("⚠️ AI 분석 오류:\n" + data.error);
-                return;
-            }
+            if (data.error) { alert("⚠️ 오류: " + data.error); return; }
             
             document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, "");
             document.getElementById('legFrom').value = data.legFrom || "";
@@ -272,19 +291,13 @@
             document.getElementById('legTo').dispatchEvent(new Event('input'));
             document.getElementById('defectRowsContainer').innerHTML = "";
             rowIdCounter = 0;
-            
             if (data.items && data.items.length > 0) {
                 data.items.forEach(item => addRow(item)); 
             } else { 
                 addRow(); 
-                alert("🔍 이미지에서 추출할 결함 내역을 찾지 못했습니다.");
+                alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
             }
-        } catch (e) { 
-            alert("⚠️ 네트워크 연결 또는 서버 통신에 실패했습니다."); 
-        } finally { 
-            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
-            btn.disabled = false;
-        }
+        } catch (e) { alert("⚠️ 통신 실패"); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
     }
 </script>
 </body>
