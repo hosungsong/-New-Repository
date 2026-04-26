@@ -27,7 +27,6 @@ async def serve_frontend():
 async def keep_alive_ping():
     return {"status": "awake"}
 
-# 💡 [핵심 업데이트] 프론트엔드에서 사진과 함께 사용자의 DB를 같이 넘겨받습니다.
 @app.post("/ocr")
 async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(None)):
     if not GEMINI_API_KEY:
@@ -60,7 +59,7 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
         - reason: ONLY extract written Defer No. If blank, output "". NEVER guess MEL/NEF codes.
         - ata: 
           1. If written on paper, extract it exactly.
-          2. If NOT written, look at the '[User Custom ATA Database]' provided above. Read the 'defect' text and act smart and flexible (e.g., handle synonyms, related parts, typos). Find the most conceptually similar keyword in the database and return its corresponding code.
+          2. If NOT written, look at the '[User Custom ATA Database]' provided above. Read the 'defect' text and act smart and flexible. Find the most conceptually similar keyword in the database and return its corresponding code.
           3. ONLY if the defect is completely unrelated to anything in the database, use your general aviation knowledge to infer.
           
         Output pure JSON only:
@@ -74,9 +73,21 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
             [prompt, image],
             generation_config={"response_mime_type": "application/json"}
         )
-        return json.loads(response.text.strip())
+        
+        # 🚨 [핵심 버그 픽스] AI가 마크다운 기호를 섞어 보내도 벗겨내고 순수 JSON만 추출
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:]
+            
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+
+        return json.loads(raw_text.strip())
 
     except Exception as e:
+        # 에러 발생 시 명확하게 에러 내용을 반환
         return {"error": str(e)}
 
 if __name__ == "__main__":
