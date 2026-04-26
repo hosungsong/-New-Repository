@@ -32,24 +32,25 @@ async def extract_text(file: UploadFile = File(...)):
 
         model = genai.GenerativeModel('gemini-2.5-flash') 
 
-        # [수정됨] AS/AP 판독 로직이 극도로 정교해진 프롬프트
         prompt = """
-        당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 추출하여 보고하는 시스템입니다.
-        이미지에서 텍스트와 시각적 요소(도장, 서명)를 분석하여 JSON 형식으로 응답하세요.
+        당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
+        사진이 잘려서 확인할 수 없는 정보(기번, 구간 등)는 빈 문자열("")로 남겨두세요.
         
         [규칙]
         1. regNo: 'HL'로 시작하는 기번.
-        2. legFrom, legTo: 구간 정보 3자리 영문 (FROM, TO).
-        3. items: 결함 배열 (아래 조건을 만족하는 결함만 배열에 추가하세요)
-           - [필터링 조건]: ACTION TAKEN / DEFER No. 란의 MEL, CDL, NEF, SRM, AMM 항목에 체크가 되어 있고, **반드시 그 옆에 '숫자'가 적혀 있는(DEFER 적용된) 결함만 추출**하세요. 숫자가 없거나 조치 완료(CLEARED)된 항목은 무조건 제외하세요.
-           - [AS/AP 판단 기준 - 매우 중요]: 
-             가. 문서 상단 제목이 'CABIN LOG' (또는 CBN LOG)이면 무조건 'AS'로 지정하세요.
-             나. 문서 상단 제목이 'FLIGHT LOG'인 경우, 해당 DEFECT 작성란 우측 하단의 'ENTERED BY' 영역을 시각적으로 확인하세요.
-                 - 타원형 도장(Stamp/Seal)이 찍혀 있으면 정비사 로깅이므로 'AS'로 지정하세요.
-                 - 손글씨 서명(Signature)이 있거나 아예 비어있으면(공란) 운항승무원 로깅이므로 'AP'로 지정하세요.
+        2. legFrom, legTo: 구간 정보 3자리 영문.
+        
+        3. 문서 종류 역추적:
+           - FLIGHT LOG: DEFECT 란에 'LEG' 칸이 있거나, DEFER NO. 체크 항목이 5개(MEL, CDL, NEF, SRM, AMM)인 경우.
+           - CABIN LOG: DEFECT 란에 'LEG' 칸이 없고, DEFER NO. 체크 항목이 3개(MEL, NEF, AMM)인 경우.
+        
+        4. items: 결함 배열 (DEFER 번호와 숫자가 적혀있는 항목만 추출)
+           - [AS/AP 판단]: 
+             - CABIN LOG는 무조건 'AS'.
+             - FLIGHT LOG는 'ENTERED BY' 란에 타원형 도장이 있으면 'AS', 서명이나 공란이면 'AP'.
            - defect: DEFECT 내용 전체.
-           - reason: DEFER No. 란에 체크된 항목과 그 옆의 숫자 조합 (예: "NEF 99-00-00").
-           - ata: ATA CODE 란에 숫자가 적혀있으면 추출, 없으면 비워두세요.
+           - reason: 체크된 항목과 숫자 조합 (예: "NEF 99-00-00").
+           - ata: ATA CODE 란에 숫자가 써있으면 추출, 없으면 "".
         
         응답은 순수 JSON만 출력하세요:
         {
