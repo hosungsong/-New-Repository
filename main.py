@@ -1,7 +1,6 @@
 import os
 import io
 import json
-import csv
 from PIL import Image
 import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File, Form
@@ -35,6 +34,8 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
+        
+        # 분석 속도가 빠른 모델
         model = genai.GenerativeModel('gemini-1.5-flash') 
 
         # 사용자가 올린 DB 족보 세팅
@@ -74,7 +75,7 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
             generation_config={"response_mime_type": "application/json"}
         )
         
-        # 🚨 [핵심 버그 픽스] AI가 마크다운 기호를 섞어 보내도 벗겨내고 순수 JSON만 추출
+        # AI가 마크다운 기호를 섞어 보내도 벗겨내고 순수 JSON만 추출
         raw_text = response.text.strip()
         if raw_text.startswith("```json"):
             raw_text = raw_text[7:]
@@ -87,7 +88,7 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
         return json.loads(raw_text.strip())
 
     except Exception as e:
-        # 에러 발생 시 명확하게 에러 내용을 반환
+        # 에러 발생 시 명확하게 에러 내용을 반환하여 조용히 멈추는 현상 방지
         return {"error": str(e)}
 
 if __name__ == "__main__":
