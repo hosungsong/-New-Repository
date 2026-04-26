@@ -30,6 +30,7 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
+        /* 결함 그리드 레이아웃 */
         .defect-grid { display: grid; grid-template-columns: 110px 1fr 160px 100px 35px; gap: 10px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -42,9 +43,8 @@
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 🚨 [수정] 모든 입력창의 높이를 강제로 38px로 통일 */
+        /* 입력창 38px 고정 (초기 뚱뚱해짐 방지) */
         .defect-row input, .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; height: 38px; min-height: 38px; }
-        /* 🚨 [수정] 폰트 상속 및 스크롤바 감추기 */
         .defect-row textarea { resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; } 
         
         .ata-wrapper { position: relative; }
@@ -143,11 +143,10 @@
         if (saved) DB = JSON.parse(saved);
     }
 
-    // 🚨 [수정] 늘어나는 높이 계산 로직을 훨씬 정교하게 보완
     function autoResize(el) {
-        el.style.height = '38px'; // 초기화
+        el.style.height = '38px'; 
         if (el.scrollHeight > 38) {
-            el.style.height = (el.scrollHeight + 2) + 'px'; // 내용이 많으면 경계선(2px) 포함해서 늘림
+            el.style.height = (el.scrollHeight + 2) + 'px'; 
         }
     }
 
@@ -170,7 +169,6 @@
         row.id = `row-${id}`;
         const isAp = data.asAp === 'AP';
         
-        // 🚨 [수정] textarea에 rows="1" 추가하여 기본 뚱뚱해짐 방지
         row.innerHTML = `
             <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this); matchATA(${id});" placeholder="결함 내용">${data.defect || ''}</textarea></div>
@@ -256,14 +254,30 @@
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
             const data = await res.json();
+            
+            // 🚨 서버에서 발생한 에러를 사용자에게 명확히 알려줌
+            if (data.error) {
+                alert("⚠️ AI 분석 중 오류가 발생했습니다:\n" + data.error);
+                return;
+            }
+            
             document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, "");
             document.getElementById('legFrom').value = data.legFrom || "";
             document.getElementById('legTo').value = data.legTo || "";
             document.getElementById('legTo').dispatchEvent(new Event('input'));
             document.getElementById('defectRowsContainer').innerHTML = "";
             rowIdCounter = 0;
-            if(data.items) data.items.forEach(item => addRow(item)); else addRow();
-        } catch (e) { alert("분석 실패"); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; }
+            
+            if(data.items && data.items.length > 0) {
+                data.items.forEach(item => addRow(item)); 
+            } else { 
+                addRow(); 
+            }
+        } catch (e) { 
+            alert("서버 통신에 실패했습니다. (인터넷 연결이나 서버 상태를 확인하세요)"); 
+        } finally { 
+            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
+        }
     }
 </script>
 </body>
