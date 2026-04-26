@@ -14,7 +14,8 @@
         
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; }
         
-        .static-fields { display: grid; grid-template-columns: 1fr 1fr 1.3fr 0.7fr; gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
+        /* 🎯 상단 고정 필드 칼각 정렬 (4:1이 아닌 정확한 1:1:1:1 등분으로 찌그러짐 방지) */
+        .static-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         .input-group label { font-size: 13px; font-weight: bold; color: var(--primary); padding-left: 2px; line-height: 1; }
         
@@ -26,23 +27,31 @@
         
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 12px; font-size: 13px; border-right: 1px solid var(--border); display: flex; align-items: center; justify-content: center; height: 100%; box-sizing: border-box; }
         
+        /* 🎯 구간 텍스트 잘림 방지 (글자 크기 축소 및 flex 속성 최적화) */
         .leg-box { padding: 0 5px; justify-content: space-between; }
-        .leg-box input { flex: 1; min-width: 40px; text-align: center; font-weight: bold; text-transform: uppercase; padding: 0; font-size: 13px; }
+        .leg-box input { flex: 1; min-width: 0; text-align: center; font-weight: bold; text-transform: uppercase; padding: 0; font-size: 12px; }
         .btn-swap { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--primary); padding: 0 5px; height: 100%; display: flex; align-items: center; justify-content: center; }
 
+        /* 동적 결함 영역 */
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        .defect-header-row { display: grid; grid-template-columns: 100px 1fr 160px 100px 35px; gap: 12px; padding: 0 5px; margin-bottom: 5px; }
-        .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; padding-left: 2px; }
+        /* 🎯 결함 제목줄 (헤더) - 첫 번째 칼럼 너비를 늘림 (번호+버튼 폭 고려) */
+        .defect-header-row { display: grid; grid-template-columns: 110px 1fr 160px 100px 35px; gap: 12px; padding: 0 2px; margin-bottom: 8px; }
+        .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; }
 
-        .defect-row { display: grid; grid-template-columns: 100px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
+        /* 결함 Row 디자인 */
+        .defect-row { display: grid; grid-template-columns: 110px 1fr 160px 100px 35px; gap: 12px; align-items: start; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         
         .row-item { display: flex; flex-direction: column; position: relative; }
         
-        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 38px; flex: 1; }
+        /* 🎯 AS/AP 토글 박스와 번호(1.)의 가로 정렬 전용 컨테이너 */
+        .as-ap-container { display: flex; align-items: center; gap: 6px; height: 38px; width: 100%; box-sizing: border-box; }
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; flex-shrink: 0; }
+        
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 12px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
@@ -53,6 +62,7 @@
         .ata-warning { color: var(--warning); font-size: 11px; font-weight: bold; position: absolute; bottom: -18px; left: 0; display: none; white-space: nowrap; }
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
+        /* 오른쪽 AI 및 사진 영역 */
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; color: #7f8c8d; font-weight: bold; overflow: hidden; min-height: 350px; text-align: center; position: relative; }
         
@@ -64,6 +74,7 @@
 
         .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
+        /* 하단 버튼 */
         .bottom-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px; }
         .btn-mail { color: white; border: none; padding: 15px 10px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn-mail:hover { transform: translateY(-2px); opacity: 0.9; }
@@ -73,6 +84,7 @@
         .bg-gmp { background: #8e44ad; }  
         .bg-duty { background: #e67e22; } 
 
+        /* 사진 확대 모달 창 CSS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: zoom-out; }
         .modal-img { max-width: 90vw; max-height: 90vh; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
     </style>
@@ -116,8 +128,7 @@
                 </div>
                 
                 <div class="defect-header-row">
-                    <span style="text-align: center;">AS/AP</span>
-                    <span>DEFECT</span>
+                    <span style="padding-left: 20px;">AS/AP</span> <span>DEFECT</span>
                     <span>적용근거</span>
                     <span>ATA</span>
                     <span></span>
@@ -164,7 +175,7 @@
         ]
     };
 
-    // 💡 [추가됨] 10분(600,000ms)마다 서버가 잠들지 않게 Ping 보내기
+    // 서버 잠자기 방지용 핑
     setInterval(() => {
         fetch('/ping')
             .then(res => console.log("서버 깨우기(Ping) 완료!"))
@@ -189,9 +200,10 @@
         const apClass = isAp ? 'active' : '';
         const hiddenVal = isAp ? 'AP' : 'AS';
 
+        // 🎯 라벨(제목) 제거 및 번호(1.)를 컨테이너 왼쪽으로 완전히 뺌
         row.innerHTML = `
-            <div class="row-item" style="flex-direction: row; align-items: center; gap: 6px; height: 38px;">
-                <span class="idx-num" style="font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right;"></span>
+            <div class="as-ap-container">
+                <span class="idx-num"></span>
                 <div class="toggle-box">
                     <button type="button" class="toggle-btn ${asClass}" id="btn-as-${id}" onclick="setAsAp(${id}, 'AS')">AS</button>
                     <button type="button" class="toggle-btn ${apClass}" id="btn-ap-${id}" onclick="setAsAp(${id}, 'AP')">AP</button>
@@ -199,7 +211,7 @@
                 <input type="hidden" id="asAp-${id}" value="${hiddenVal}">
             </div>
             <div class="row-item">
-                <textarea id="defect-${id}" oninput="autoResize(this); runATAMatching(${id});" placeholder="결함 내용 입력">${data.defect || ''}</textarea>
+                <textarea id="defect-${id}" oninput="autoResize(this); runATAMatching(${id});" placeholder="결함 내용">${data.defect || ''}</textarea>
             </div>
             <div class="row-item">
                 <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="예: MEL 00-00">
