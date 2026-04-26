@@ -34,11 +34,8 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-        
-        # 분석 속도가 빠른 모델
         model = genai.GenerativeModel('gemini-1.5-flash') 
 
-        # 사용자가 올린 DB 족보 세팅
         db_context = ""
         if db:
             try:
@@ -75,20 +72,18 @@ async def extract_text(file: UploadFile = File(...), db: Optional[str] = Form(No
             generation_config={"response_mime_type": "application/json"}
         )
         
-        # AI가 마크다운 기호를 섞어 보내도 벗겨내고 순수 JSON만 추출
-        raw_text = response.text.strip()
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[7:]
-        elif raw_text.startswith("```"):
-            raw_text = raw_text[3:]
-            
-        if raw_text.endswith("```"):
-            raw_text = raw_text[:-3]
-
-        return json.loads(raw_text.strip())
+        # 💡 [핵심 보완] 어떤 찌꺼기가 붙어와도 완벽하게 JSON 괄호 부분만 추출합니다.
+        text = response.text.strip()
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
+        
+        if start_idx != -1 and end_idx != -1:
+            json_str = text[start_idx:end_idx+1]
+            return json.loads(json_str)
+        else:
+            return {"error": "AI 응답에서 JSON을 찾을 수 없습니다."}
 
     except Exception as e:
-        # 에러 발생 시 명확하게 에러 내용을 반환하여 조용히 멈추는 현상 방지
         return {"error": str(e)}
 
 if __name__ == "__main__":
