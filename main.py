@@ -35,7 +35,6 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        # ✅ 정답 모델: 구글 서버에 정상적으로 살아있는 2.5 버전으로 확정!
         model = genai.GenerativeModel('gemini-2.5-flash') 
 
         prompt = """
@@ -46,40 +45,28 @@ async def extract_text(file: UploadFile = File(...)):
         [규칙]
         1. regNo: 'HL'로 시작하는 기번.
         2. legFrom, legTo: 구간 정보 3자리 영문.
-        [General Rules]
-        - Extract only from Deferment/Carry-over item rows.
-        - regNo: Aircraft registration starting with 'HL'.
-        - legFrom/legTo: 3-letter airport codes.
         
         3. 문서 종류 역추적:
            - FLIGHT LOG: DEFECT 란에 'LEG' 칸이 있거나, DEFER NO. 체크 항목이 5개(MEL, CDL, NEF, SRM, AMM)인 경우.
            - CABIN LOG: DEFECT 란에 'LEG' 칸이 없고, DEFER NO. 체크 항목이 3개(MEL, NEF, AMM)인 경우.
-        [Items Extraction Rules]
-        - Items: Array of objects.
         
         4. items: 결함 배열 (DEFER 번호와 숫자가 적혀있는 항목만 추출)
            - [AS/AP 판단]: 
              - CABIN LOG는 무조건 'AS'.
-             - FLIGHT LOG인 경우: 반드시 왼쪽 'DEFECT AND WORK ORDER' 영역 하단에 있는 'ENTERED BY' 칸만 확인하세요. (오른쪽 'ACTION TAKEN' 란의 서명/도장은 절대 무시할 것)
+             - FLIGHT LOG인 경우: 반드시 왼쪽 'DEFECT AND WORK ORDER' 영역 하단에 있는 'ENTERED BY' 칸만 확인하세요.
                -> 왼쪽 'ENTERED BY' 칸이 공란이거나 손글씨 서명만 있다면 'AP'.
                -> 왼쪽 'ENTERED BY' 칸에 타원형 도장(Stamp)이 찍혀 있을 때만 'AS'.
            - defect: DEFECT 내용 전체.
-           - reason: DEFER No. 란에 체크된 항목과 그 옆의 숫자 조합. 
-             **[매우 중요 포맷 규칙]: 숫자를 연결할 때 마침표(.)는 절대 사용하지 마십시오. 인식된 마침표나 쉼표는 모두 대시(-)로 변환하여 출력하세요.** (예시: "MEL XX-XX-XX", "NEF XX-XX-XX", "AMM XX-XX-XX-XX-X")
-           - ata: ATA CODE 란에 숫자가 써있으면 추출, 없으면 "".
+           - reason: DEFER No. 란에 체크된 항목과 그 옆의 손글씨 조합. 
+             **[🚨 매우 중요 - 번호 추출 위치]: 반드시 오른쪽 'ACTION TAKEN' 영역의 'DEFER No.' 항목에 적힌 번호만 추출하세요. 왼쪽 DEFECT 본문에 적힌 번호(예: 32-50-09A)는 절대 가져오지 마세요.**
+             **[🚨 포맷 규칙]: 마침표(.)는 대시(-)로 바꾸거나 지우세요. 단, 무조건 대시로만 연결할 필요는 없으며, '07A'처럼 숫자와 알파벳이 붙어있다면 쓰여진 그대로 붙여서 출력하세요 (예: "MEL XX-XX-XXA", "MEL XX-XX-XXB"). 닷(DOT) 사용만 금지합니다.**
+           - ata: ATA CODE 란에 적힌 숫자를 '있는 그대로' 추출.
         
         응답은 순수 JSON만 출력하세요:
-        - [💡CRITICAL LOGIC UPDATE - Extract items if]:
+        - [💡CRITICAL LOGIC UPDATE]:
           1. Any Defer No. checkbox is checked. OR
-          2. [Target Empty Items]: All Defer No. checkboxes are UNCHECKED AND 'Action Taken' field is explicitly EMPTY/BLANK.
-          (Do NOT skip rows where Action Taken is empty if no Defer is checked; treat them as missing entries and extract the defect).
+          2. 'Action Taken' field is explicitly EMPTY/BLANK.
 
-        - Data Mapping for Items:
-          - asAp: "AS" for Cabin Log (no 'Leg' column in Defects), default to "AP" for Flight Log.
-          - defect: Full text from 'Defects and Work Order' description.
-          - reason: The Defer Number string. (Replace '.' or ',' with '-' in numbers).
-          - ata: ATA Code string if present.
-          
         Output pure JSON only:
         {
           "regNo": "", "legFrom": "", "legTo": "",
@@ -87,7 +74,6 @@ async def extract_text(file: UploadFile = File(...)):
         }
         """
 
-        # JSON 강제 반환 설정 (마크다운 버그 차단)
         response = model.generate_content(
             [prompt, image],
             generation_config={"response_mime_type": "application/json", "temperature": 0.1}
@@ -99,7 +85,6 @@ async def extract_text(file: UploadFile = File(...)):
     except Exception as e:
         return {"error": f"AI 분석 중 오류 발생: {str(e)}"}
 
-# 💡 신규: 텍스트 추출 모드용 백엔드 라우터 안전하게 추가
 @app.post("/extract_raw")
 async def extract_raw_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY:
