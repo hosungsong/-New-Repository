@@ -64,7 +64,6 @@
         .top-section.expanded #pasteArea { min-height: 600px; }
         .top-section.expanded #pasteArea img { max-height: 80vh; }
 
-        /* 💡 신규: 텍스트 추출 모드 시 이미지 축소 */
         .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
         .text-extract-mode #pasteArea img { max-height: 180px; }
 
@@ -73,14 +72,12 @@
         .btn-tool.btn-close { background: #e74c3c; }
         .btn-tool:hover { transform: scale(1.1); filter: brightness(1.1); }
 
-        /* 💡 신규: 버튼 분할 레이아웃 */
         .action-buttons { display: flex; gap: 10px; }
         .btn-extract { color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-extract.main { flex: 2; background: #27ae60; }
         .btn-extract.sub { flex: 1; background: #8e44ad; }
         .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
 
-        /* 💡 신규: 텍스트 박스 */
         #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
 
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
@@ -136,16 +133,10 @@
 <script>
     let fileToUpload = null;
     let rowIdCounter = 0;
-    // 💡 신규: flights 배열 변환 및 ac 딕셔너리 추가
     let DB = { flights: [], ataDatabase: [], ac: {} };
     
-    let currentRotation = 0; 
-    let currentScale = 1;
-    let translateX = 0;
-    let translateY = 0;
-    let isDragging = false;
-    let startDragX = 0;
-    let startDragY = 0;
+    let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
+    let isDragging = false, startDragX = 0, startDragY = 0;
 
     function handleCSVUpload(event) {
         const file = event.target.files[0];
@@ -160,19 +151,14 @@
                 const parts = line.split(',').map(p => p.trim());
                 if (parts.length >= 2) {
                     const type = parts[0].toUpperCase();
-                    
                     if (type === 'ATA') {
                         let val = parts[1];
                         if (val !== "") lastAtaCode = val; else val = lastAtaCode;
                         const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && val && key !== 'KEYWORD') newAta.push({ keyword: key, code: val });
-                    } 
-                    // 💡 신규: 4열 FLIGHT 매칭 (FLIGHT | 편명 | FROM | TO)
-                    else if (type === 'FLIGHT' && parts.length >= 4) {
+                    } else if (type === 'FLIGHT' && parts.length >= 4) {
                         newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
-                    } 
-                    // 💡 신규: 기종 AC 매칭 (AC | 기번 | 기종)
-                    else if (type === 'AC' && parts.length >= 3) {
+                    } else if (type === 'AC' && parts.length >= 3) {
                         newAc[parts[1]] = parts[2];
                     }
                 }
@@ -193,19 +179,17 @@
         const saved = localStorage.getItem('integratedDB');
         if (saved) {
             DB = JSON.parse(saved);
-            if (!Array.isArray(DB.flights)) DB.flights = []; // 구버전 DB 방어코드
+            if (!Array.isArray(DB.flights)) DB.flights = [];
             if (!DB.ac) DB.ac = {}; 
             DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length);
         }
     }
 
-    // 💡 신규: 기종(AC) 자동 입력
     function fillAcType() {
         const reg = document.getElementById('regNo').value.trim();
         document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
-    // 💡 수정: 구간(FROM-TO) 입력 시 편명 자동 매칭 (D열 구조 & 앞자리 0 제거 반영)
     function autoMatchFlight() {
         const f = document.getElementById('legFrom').value.toUpperCase();
         const t = document.getElementById('legTo').value.toUpperCase();
@@ -219,7 +203,6 @@
         }
     }
 
-    // 💡 수정: 텍스트 길이에 맞춰 높이 자동 확장 개선
     function autoResize(el) {
         el.style.height = 'auto'; 
         const newHeight = el.scrollHeight;
@@ -255,7 +238,7 @@
         
         if(data.defect) { 
             setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 10);
-            matchATA(id, data.ata); 
+            matchATA(id); // AI가 넣어준 ATA가 보존되도록 파라미터 없이 호출
         }
     }
 
@@ -267,51 +250,59 @@
         document.getElementById(`asAp-${id}`).value = type;
     }
 
-    function matchATA(id, aiSuggestedAta = null) {
+    // 💡 완벽 수정: AI가 읽어온 값을 절대 덮어쓰지 않고, 비어있을 때만 채워줌
+    function matchATA(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
-        let foundCode = null;
+        const currentVal = ataInput.value.trim(); 
 
+        let dbCode = "";
         for (const item of DB.ataDatabase) {
-            const keyword = item.keyword.trim();
-            if (!keyword) continue;
-            if (keyword.length >= 5) {
-                if (text.includes(keyword)) { foundCode = item.code; break; }
-            } else {
-                const regex = new RegExp("\\b" + keyword + "\\b", "i");
-                if (regex.test(text)) { foundCode = item.code; break; }
-            }
+            const kw = item.keyword.trim();
+            const regex = new RegExp("\\b" + kw + "\\b", "i");
+            if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) { dbCode = item.code; break; }
         }
-        
-        if (foundCode) { ataInput.value = foundCode; } 
-        else if (aiSuggestedAta && !ataInput.value) { ataInput.value = aiSuggestedAta; }
-        checkATA(id, foundCode || aiSuggestedAta);
+
+        // 입력칸이 비어있을 때만 DB 값으로 자동 채움
+        if (!currentVal && dbCode) {
+            ataInput.value = dbCode;
+        }
+
+        checkATA(id, dbCode);
     }
 
-    function checkATA(id, suggested = null) {
-        const val = document.getElementById(`ata-${id}`).value.trim();
+    // 💡 완벽 수정: 화면에 적힌 값과 DB를 비교해 다를 때만 경고창 표시
+    function checkATA(id, dbCode = null) {
+        const ataInput = document.getElementById(`ata-${id}`);
+        const val = ataInput.value.trim();
         const warn = document.getElementById(`warning-${id}`);
-        if (!suggested) {
+
+        if (dbCode === null) {
             const text = document.getElementById(`defect-${id}`).value.toUpperCase();
             for (const item of DB.ataDatabase) {
                 const kw = item.keyword.trim();
                 const regex = new RegExp("\\b" + kw + "\\b", "i");
-                if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) { suggested = item.code; break; }
+                if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) { dbCode = item.code; break; }
             }
         }
-        warn.style.display = (val && suggested && val !== suggested) ? "block" : "none";
+
+        // 입력칸에 값이 있고 DB에서도 찾았는데 둘이 다르면 경고창 띄움
+        if (val && dbCode && val !== dbCode) {
+            warn.style.display = "block";
+        } else {
+            warn.style.display = "none";
+        }
     }
 
     function swapLegs() {
         const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
         [f.value, t.value] = [t.value, f.value];
-        autoMatchFlight(); // 이벤트 디스패치 대신 직접 호출
+        autoMatchFlight(); 
     }
 
     window.onload = () => { 
         loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
 
-        // 💡 신규: FROM, TO 입력 시 구간 매칭 이벤트 리스너 연결
         document.getElementById('legFrom').addEventListener('input', autoMatchFlight);
         document.getElementById('legTo').addEventListener('input', autoMatchFlight);
 
@@ -329,31 +320,22 @@
 
         pasteArea.addEventListener('mousedown', (e) => {
             if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
-            e.preventDefault(); // 🚨 브라우저의 기본 텍스트 선택/이미지 드래그 방지
-            isDragging = true;
-            isMoved = false; 
-            startDragX = e.clientX - translateX;
-            startDragY = e.clientY - translateY;
+            e.preventDefault(); 
+            isDragging = true; isMoved = false; 
+            startDragX = e.clientX - translateX; startDragY = e.clientY - translateY;
         });
 
-        // 🚨 이벤트를 창 전체(window)로 확장하여 밖으로 나가도 인식하게 만듦
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             isMoved = true;
-            translateX = e.clientX - startDragX;
-            translateY = e.clientY - startDragY;
+            translateX = e.clientX - startDragX; translateY = e.clientY - startDragY;
             applyTransform();
         });
 
-        // 🚨 클릭을 떼는 이벤트를 창 전체(window)로 확장
         window.addEventListener('mouseup', (e) => {
             if (!isDragging) return;
             isDragging = false;
-            
-            // 움직이지 않고 클릭만 했다면 화면 확대 실행
-            if (!isMoved && e.target.id === 'pastedImg') {
-                toggleExpand();
-            }
+            if (!isMoved && e.target.id === 'pastedImg') { toggleExpand(); }
         });
     };
 
@@ -366,11 +348,9 @@
             currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
             document.getElementById('mainTopSection').classList.remove('expanded'); 
             
-            // 💡 텍스트 추출 모드 해제
             document.getElementById('rightPanel').classList.remove('text-extract-mode');
             document.getElementById('rawTextArea').style.display = 'none';
 
-            // 🚨 draggable="false" 추가 (고유 이미지 드래그 기능 차단)
             document.getElementById('pasteArea').innerHTML = `
                 <div class="img-tools">
                     <button class="btn-tool" onclick="rotateImg(event)" title="90도 회전">↻</button>
@@ -383,15 +363,11 @@
 
     function applyTransform() {
         const img = document.getElementById('pastedImg');
-        if (img) {
-            img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`;
-        }
+        if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; }
     }
 
     function rotateImg(e) {
-        e.stopPropagation(); 
-        currentRotation += 90;
-        applyTransform();
+        e.stopPropagation(); currentRotation += 90; applyTransform();
     }
 
     function toggleExpand() {
@@ -414,13 +390,12 @@
             if (data.error) { alert("⚠️ 오류: " + data.error); return; }
             
             document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, "");
-            fillAcType(); // 💡 AI 분석 후 기종 자동 채우기 트리거
+            fillAcType(); 
             
             document.getElementById('legFrom').value = data.legFrom || "";
             document.getElementById('legTo').value = data.legTo || "";
-            autoMatchFlight(); // 💡 AI 분석 후 편명 자동 매칭 트리거
+            autoMatchFlight(); 
             
-            // 💡 만약 AI가 직접 편명을 줬다면(0제거 적용) 덮어씌움
             if (data.flightNo) {
                 document.getElementById('flightNo').value = data.flightNo.replace(/^0+/, '');
             }
@@ -436,7 +411,6 @@
         } catch (e) { alert("⚠️ 통신 실패"); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
     }
 
-    // 💡 신규: 단순 RAW 텍스트 추출 통신 기능
     async function extractRawText() {
         if (!fileToUpload) return alert("사진을 먼저 붙여넣으세요!");
         const btn = document.getElementById('btnExtractRaw');
@@ -450,7 +424,6 @@
             const data = await res.json();
             if (data.error) { alert("⚠️ 오류: " + data.error); return; }
             
-            // 이미지 영역을 줄이고 텍스트 박스 표시
             document.getElementById('rightPanel').classList.add('text-extract-mode');
             const textArea = document.getElementById('rawTextArea');
             textArea.style.display = 'block';
