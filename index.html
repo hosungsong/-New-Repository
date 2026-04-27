@@ -238,7 +238,7 @@
         
         if(data.defect) { 
             setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 10);
-            matchATA(id); // AI가 넘겨준 ATA(ata-입력칸에 들어간 값)를 보존
+            matchATA(id); 
         }
     }
 
@@ -250,6 +250,7 @@
         document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // ✨ 핵심 수정: 특수문자(괄호 등) 안전하게 처리하는 로직 추가
     function matchATA(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
@@ -258,11 +259,18 @@
         let dbCode = "";
         for (const item of DB.ataDatabase) {
             const kw = item.keyword.trim();
-            const regex = new RegExp("\\b" + kw + "\\b", "i");
-            if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) { dbCode = item.code; break; }
+            if (!kw) continue;
+            
+            // 🚨 괄호 같은 특수문자를 '코드'가 아닌 '글자'로 인식하게 강제 변환
+            const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            
+            const regex = new RegExp("\\b" + safeKw + "\\b", "i");
+            if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { 
+                dbCode = item.code; 
+                break; 
+            }
         }
 
-        // 입력칸이 비어있을 때만 DB 값으로 자동 채움 (AI값 덮어쓰기 방지)
         if (!currentVal && dbCode) {
             ataInput.value = dbCode;
         }
@@ -279,12 +287,16 @@
             const text = document.getElementById(`defect-${id}`).value.toUpperCase();
             for (const item of DB.ataDatabase) {
                 const kw = item.keyword.trim();
-                const regex = new RegExp("\\b" + kw + "\\b", "i");
-                if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) { dbCode = item.code; break; }
+                if (!kw) continue;
+                const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp("\\b" + safeKw + "\\b", "i");
+                if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { 
+                    dbCode = item.code; 
+                    break; 
+                }
             }
         }
 
-        // 입력칸 값과 DB 값이 모두 존재하는데 서로 다를 경우에만 경고 띄움
         if (val && dbCode && val !== dbCode) {
             warn.style.display = "block";
         } else {
@@ -395,7 +407,6 @@
             autoMatchFlight(); 
             
             if (data.flightNo) {
-                // Number 형식이 와도 에러나지 않게 String으로 변환 후 replace
                 document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, '');
             }
 
@@ -408,7 +419,6 @@
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
             }
         } catch (e) { 
-            // 💡 억울한 통신실패 알림 대신, 실제 자바스크립트 에러 내용을 띄움
             alert("⚠️ 화면 스크립트 에러 발생: " + e.message); 
             console.error(e);
         } finally { 
