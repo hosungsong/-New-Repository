@@ -103,3 +103,30 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+# 💡 [신규 추가] 손글씨 단순 텍스트 추출 엔드포인트
+@app.post("/extract_raw")
+async def extract_raw_text(file: UploadFile = File(...)):
+    if not GEMINI_API_KEY:
+        return {"error": "API Key가 설정되지 않았습니다."}
+    
+    try:
+        content = await file.read()
+        image = Image.open(io.BytesIO(content))
+
+        # 텍스트 추출도 동일하게 정상 작동하는 2.5 버전 사용
+        model = genai.GenerativeModel('gemini-2.5-flash') 
+
+        prompt = """
+        당신은 항공 정비 로그의 글씨를 판독하는 비전 어시스턴트입니다. 
+        이 이미지에 적힌 손글씨 내용(기번, Defect, Action Taken 등)을 있는 그대로 전부 텍스트로 추출해 주세요.
+        JSON 형식이 아닌, 사람이 읽기 편한 일반 줄글 형태로 정리해서 출력해 주면 됩니다.
+        """
+
+        # JSON 강제 반환이 아닌 일반 텍스트 모드로 호출
+        response = model.generate_content([prompt, image])
+        
+        return {"text": response.text.strip()}
+
+    except Exception as e:
+        return {"error": f"텍스트 추출 중 오류 발생: {str(e)}"}
