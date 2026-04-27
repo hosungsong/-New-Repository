@@ -7,16 +7,16 @@
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .main-container { width: 100%; max-width: 1350px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
+        .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; transition: 0.3s; }
         
         .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
         .header h2 { margin: 0; }
         .btn-db { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
 
-        .top-section { display: flex; gap: 25px; margin-bottom: 20px; }
-        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+        .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; }
+        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; transition: 0.3s; }
         
-        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
+        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; }
@@ -30,7 +30,7 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-grid { display: grid; grid-template-columns: 110px 1fr 160px 100px 35px; gap: 10px; align-items: start; }
+        .defect-grid { display: grid; grid-template-columns: 110px 1fr 160px 100px 35px; gap: 10px; align-items: start; transition: 0.3s; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -47,21 +47,34 @@
         
         .ata-wrapper { position: relative; }
         .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 0; display: none; white-space: nowrap; }
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-remove:hover { background: #c0392b; }
 
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; }
-        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: zoom-in; }
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; transition: 0.3s; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
+        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: zoom-in; transition: transform 0.3s, max-height 0.3s; }
         
-        .btn-reset-all { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; }
+        /* 🚨 [핵심] 사진 클릭 시 화면 분할 및 레이아웃 자동 변환 (Expanded Mode) */
+        .top-section.expanded .left-panel { flex: 1; }
+        .top-section.expanded .right-panel { flex: 1.2; }
+        .top-section.expanded .static-fields { flex-wrap: wrap; }
+        .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } /* 1줄을 2줄로 래핑 */
+        .top-section.expanded .defect-grid { grid-template-columns: 100px 1fr 120px 80px 35px; } /* 그리드 살짝 다이어트 */
+        .top-section.expanded #pasteArea { min-height: 600px; }
+        .top-section.expanded #pasteArea img { max-height: 80vh; cursor: zoom-out; }
+
+        /* 🚨 [수정] 이미지 우측 상단 툴바 (회전, 삭제 버튼) */
+        .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
+        .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn-tool.btn-close { background: #e74c3c; }
+        .btn-tool:hover { transform: scale(1.1); filter: brightness(1.1); }
+
         .btn-extract { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
 
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
-
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: zoom-out; }
-        .modal-img { max-width: 90vw; max-height: 90vh; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -73,7 +86,7 @@
         <button class="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 세팅 (CSV)</button>
     </div>
 
-    <div class="top-section">
+    <div class="top-section" id="mainTopSection">
         <div class="left-panel">
             <div class="static-fields">
                 <div class="input-group"><label>기번</label><div class="box"><span class="prefix">HL</span><input type="text" id="regNo"></div></div>
@@ -98,12 +111,11 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="imageModal" onclick="this.style.display='none'"><img src="" class="modal-img" id="modalImg"></div>
-
 <script>
     let fileToUpload = null;
     let rowIdCounter = 0;
     let DB = { flights: {}, ataDatabase: [] };
+    let currentRotation = 0; // 이미지 회전 각도 기억용
 
     function handleCSVUpload(event) {
         const file = event.target.files[0];
@@ -128,9 +140,7 @@
                 }
             });
             
-            // 🎯 [핵심] 긴 문구(사례)부터 매칭되도록 길이에 따라 내림차순 정렬
             newAta.sort((a, b) => b.keyword.length - a.keyword.length);
-            
             DB.ataDatabase = newAta;
             DB.flights = newFlights;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
@@ -144,7 +154,6 @@
         const saved = localStorage.getItem('integratedDB');
         if (saved) {
             DB = JSON.parse(saved);
-            // 로드 시에도 정렬 보장
             DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length);
         }
     }
@@ -197,7 +206,6 @@
         document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🎯 [핵심] 스마트 매칭 엔진: 단어 경계 검사 + 긴 문구 우선순위
     function matchATA(id, aiSuggestedAta = null) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
@@ -206,29 +214,16 @@
         for (const item of DB.ataDatabase) {
             const keyword = item.keyword.trim();
             if (!keyword) continue;
-
-            // 1. 단어의 길이가 5자 이상이면 (장황한 사례 문장), 부분 일치(includes)로 스마트하게 매칭
             if (keyword.length >= 5) {
-                if (text.includes(keyword)) {
-                    foundCode = item.code;
-                    break;
-                }
-            } 
-            // 2. 짧은 핵심 키워드(TIRE 등)는 독립된 단어일 때만 매칭 (RETIRE 방지)
-            else {
+                if (text.includes(keyword)) { foundCode = item.code; break; }
+            } else {
                 const regex = new RegExp("\\b" + keyword + "\\b", "i");
-                if (regex.test(text)) {
-                    foundCode = item.code;
-                    break;
-                }
+                if (regex.test(text)) { foundCode = item.code; break; }
             }
         }
         
-        if (foundCode) {
-            ataInput.value = foundCode;
-        } else if (aiSuggestedAta && !ataInput.value) {
-            ataInput.value = aiSuggestedAta;
-        }
+        if (foundCode) { ataInput.value = foundCode; } 
+        else if (aiSuggestedAta && !ataInput.value) { ataInput.value = aiSuggestedAta; }
         checkATA(id, foundCode || aiSuggestedAta);
     }
 
@@ -236,15 +231,11 @@
         const val = document.getElementById(`ata-${id}`).value.trim();
         const warn = document.getElementById(`warning-${id}`);
         if (!suggested) {
-            // 경고 표시를 위한 재검색 (현재 입력값과 DB 추천값 비교)
             const text = document.getElementById(`defect-${id}`).value.toUpperCase();
             for (const item of DB.ataDatabase) {
                 const kw = item.keyword.trim();
                 const regex = new RegExp("\\b" + kw + "\\b", "i");
-                if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) {
-                    suggested = item.code;
-                    break;
-                }
+                if (kw.length >= 5 ? text.includes(kw) : regex.test(text)) { suggested = item.code; break; }
             }
         }
         warn.style.display = (val && suggested && val !== suggested) ? "block" : "none";
@@ -261,14 +252,37 @@
         if (DB.flights[route]) document.getElementById('flightNo').value = DB.flights[route];
     });
 
+    // 🚨 [핵심] 이미지 회전 함수
+    function rotateImg(e) {
+        e.stopPropagation(); // 확대 축소(클릭) 이벤트 무시
+        currentRotation += 90;
+        document.getElementById('pastedImg').style.transform = `rotate(${currentRotation}deg)`;
+    }
+
+    // 🚨 [핵심] 화면 분할(확대) 토글 함수
+    function toggleExpand() {
+        const topSection = document.getElementById('mainTopSection');
+        topSection.classList.toggle('expanded');
+    }
+
     window.onload = () => { loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); };
 
+    // 이미지 붙여넣기 시 툴바(회전, 삭제) 함께 세팅
     document.body.addEventListener('paste', (e) => {
-        const item = Array.from(e.clipboardData.items).find(x => x.type.indexOf("image") !== -1);
+        const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
         if (item) {
             fileToUpload = item.getAsFile();
             const url = URL.createObjectURL(fileToUpload);
-            document.getElementById('pasteArea').innerHTML = `<button class="btn-reset-all" onclick="location.reload()">✖</button><img src="${url}" onclick="document.getElementById('modalImg').src='${url}'; document.getElementById('imageModal').style.display='flex'">`;
+            currentRotation = 0; // 새 사진 올리면 회전 각도 초기화
+            document.getElementById('mainTopSection').classList.remove('expanded'); // 새 사진은 기본 크기로 시작
+            
+            document.getElementById('pasteArea').innerHTML = `
+                <div class="img-tools">
+                    <button class="btn-tool" onclick="rotateImg(event)" title="90도 회전">↻</button>
+                    <button class="btn-tool btn-close" onclick="location.reload()" title="지우기">✖</button>
+                </div>
+                <img src="${url}" id="pastedImg" onclick="toggleExpand()" title="클릭하여 화면 분할 확대">
+            `;
         }
     });
 
