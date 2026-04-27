@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Render 환경변수에서 API 키를 가져옵니다.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 
@@ -23,21 +24,26 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
+        # 최신 Gemini 3 Flash Preview 모델 사용
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
         prompt = """
-        당신은 항공 정비 로그 분석 전문가입니다. 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
+        당신은 항공 정비 로그 분석 전문가입니다. 'DEFER(이월)'가 적용된 항목만 추출하세요.
+        
+        [🚨수정 사항 처리 규칙]
+        - 글자에 취소선(Strikethrough)이 그어져 있고 그 주변(위, 아래, 옆)에 다른 단어가 적혀 있다면, 취소선이 그어진 단어는 무시하고 새로 적힌 단어를 채택하세요.
+        - 예: 'SEATBACK'에 취소선이 있고 밑에 'ARMREST'가 있다면 'ARMREST'로 입력.
         
         [추출 항목]
         1. regNo: 'HL'로 시작하는 기번.
-        2. legFrom, legTo: 구간 정보 3자리 영문 (예: ICN, LAX).
+        2. legFrom, legTo: 구간 정보 3자리 영문 (예: ICN, PEK).
         3. flightNo: 'FLIGHT NO' 칸의 숫자 (예: 335).
         
         [결함 항목 (items)]
-        - asAp: 'ENTERED BY' 칸에 도장이 있으면 'AS', 없으면 'AP' (Cabin Log는 무조건 'AS').
-        - defect: 결함 내용 전체.
-        - reason: 반드시 오른쪽 'DEFER No.' 칸에 체크된 항목(MEL 등)과 적힌 숫자를 결합 (예: MEL 32-50-07A).
-        - ata: 'ATA CODE' 칸에 적힌 숫자.
+        - asAp: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 없으면 'AP'. (Cabin Log의 경우 도장이 없어도 정황상 수리 조치가 완료된 것이면 'AS'로 판단하되, 기본은 비어있으면 'AP'로 분류).
+        - defect: 결함 내용 전체. (취소선 반영하여 최종 수정된 내용으로 추출)
+        - reason: 반드시 오른쪽 'ACTION TAKEN' 영역 상단의 'DEFER No.' 칸에 체크된 항목(MEL, NEF 등)과 그 옆의 손글씨 번호를 결합 (예: MEL 25-20-05A).
+        - ata: 'ATA CODE' 칸에 숫자가 적혀있다면 추출. 없으면 공란.
         
         응답은 순수 JSON만 출력하세요.
         {
