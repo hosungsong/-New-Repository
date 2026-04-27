@@ -1,4 +1,44 @@
-prompt = """
+import os
+import io
+import json
+from PIL import Image
+import google.generativeai as genai
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+)
+
+# 🚨 [중요] API 키 설정
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("index.html")
+
+@app.get("/ping")
+async def keep_alive_ping():
+    return {"status": "awake"}
+
+@app.post("/ocr")
+async def extract_text(file: UploadFile = File(...)):
+    if not GEMINI_API_KEY:
+        return {"error": "API Key가 설정되지 않았습니다."}
+    
+    try:
+        content = await file.read()
+        image = Image.open(io.BytesIO(content))
+
+        # ✅ 정답 모델: 구글 서버에 정상적으로 살아있는 2.5 버전으로 확정!
+        model = genai.GenerativeModel('gemini-2.5-flash') 
+
+        prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
         사진이 잘려서 확인할 수 없는 정보는 빈 문자열("")로 남겨두세요.
         
@@ -36,3 +76,40 @@ prompt = """
           "items": [ {"asAp": "AS", "defect": "", "reason": "", "ata": ""} ]
         }
         """
+
+        # JSON 강제 반환 설정
+        response = model.generate_content(
+            [prompt, image],
+            generation_config={"response_mime_type": "application/json", "temperature": 0.1}
+        )
+        
+        text = response.text.strip()
+        return json.loads(text)
+
+    except Exception as e:
+        return {"error": f"AI 분석 중 오류 발생: {str(e)}"}
+
+@app.post("/extract_raw")
+async def extract_raw_text(file: UploadFile = File(...)):
+    if not GEMINI_API_KEY:
+        return {"error": "API Key가 설정되지 않았습니다."}
+    
+    try:
+        content = await file.read()
+        image = Image.open(io.BytesIO(content))
+
+        model = genai.GenerativeModel('gemini-2.5-flash') 
+
+        prompt = "이미지에 보이는 모든 손글씨 내용(기번, 결함, 조치내역 등)을 있는 그대로 전부 텍스트로 추출해 주세요. 일반 줄글 형태로 보기 편하게 정리해서 출력해 주면 됩니다."
+
+        response = model.generate_content([prompt, image])
+        
+        return {"text": response.text.strip()}
+
+    except Exception as e:
+        return {"error": f"텍스트 추출 중 오류 발생: {str(e)}"}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
