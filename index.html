@@ -191,19 +191,21 @@
         reader.readAsText(file);
     }
 
-    // 구간 입력 시 편명 자동 매칭 (D열 구조 대응)
-    function autoMatchFlight() {
-        const f = document.getElementById('legFrom').value.toUpperCase();
-        const t = document.getElementById('legTo').value.toUpperCase();
-        const flightInput = document.getElementById('flightNo');
-        
-        if (f && t && DB.flights.length > 0) {
-            const found = DB.flights.find(item => item.from === f && item.to === t);
-            if (found) {
-                flightInput.value = found.no;
-            }
+    // 구간 입력 시 편명 자동 매칭 (D열 구조 대응)function autoMatchFlight() {
+    const f = document.getElementById('legFrom').value.toUpperCase();
+    const t = document.getElementById('legTo').value.toUpperCase();
+    const flightInput = document.getElementById('flightNo');
+    
+    if (f && t && DB.flights.length > 0) {
+        const found = DB.flights.find(item => item.from === f && item.to === t);
+        if (found) {
+            // 정규식 /^0+/ 을 사용하여 문자열 맨 앞의 모든 0을 제거합니다.
+            // 만약 전체가 0이라면 빈칸이 되지 않도록 처리해주는 게 안전합니다.
+            let formattedNo = found.no.replace(/^0+/, '');
+            flightInput.value = formattedNo || found.no; 
         }
     }
+}
 
     // 이벤트 리스너 연결 (기존 legTo 감시 로직 수정)
     document.getElementById('legFrom').addEventListener('input', autoMatchFlight);
