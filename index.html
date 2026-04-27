@@ -51,11 +51,7 @@
         .btn-remove:hover { background: #c0392b; }
 
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; transition: 0.3s; }
-        
-        /* 🚨 사진 영역: 넘치는 부분 숨김 처리(overflow: hidden)로 깔끔하게 */
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
-        
-        /* 🚨 마우스 커서를 '손바닥' 모양으로 설정 */
         #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: max-height 0.3s; }
         #pasteArea img:active { cursor: grabbing; }
         
@@ -119,7 +115,6 @@
     let rowIdCounter = 0;
     let DB = { flights: {}, ataDatabase: [] };
     
-    // 🚨 줌, 이동, 회전 관련 변수 추가
     let currentRotation = 0; 
     let currentScale = 1;
     let translateX = 0;
@@ -261,7 +256,6 @@
         if (DB.flights[route]) document.getElementById('flightNo').value = DB.flights[route];
     });
 
-    // 🚨 이미지 변화 적용 함수 (이동, 스케일, 회전 통합)
     function applyTransform() {
         const img = document.getElementById('pastedImg');
         if (img) {
@@ -278,38 +272,35 @@
     function toggleExpand() {
         const topSection = document.getElementById('mainTopSection');
         topSection.classList.toggle('expanded');
-        // 화면 바뀔 때 그림 위치를 중앙으로 되돌려줌
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
     }
 
     window.onload = () => { 
         loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
 
-        // 🚨 [마우스 휠 & 드래그 이벤트 설정]
         const pasteArea = document.getElementById('pasteArea');
         let isMoved = false;
 
-        // 1. 휠 줌 (확대/축소)
         pasteArea.addEventListener('wheel', (e) => {
             if (!document.getElementById('pastedImg')) return;
-            e.preventDefault(); // 스크롤 방지
-            const zoomAmount = e.deltaY < 0 ? 0.15 : -0.15; // 휠 굴리는 속도
+            e.preventDefault(); 
+            const zoomAmount = e.deltaY < 0 ? 0.15 : -0.15; 
             currentScale += zoomAmount;
-            currentScale = Math.max(0.2, Math.min(currentScale, 6)); // 최소 0.2배, 최대 6배 제한
+            currentScale = Math.max(0.2, Math.min(currentScale, 6)); 
             applyTransform();
         });
 
-        // 2. 마우스 클릭 시작 (잡기)
         pasteArea.addEventListener('mousedown', (e) => {
             if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
+            e.preventDefault(); // 🚨 브라우저의 기본 텍스트 선택/이미지 드래그 방지
             isDragging = true;
-            isMoved = false; // 드래그인지 단순 클릭인지 구분용
+            isMoved = false; 
             startDragX = e.clientX - translateX;
             startDragY = e.clientY - translateY;
         });
 
-        // 3. 마우스 드래그 (이동)
-        pasteArea.addEventListener('mousemove', (e) => {
+        // 🚨 이벤트를 창 전체(window)로 확장하여 밖으로 나가도 인식하게 만듦
+        window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             isMoved = true;
             translateX = e.clientX - startDragX;
@@ -317,19 +308,16 @@
             applyTransform();
         });
 
-        // 4. 마우스 클릭 끝 (놓기)
-        pasteArea.addEventListener('mouseup', (e) => {
-            if (!document.getElementById('pastedImg')) return;
+        // 🚨 클릭을 떼는 이벤트를 창 전체(window)로 확장
+        window.addEventListener('mouseup', (e) => {
+            if (!isDragging) return;
             isDragging = false;
             
-            // 마우스를 끌지 않고 그냥 뗐다면? -> 단순 클릭으로 간주하여 화면 분할 실행!
+            // 움직이지 않고 클릭만 했다면 화면 확대 실행
             if (!isMoved && e.target.id === 'pastedImg') {
                 toggleExpand();
             }
         });
-
-        // 5. 마우스가 영역 밖으로 나가면 드래그 해제
-        pasteArea.addEventListener('mouseleave', () => { isDragging = false; });
     };
 
     document.body.addEventListener('paste', (e) => {
@@ -338,17 +326,16 @@
             fileToUpload = item.getAsFile();
             const url = URL.createObjectURL(fileToUpload);
             
-            // 새 사진 올릴 때 모든 변수 초기화
             currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
             document.getElementById('mainTopSection').classList.remove('expanded'); 
             
-            // 기존 onclick 이벤트 제거 (JS 이벤트 리스너에서 처리함)
+            // 🚨 draggable="false" 추가 (고유 이미지 드래그 기능 차단)
             document.getElementById('pasteArea').innerHTML = `
                 <div class="img-tools">
                     <button class="btn-tool" onclick="rotateImg(event)" title="90도 회전">↻</button>
                     <button class="btn-tool btn-close" onclick="location.reload()" title="지우기">✖</button>
                 </div>
-                <img src="${url}" id="pastedImg" title="클릭: 뷰어 확대/축소\n마우스 휠: 줌(Zoom)\n드래그: 상하좌우 이동">
+                <img src="${url}" id="pastedImg" draggable="false" title="클릭: 뷰어 확대/축소\n마우스 휠: 줌(Zoom)\n드래그: 상하좌우 이동">
             `;
         }
     });
