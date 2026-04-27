@@ -99,6 +99,27 @@ async def extract_text(file: UploadFile = File(...)):
     except Exception as e:
         return {"error": f"AI 분석 중 오류 발생: {str(e)}"}
 
+# 💡 신규: 텍스트 추출 모드용 백엔드 라우터 안전하게 추가
+@app.post("/extract_raw")
+async def extract_raw_text(file: UploadFile = File(...)):
+    if not GEMINI_API_KEY:
+        return {"error": "API Key가 설정되지 않았습니다."}
+    
+    try:
+        content = await file.read()
+        image = Image.open(io.BytesIO(content))
+
+        model = genai.GenerativeModel('gemini-2.5-flash') 
+
+        prompt = "이미지에 보이는 모든 손글씨 내용(기번, 결함, 조치내역 등)을 있는 그대로 전부 텍스트로 추출해 주세요. 일반 줄글 형태로 보기 편하게 정리해서 출력해 주면 됩니다."
+
+        response = model.generate_content([prompt, image])
+        
+        return {"text": response.text.strip()}
+
+    except Exception as e:
+        return {"error": f"텍스트 추출 중 오류 발생: {str(e)}"}
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
