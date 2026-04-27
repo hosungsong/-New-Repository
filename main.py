@@ -35,8 +35,8 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        # ✅ 정답 모델: 구글 서버에 정상적으로 살아있는 2.5 버전으로 확정!
-        model = genai.GenerativeModel('gemini-2.5-flash') 
+        # 💡 핵심 해결책: 2.5 대신 하루 1500번 무료인 1.5-flash 사용!
+        model = genai.GenerativeModel('gemini-1.5-flash') 
 
         prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
@@ -56,13 +56,11 @@ async def extract_text(file: UploadFile = File(...)):
                -> 왼쪽 'ENTERED BY' 칸이 공란이거나 손글씨 서명만 있다면 'AP'.
                -> 왼쪽 'ENTERED BY' 칸에 타원형 도장(Stamp)이 찍혀 있을 때만 'AS'.
            - defect: DEFECT 내용 전체.
-           
            - reason: [🚨가장 중요] 반드시 오른쪽 'ACTION TAKEN' 영역 상단의 'DEFER No.' 칸을 보세요. 
              거기서 체크된 체크박스 이름(MEL, CDL, NEF, SRM, AMM)과 그 바로 오른쪽에 손으로 적힌 문자를 결합해서 출력하세요. 
              (예: MEL 체크박스에 체크 + 그 옆에 32-50-07A 작성됨 -> "MEL 32-50-07A" 출력)
              * 절대 왼쪽 DEFECT 본문 내용 중에 적힌 번호를 가져오지 마세요.
              * 마침표(.)는 대시(-)로 바꾸거나 지우고, '07A'처럼 붙어있는 문자는 쓰여진 그대로 출력하세요.
-             
            - ata: ATA CODE 란에 적힌 숫자를 '있는 그대로' 추출.
         
         응답은 순수 JSON만 출력하세요:
@@ -98,7 +96,8 @@ async def extract_raw_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        model = genai.GenerativeModel('gemini-2.5-flash') 
+        # 여기도 1.5로 맞춰줍니다.
+        model = genai.GenerativeModel('gemini-1.5-flash') 
 
         prompt = "이미지에 보이는 모든 손글씨 내용(기번, 결함, 조치내역 등)을 있는 그대로 전부 텍스트로 추출해 주세요. 일반 줄글 형태로 보기 편하게 정리해서 출력해 주면 됩니다."
 
