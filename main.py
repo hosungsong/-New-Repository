@@ -35,8 +35,8 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        # ✅ 정상 작동하는 모델로 변경
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        # ✅ 정답 모델: 구글 서버에 정상적으로 살아있는 2.5 버전으로 확정!
+        model = genai.GenerativeModel('gemini-2.5-flash') 
 
         prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
@@ -97,7 +97,6 @@ async def extract_text(file: UploadFile = File(...)):
         return json.loads(text)
 
     except Exception as e:
-        # 서버가 터지지 않고 프론트엔드로 정확한 에러 사유를 보내도록 안전장치 강화
         return {"error": f"AI 분석 중 오류 발생: {str(e)}"}
 
 if __name__ == "__main__":
