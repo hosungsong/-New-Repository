@@ -1,9 +1,8 @@
 import os
 import io
 import json
-import base64
-import requests
 from PIL import Image
+import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -16,6 +15,8 @@ app.add_middleware(
 
 # 🚨 [중요] API 키 설정
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 @app.get("/")
 async def serve_frontend():
@@ -28,14 +29,16 @@ async def keep_alive_ping():
 @app.post("/ocr")
 async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY:
-        return {"error": "API Key not set."}
+        return {"error": "API Key가 설정되지 않았습니다."}
     
     try:
         content = await file.read()
-        mime_type = file.content_type or "image/jpeg"
-        base64_image = base64.b64encode(content).decode('utf-8')
+        image = Image.open(io.BytesIO(content))
 
-        # 💡 [업그레이드 반영] 과거 코드의 정교해진 프롬프트를 그대로 이식했습니다.
+        # 💡 원래 쓰시던 근본 라이브러리로 원상복구
+        # 일시적인 404 모델 인식 오류를 방지하기 위해 가장 최신 안정화 버전 지정
+        model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+
         prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
         사진이 잘려서 확인할 수 없는 정보(기번, 구간 등)는 빈 문자열("")로 남겨두세요.
@@ -85,54 +88,18 @@ async def extract_text(file: UploadFile = File(...)):
         }
         """
 
-        # 🚨 [핵심 수정] 1.5-flash 대신 정상 작동하던 gemini-2.5-flash 로 롤백!
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+        # JSON 강제 반환 설정 (마크다운 버그 차단)
+        response = model.generate_content(
+            [prompt, image],
+            generation_config={"response_mime_type": "application/json", "temperature": 0.1}
+        )
         
-        headers = {
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": base64_image
-                            }
-                        }
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0.1,
-                "response_mime_type": "application/json"
-            }
-        }
+        text = response.text.strip()
+        return json.loads(text)
 
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status() 
-        
-        result_data = response.json()
-        
-        if "candidates" in result_data and result_data["candidates"]:
-            text_response = result_data["candidates"][0]["content"]["parts"][0]["text"]
-            return json.loads(text_response.strip())
-        else:
-            return {"error": f"API Response Error: {result_data}"}
-
-    except requests.exceptions.HTTPError as http_e:
-        # 💡 에러 발생 시 구글이 보내는 구체적인 원인을 보여주도록 강화
-        error_body = http_e.response.text
-        return {"error": f"HTTP API Error: {http_e.response.status_code} - {error_body}"}
-    except requests.exceptions.RequestException as req_e:
-         return {"error": f"REST API Network Error: {str(req_e)}"}
-    except json.JSONDecodeError:
-         return {"error": "Failed to parse JSON from AI response."}
     except Exception as e:
-        return {"error": f"Unknown Error: {str(e)}"}
+        # 서버가 터지지 않고 프론트엔드로 정확한 에러 사유를 보내도록 안전장치 강화
+        return {"error": f"AI 분석 중 오류 발생: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
