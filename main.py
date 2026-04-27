@@ -3,9 +3,10 @@ import io
 import json
 from PIL import Image
 import google.generativeai as genai
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from typing import Optional
 
 app = FastAPI()
 
@@ -33,7 +34,9 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        
+        # 🚨 [수정 완료] 에러를 뿜던 flash 대신, 안정적이고 검증된 pro 모델로 복구!
+        model = genai.GenerativeModel('gemini-1.5-pro') 
 
         prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
