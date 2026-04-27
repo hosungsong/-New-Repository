@@ -19,9 +19,14 @@
         .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
-        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; }
+        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
+        /* 편명 다중선택용 리스트 */
+        #flightOptions { position: absolute; top: 38px; left: 0; width: 100%; background: white; border: 1px solid var(--border); z-index: 100; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .flight-opt { padding: 8px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #eee; }
+        .flight-opt:hover { background: #f1f1f1; }
+
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; }
@@ -105,7 +110,14 @@
                         <input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center; border-left: 1px solid var(--border); font-weight: bold; color: #495057;">
                     </div>
                 </div>
-                <div class="input-group"><label>편명</label><div class="box"><span class="prefix">OZ</span><input type="text" id="flightNo"></div></div>
+                <div class="input-group">
+                    <label>편명</label>
+                    <div class="box">
+                        <span class="prefix">OZ</span>
+                        <input type="text" id="flightNo" placeholder="AUTO">
+                        <div id="flightOptions"></div>
+                    </div>
+                </div>
                 <div class="input-group"><label>구간</label><div class="box leg-box"><input type="text" id="legFrom" maxlength="3" placeholder="FROM"><button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button><input type="text" id="legTo" maxlength="3" placeholder="TO"></div></div>
                 <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
             </div>
@@ -190,15 +202,41 @@
         document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
-    function autoMatchFlight() {
+    // ✨ 핵심 수정: 구간 입력 시 편명이 여러 개면 리스트를 보여줌
+    function autoMatchFlight(aiSuggestedFlight = null) {
         const f = document.getElementById('legFrom').value.toUpperCase();
         const t = document.getElementById('legTo').value.toUpperCase();
         const flightInput = document.getElementById('flightNo');
+        const optDiv = document.getElementById('flightOptions');
         
+        optDiv.innerHTML = "";
+        optDiv.style.display = "none";
+
+        // 1순위: AI가 사진에서 직접 읽어온 편명이 있다면 그것을 우선 사용
+        if (aiSuggestedFlight) {
+            flightInput.value = String(aiSuggestedFlight).replace(/^0+/, '');
+            return;
+        }
+
         if (f && t && DB.flights.length > 0) {
-            const found = DB.flights.find(item => item.from === f && item.to === t);
-            if (found) {
-                flightInput.value = String(found.no).replace(/^0+/, ''); 
+            const matches = DB.flights.filter(item => item.from === f && item.to === t);
+            
+            if (matches.length === 1) {
+                flightInput.value = String(matches[0].no).replace(/^0+/, '');
+            } else if (matches.length > 1) {
+                // 여러 개일 경우 선택 리스트 생성
+                optDiv.style.display = "block";
+                matches.forEach(m => {
+                    const cleanNo = String(m.no).replace(/^0+/, '');
+                    const row = document.createElement('div');
+                    row.className = 'flight-opt';
+                    row.innerText = `OZ${cleanNo}`;
+                    row.onclick = () => {
+                        flightInput.value = cleanNo;
+                        optDiv.style.display = "none";
+                    };
+                    optDiv.appendChild(row);
+                });
             }
         }
     }
@@ -236,9 +274,12 @@
         container.appendChild(row);
         updateNums();
         
+        // ✨ 핵심 수정: AI가 ATA를 못 읽어왔거나(공란), 결함 내용이 있을 때 DB 대조 실행
         if(data.defect) { 
-            setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 10);
-            matchATA(id); 
+            setTimeout(() => {
+                autoResize(document.getElementById(`defect-${id}`));
+                matchATA(id); 
+            }, 10);
         }
     }
 
@@ -250,7 +291,6 @@
         document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // ✨ 핵심 수정: 특수문자(괄호 등) 안전하게 처리하는 로직 추가
     function matchATA(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
@@ -260,10 +300,7 @@
         for (const item of DB.ataDatabase) {
             const kw = item.keyword.trim();
             if (!kw) continue;
-            
-            // 🚨 괄호 같은 특수문자를 '코드'가 아닌 '글자'로 인식하게 강제 변환
             const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            
             const regex = new RegExp("\\b" + safeKw + "\\b", "i");
             if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { 
                 dbCode = item.code; 
@@ -271,6 +308,7 @@
             }
         }
 
+        // 입력칸이 비어있을 때만 DB 값으로 자동 채움
         if (!currentVal && dbCode) {
             ataInput.value = dbCode;
         }
@@ -313,8 +351,15 @@
     window.onload = () => { 
         loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
 
-        document.getElementById('legFrom').addEventListener('input', autoMatchFlight);
-        document.getElementById('legTo').addEventListener('input', autoMatchFlight);
+        document.getElementById('legFrom').addEventListener('input', () => autoMatchFlight());
+        document.getElementById('legTo').addEventListener('input', () => autoMatchFlight());
+
+        // 바깥 클릭 시 편명 옵션 닫기
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.input-group')) {
+                document.getElementById('flightOptions').style.display = "none";
+            }
+        });
 
         const pasteArea = document.getElementById('pasteArea');
         let isMoved = false;
@@ -404,11 +449,9 @@
             
             document.getElementById('legFrom').value = data.legFrom || "";
             document.getElementById('legTo').value = data.legTo || "";
-            autoMatchFlight(); 
             
-            if (data.flightNo) {
-                document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, '');
-            }
+            // AI가 편명을 읽어왔다면 그것을 우선 전달, 없으면 구간 매칭 실행
+            autoMatchFlight(data.flightNo); 
 
             document.getElementById('defectRowsContainer').innerHTML = "";
             rowIdCounter = 0;
