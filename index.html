@@ -407,6 +407,11 @@
         const btn = document.getElementById('btnExtractMain');
         btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
         const formData = new FormData(); formData.append("file", fileToUpload);
+        // extractText 함수 내부 예시
+// data.flightNo가 있을 경우 앞의 0을 제거하고 입력
+if (data.flightNo) {
+    document.getElementById('flightNo').value = data.flightNo.replace(/^0+/, '');
+}
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
