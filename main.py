@@ -13,6 +13,7 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 
+# 🚨 [중요] API 키 설정
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
@@ -34,8 +35,9 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
         
-        # 🚨 [가장 중요] 모든 API 키에서 100% 돌아가는 클래식 비전 모델로 변경
-        model = genai.GenerativeModel('gemini-pro-vision') 
+        # 🚨 [모델 설정] 현재 가장 안정적인 최신 모델명 사용
+        # v1beta 에러를 피하기 위해 가장 표준적인 gemini-1.5-flash를 호출합니다.
+        model = genai.GenerativeModel('gemini-1.5-flash') 
 
         prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
@@ -54,18 +56,20 @@ async def extract_text(file: UploadFile = File(...)):
         }
         """
 
-        # 🚨 구형 모델이므로 1.5 전용 옵션(JSON 모드)을 빼고 기본값으로 요청합니다.
+        # 🚨 [호출 방식] 복잡한 설정을 빼고 가장 원시적이고 확실한 방법으로 요청
         response = model.generate_content([prompt, image])
         
+        # JSON 텍스트 추출 로직 (마크다운 기호 제거)
         text = response.text.strip()
         start = text.find('{')
         end = text.rfind('}')
         if start != -1 and end != -1:
             return json.loads(text[start:end+1])
         else:
-            return {"error": "JSON data not found in AI response."}
+            return {"error": "JSON format not found. Please try again."}
 
     except Exception as e:
+        # 에러 메시지를 더 구체적으로 반환하여 원인 파악을 돕습니다.
         return {"error": str(e)}
 
 if __name__ == "__main__":
