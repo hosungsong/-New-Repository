@@ -144,33 +144,70 @@
     let startDragX = 0;
     let startDragY = 0;
 
-    function handleCSVUpload(event) {
+   function handleCSVUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
-            let newAta = [], newFlights = {}, newAc = {};
+            let newAta = [], newFlights = [], newAc = {}; // Flights를 배열로 변경
             let lastAtaCode = "";
+            
             lines.forEach(line => {
-                const parts = line.split(',');
+                const parts = line.split(',').map(p => p.trim());
                 if (parts.length >= 2) {
-                    const type = parts[0].trim().toUpperCase();
-                    let val = parts[1].trim(); 
-                    const key = parts.length >= 3 ? parts[2].trim().toUpperCase() : ""; 
+                    const type = parts[0].toUpperCase();
                     
+                    // 1. ATA 매칭 (기존과 동일)
                     if (type === 'ATA') {
+                        let val = parts[1];
                         if (val !== "") lastAtaCode = val; else val = lastAtaCode;
+                        const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && val && key !== 'KEYWORD') newAta.push({ keyword: key, code: val });
-                    } else if (type === 'FLIGHT') {
-                        if (key && val) newFlights[key] = val;
-                    } else if (type === 'AC') {
-                        // DB 규칙: AC | 기번 | 기종 (parts[0]=AC, parts[1]=기번, parts[2]=기종)
-                        if (parts.length >= 3 && parts[1] && parts[2]) {
-                            newAc[parts[1].trim()] = parts[2].trim();
-                        }
+                    } 
+                    // 2. FLIGHT 매칭 (D열까지 인식: FLIGHT | 편명 | FROM | TO)
+                    else if (type === 'FLIGHT' && parts.length >= 4) {
+                        newFlights.push({
+                            no: parts[1],
+                            from: parts[2].toUpperCase(),
+                            to: parts[3].toUpperCase()
+                        });
+                    } 
+                    // 3. AC 매칭 (AC | 기번 | 기종)
+                    else if (type === 'AC' && parts.length >= 3) {
+                        newAc[parts[1]] = parts[2];
                     }
                 }
+            });
+            
+            newAta.sort((a, b) => b.keyword.length - a.keyword.length);
+            DB.ataDatabase = newAta;
+            DB.flights = newFlights;
+            DB.ac = newAc;
+            localStorage.setItem('integratedDB', JSON.stringify(DB));
+            alert(`✅ DB 세팅 완료!\n- ATA: ${newAta.length}개\n- FLIGHT: ${newFlights.length}개\n- AC: ${Object.keys(newAc).length}대`);
+            location.reload(); 
+        };
+        reader.readAsText(file);
+    }
+
+    // 구간 입력 시 편명 자동 매칭 (D열 구조 대응)
+    function autoMatchFlight() {
+        const f = document.getElementById('legFrom').value.toUpperCase();
+        const t = document.getElementById('legTo').value.toUpperCase();
+        const flightInput = document.getElementById('flightNo');
+        
+        if (f && t && DB.flights.length > 0) {
+            const found = DB.flights.find(item => item.from === f && item.to === t);
+            if (found) {
+                flightInput.value = found.no;
+            }
+        }
+    }
+
+    // 이벤트 리스너 연결 (기존 legTo 감시 로직 수정)
+    document.getElementById('legFrom').addEventListener('input', autoMatchFlight);
+    document.getElementById('legTo').addEventListener('input', autoMatchFlight);
             });
             
             newAta.sort((a, b) => b.keyword.length - a.keyword.length);
