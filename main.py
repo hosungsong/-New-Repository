@@ -55,7 +55,8 @@ async def extract_text(file: UploadFile = File(...)):
         """
 
         # 3. REST API 요청 준비 (버전 꼬임 원천 차단)
-        url = f"[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=){GEMINI_API_KEY}"
+        # 🚨 [주의] 순수한 문자열 주소입니다.
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
         
         headers = {
             "Content-Type": "application/json"
