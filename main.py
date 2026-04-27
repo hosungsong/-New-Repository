@@ -1,8 +1,9 @@
 import os
 import io
 import json
+import base64
+import requests
 from PIL import Image
-import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -15,8 +16,6 @@ app.add_middleware(
 
 # 🚨 [중요] API 키 설정
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 @app.get("/")
 async def serve_frontend():
@@ -32,13 +31,12 @@ async def extract_text(file: UploadFile = File(...)):
         return {"error": "API Key not set."}
     
     try:
+        # 1. 파일 읽기 및 Base64 인코딩 (SDK 대신 REST API로 보내기 위한 필수 작업)
         content = await file.read()
-        image = Image.open(io.BytesIO(content))
-        
-        # 🚨 [모델 설정] 현재 가장 안정적인 최신 모델명 사용
-        # v1beta 에러를 피하기 위해 가장 표준적인 gemini-1.5-flash를 호출합니다.
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        mime_type = file.content_type or "image/jpeg"
+        base64_image = base64.b64encode(content).decode('utf-8')
 
+        # 2. 프롬프트 세팅
         prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
         
@@ -56,21 +54,52 @@ async def extract_text(file: UploadFile = File(...)):
         }
         """
 
-        # 🚨 [호출 방식] 복잡한 설정을 빼고 가장 원시적이고 확실한 방법으로 요청
-        response = model.generate_content([prompt, image])
+        # 3. REST API 요청 준비 (버전 꼬임 원천 차단)
+        url = f"[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=){GEMINI_API_KEY}"
         
-        # JSON 텍스트 추출 로직 (마크다운 기호 제거)
-        text = response.text.strip()
-        start = text.find('{')
-        end = text.rfind('}')
-        if start != -1 and end != -1:
-            return json.loads(text[start:end+1])
-        else:
-            return {"error": "JSON format not found. Please try again."}
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt},
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": base64_image
+                            }
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.1,
+                "response_mime_type": "application/json" # 무조건 JSON 형태로만 반환하도록 강제
+            }
+        }
 
+        # 4. API 서버로 직접 슛!
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status() # HTTP 에러 발생 시 즉시 예외 처리
+        
+        result_data = response.json()
+        
+        # 5. 결과 파싱 및 반환
+        if "candidates" in result_data and result_data["candidates"]:
+            text_response = result_data["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text_response.strip())
+        else:
+            return {"error": f"API Response Error: {result_data}"}
+
+    except requests.exceptions.RequestException as req_e:
+         return {"error": f"REST API Network Error: {str(req_e)}"}
+    except json.JSONDecodeError:
+         return {"error": "Failed to parse JSON from AI response."}
     except Exception as e:
-        # 에러 메시지를 더 구체적으로 반환하여 원인 파악을 돕습니다.
-        return {"error": str(e)}
+        return {"error": f"Unknown Error: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
