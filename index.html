@@ -22,7 +22,6 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* 편명 다중선택 드롭다운 */
         #flightOptions { position: absolute; top: 58px; left: 0; width: 100%; background: white; border: 1px solid var(--border); z-index: 1000; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 4px; }
         .flight-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; }
         .flight-opt:hover { background: #f1f1f1; }
@@ -182,7 +181,6 @@
         document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
-    // ✨ 편명 다중 선택 기능
     function autoMatchFlight(aiSuggestedFlight = null) {
         const f = document.getElementById('legFrom').value.toUpperCase(), t = document.getElementById('legTo').value.toUpperCase();
         const input = document.getElementById('flightNo'), optDiv = document.getElementById('flightOptions');
@@ -205,18 +203,14 @@
         }
     }
 
-    // ✨ 핵심: 내용에 맞춰 높이 조절 (줄어들 때도 적용되도록 개선)
     function autoResize(el) {
         if (!el) return;
-        el.style.height = '38px'; // 높이 초기화 필수 (줄어들기 위해)
+        el.style.height = '38px';
         const scHeight = el.scrollHeight;
         el.style.height = (scHeight > 38 ? scHeight : 38) + 'px';
     }
 
-    // ✨ 레이아웃이 바뀔 때 모든 칸 높이 재정렬
-    function refreshAllHeights() {
-        document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx));
-    }
+    function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
 
     function addRow(data = {}) {
         rowIdCounter++; const id = rowIdCounter;
@@ -277,7 +271,6 @@
         const top = document.getElementById('mainTopSection');
         top.classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
-        // ✨ 핵심: 화면 크기 변환 애니메이션(0.3s)이 끝난 뒤 높이 재계산
         setTimeout(refreshAllHeights, 310);
     }
 
@@ -334,7 +327,7 @@
     }
 
     async function extractRawText() {
-        if (!fileToUpload) return alert("사진을 붙여넣으세요!");
+        if (!fileToUpload) return alert("사진을 먼저 붙여넣으세요!");
         const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
         const formData = new FormData(); formData.append("file", fileToUpload);
         try {
