@@ -34,8 +34,8 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
         
-        # 🚨 [최적화] 가장 빠르고 최신 모델인 1.5-flash 적용
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+      
+        model = genai.GenerativeModel('gemini-1.5-pro') 
 
         prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
