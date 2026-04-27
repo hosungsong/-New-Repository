@@ -36,7 +36,7 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
 
         # 💡 핵심 해결책: 2.5 대신 하루 1500번 무료인 1.5-flash 사용!
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        model = genai.GenerativeModel('gemini-2.0-flash') 
 
         prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
@@ -97,7 +97,7 @@ async def extract_raw_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
 
         # 여기도 1.5로 맞춰줍니다.
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        model = genai.GenerativeModel('gemini-2.0-flash') 
 
         prompt = "이미지에 보이는 모든 손글씨 내용(기번, 결함, 조치내역 등)을 있는 그대로 전부 텍스트로 추출해 주세요. 일반 줄글 형태로 보기 편하게 정리해서 출력해 주면 됩니다."
 
