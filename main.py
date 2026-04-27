@@ -35,9 +35,8 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
 
-        # 💡 원래 쓰시던 근본 라이브러리로 원상복구
-        # 일시적인 404 모델 인식 오류를 방지하기 위해 가장 최신 안정화 버전 지정
-        model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+        # ✅ 정상 작동하는 모델로 변경
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 이 도구는 'DEFER(이월)'가 적용된 결함만 보고하는 시스템입니다.
