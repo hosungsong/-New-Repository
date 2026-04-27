@@ -51,19 +51,22 @@
         .btn-remove:hover { background: #c0392b; }
 
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; transition: 0.3s; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
-        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: zoom-in; transition: transform 0.3s, max-height 0.3s; }
         
-        /* 🚨 [핵심] 사진 클릭 시 화면 분할 및 레이아웃 자동 변환 (Expanded Mode) */
+        /* 🚨 사진 영역: 넘치는 부분 숨김 처리(overflow: hidden)로 깔끔하게 */
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
+        
+        /* 🚨 마우스 커서를 '손바닥' 모양으로 설정 */
+        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: max-height 0.3s; }
+        #pasteArea img:active { cursor: grabbing; }
+        
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.2; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
-        .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } /* 1줄을 2줄로 래핑 */
-        .top-section.expanded .defect-grid { grid-template-columns: 100px 1fr 120px 80px 35px; } /* 그리드 살짝 다이어트 */
+        .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
+        .top-section.expanded .defect-grid { grid-template-columns: 100px 1fr 120px 80px 35px; } 
         .top-section.expanded #pasteArea { min-height: 600px; }
-        .top-section.expanded #pasteArea img { max-height: 80vh; cursor: zoom-out; }
+        .top-section.expanded #pasteArea img { max-height: 80vh; }
 
-        /* 🚨 [수정] 이미지 우측 상단 툴바 (회전, 삭제 버튼) */
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
         .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn-tool.btn-close { background: #e74c3c; }
@@ -115,7 +118,15 @@
     let fileToUpload = null;
     let rowIdCounter = 0;
     let DB = { flights: {}, ataDatabase: [] };
-    let currentRotation = 0; // 이미지 회전 각도 기억용
+    
+    // 🚨 줌, 이동, 회전 관련 변수 추가
+    let currentRotation = 0; 
+    let currentScale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let isDragging = false;
+    let startDragX = 0;
+    let startDragY = 0;
 
     function handleCSVUpload(event) {
         const file = event.target.files[0];
@@ -160,9 +171,7 @@
 
     function autoResize(el) {
         el.style.height = '38px'; 
-        if (el.scrollHeight > 38) {
-            el.style.height = (el.scrollHeight + 2) + 'px'; 
-        }
+        if (el.scrollHeight > 38) { el.style.height = (el.scrollHeight + 2) + 'px'; }
     }
 
     function removeDefectRow(btn) {
@@ -252,36 +261,94 @@
         if (DB.flights[route]) document.getElementById('flightNo').value = DB.flights[route];
     });
 
-    // 🚨 [핵심] 이미지 회전 함수
-    function rotateImg(e) {
-        e.stopPropagation(); // 확대 축소(클릭) 이벤트 무시
-        currentRotation += 90;
-        document.getElementById('pastedImg').style.transform = `rotate(${currentRotation}deg)`;
+    // 🚨 이미지 변화 적용 함수 (이동, 스케일, 회전 통합)
+    function applyTransform() {
+        const img = document.getElementById('pastedImg');
+        if (img) {
+            img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`;
+        }
     }
 
-    // 🚨 [핵심] 화면 분할(확대) 토글 함수
+    function rotateImg(e) {
+        e.stopPropagation(); 
+        currentRotation += 90;
+        applyTransform();
+    }
+
     function toggleExpand() {
         const topSection = document.getElementById('mainTopSection');
         topSection.classList.toggle('expanded');
+        // 화면 바뀔 때 그림 위치를 중앙으로 되돌려줌
+        translateX = 0; translateY = 0; currentScale = 1; applyTransform();
     }
 
-    window.onload = () => { loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); };
+    window.onload = () => { 
+        loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
 
-    // 이미지 붙여넣기 시 툴바(회전, 삭제) 함께 세팅
+        // 🚨 [마우스 휠 & 드래그 이벤트 설정]
+        const pasteArea = document.getElementById('pasteArea');
+        let isMoved = false;
+
+        // 1. 휠 줌 (확대/축소)
+        pasteArea.addEventListener('wheel', (e) => {
+            if (!document.getElementById('pastedImg')) return;
+            e.preventDefault(); // 스크롤 방지
+            const zoomAmount = e.deltaY < 0 ? 0.15 : -0.15; // 휠 굴리는 속도
+            currentScale += zoomAmount;
+            currentScale = Math.max(0.2, Math.min(currentScale, 6)); // 최소 0.2배, 최대 6배 제한
+            applyTransform();
+        });
+
+        // 2. 마우스 클릭 시작 (잡기)
+        pasteArea.addEventListener('mousedown', (e) => {
+            if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
+            isDragging = true;
+            isMoved = false; // 드래그인지 단순 클릭인지 구분용
+            startDragX = e.clientX - translateX;
+            startDragY = e.clientY - translateY;
+        });
+
+        // 3. 마우스 드래그 (이동)
+        pasteArea.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            isMoved = true;
+            translateX = e.clientX - startDragX;
+            translateY = e.clientY - startDragY;
+            applyTransform();
+        });
+
+        // 4. 마우스 클릭 끝 (놓기)
+        pasteArea.addEventListener('mouseup', (e) => {
+            if (!document.getElementById('pastedImg')) return;
+            isDragging = false;
+            
+            // 마우스를 끌지 않고 그냥 뗐다면? -> 단순 클릭으로 간주하여 화면 분할 실행!
+            if (!isMoved && e.target.id === 'pastedImg') {
+                toggleExpand();
+            }
+        });
+
+        // 5. 마우스가 영역 밖으로 나가면 드래그 해제
+        pasteArea.addEventListener('mouseleave', () => { isDragging = false; });
+    };
+
     document.body.addEventListener('paste', (e) => {
         const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
         if (item) {
             fileToUpload = item.getAsFile();
             const url = URL.createObjectURL(fileToUpload);
-            currentRotation = 0; // 새 사진 올리면 회전 각도 초기화
-            document.getElementById('mainTopSection').classList.remove('expanded'); // 새 사진은 기본 크기로 시작
             
+            // 새 사진 올릴 때 모든 변수 초기화
+            currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
+            document.getElementById('mainTopSection').classList.remove('expanded'); 
+            
+            // 기존 onclick 이벤트 제거 (JS 이벤트 리스너에서 처리함)
             document.getElementById('pasteArea').innerHTML = `
                 <div class="img-tools">
                     <button class="btn-tool" onclick="rotateImg(event)" title="90도 회전">↻</button>
                     <button class="btn-tool btn-close" onclick="location.reload()" title="지우기">✖</button>
                 </div>
-                <img src="${url}" id="pastedImg" onclick="toggleExpand()" title="클릭하여 화면 분할 확대">
+                <img src="${url}" id="pastedImg" title="클릭: 뷰어 확대/축소\n마우스 휠: 줌(Zoom)\n드래그: 상하좌우 이동">
             `;
         }
     });
