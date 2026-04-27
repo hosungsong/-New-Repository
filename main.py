@@ -34,8 +34,8 @@ async def extract_text(file: UploadFile = File(...)):
         content = await file.read()
         image = Image.open(io.BytesIO(content))
         
-      
-        model = genai.GenerativeModel('gemini-1.5-pro') 
+        # 🚨 [가장 중요] 모든 API 키에서 100% 돌아가는 클래식 비전 모델로 변경
+        model = genai.GenerativeModel('gemini-pro-vision') 
 
         prompt = """
         You are an aviation maintenance log expert. Extract data into JSON.
@@ -54,7 +54,8 @@ async def extract_text(file: UploadFile = File(...)):
         }
         """
 
-        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json"})
+        # 🚨 구형 모델이므로 1.5 전용 옵션(JSON 모드)을 빼고 기본값으로 요청합니다.
+        response = model.generate_content([prompt, image])
         
         text = response.text.strip()
         start = text.find('{')
