@@ -22,6 +22,11 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
+        /* ✨ 다중 선택 팝업(드롭다운) 스타일 */
+        .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--border); z-index: 1000; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 4px; }
+        .dropdown-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; }
+        .dropdown-opt:hover { background: #f1f1f1; color: var(--secondary); }
+
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; }
@@ -30,7 +35,6 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* ✨ 돋보기 버튼 공간 확보 */
         .defect-grid { display: grid; grid-template-columns: 100px 1fr 140px 80px 30px 30px; gap: 8px; align-items: start; transition: 0.3s; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -50,7 +54,6 @@
         .ata-wrapper { position: relative; }
         .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 0; display: none; white-space: nowrap; }
         
-        /* ✨ 돋보기 버튼 스타일 */
         .btn-search { background: #34495e; color: white; border: none; border-radius: 4px; height: 38px; cursor: pointer; font-size: 12px; transition: 0.2s; padding: 0; }
         .btn-search:hover { background: #2c3e50; }
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
@@ -110,8 +113,23 @@
                         <input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center; border-left: 1px solid var(--border); font-weight: bold; color: #495057;">
                     </div>
                 </div>
-                <div class="input-group"><label>편명</label><div class="box"><span class="prefix">OZ</span><input type="text" id="flightNo"></div></div>
-                <div class="input-group"><label>구간</label><div class="box leg-box"><input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="autoMatchFlight()"><button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button><input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="autoMatchFlight()"></div></div>
+                <div class="input-group">
+                    <label>편명</label>
+                    <div class="box">
+                        <span class="prefix">OZ</span>
+                        <input type="text" id="flightNo" placeholder="AUTO" oninput="matchLegsFromFlight()">
+                        <div id="flightOptions" class="dropdown-list"></div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>구간</label>
+                    <div class="box leg-box">
+                        <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()">
+                        <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
+                        <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()">
+                        <div id="legOptions" class="dropdown-list"></div>
+                    </div>
+                </div>
                 <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
             </div>
 
@@ -138,10 +156,9 @@
 <script>
     let fileToUpload = null;
     let rowIdCounter = 0;
-    // ✨ DB 구조에 actionDatabase 추가
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
     
-    // [1번 기능] 클릭/드래그 구분용 변수
+    // [1번] 드래그 방지 변수
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, startDragX = 0, startDragY = 0;
     let clickStartX = 0, clickStartY = 0;
@@ -159,14 +176,12 @@
                 const parts = line.split(',').map(p => p.trim());
                 if (parts.length >= 2) {
                     const type = parts[0].toUpperCase();
-                    // 1열: ATA
                     if (type === 'ATA') {
                         let val = parts[1];
                         if (val !== "") lastAtaCode = val; else val = lastAtaCode;
                         const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && val && key !== 'KEYWORD') newAta.push({ keyword: key, code: val });
                     } 
-                    // ✨ 2번 기능: ACTION DB 파싱 (1열: ACTION, 2열: 근거번호, 3열: 키워드)
                     else if (type === 'ACTION' && parts.length >= 3) {
                         let reasonVal = parts[1];
                         const key = parts[2] ? parts[2].toUpperCase() : "";
@@ -210,16 +225,59 @@
         document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
-    // 기본 편명 자동완성 (3번 다중 선택 전)
-    function autoMatchFlight() {
+    // ✨ [3번] 구간 -> 편명 자동매칭 및 다중선택
+    function matchFlightFromLegs() {
         const f = document.getElementById('legFrom').value.toUpperCase();
         const t = document.getElementById('legTo').value.toUpperCase();
-        const flightInput = document.getElementById('flightNo');
+        const input = document.getElementById('flightNo');
+        const optDiv = document.getElementById('flightOptions');
         
-        if (f && t && DB.flights.length > 0) {
-            const found = DB.flights.find(item => item.from === f && item.to === t);
-            if (found) {
-                flightInput.value = String(found.no).replace(/^0+/, ''); 
+        optDiv.innerHTML = ""; optDiv.style.display = "none";
+
+        if (f.length === 3 && t.length === 3 && DB.flights.length > 0) {
+            const matches = DB.flights.filter(item => item.from === f && item.to === t);
+            if (matches.length === 1) { 
+                input.value = String(matches[0].no).replace(/^0+/, ''); 
+            }
+            else if (matches.length > 1) {
+                optDiv.style.display = "block";
+                matches.forEach(m => {
+                    const cleanNo = String(m.no).replace(/^0+/, '');
+                    const row = document.createElement('div'); 
+                    row.className = 'dropdown-opt'; 
+                    row.innerText = `OZ${cleanNo}`;
+                    row.onclick = () => { input.value = cleanNo; optDiv.style.display = "none"; };
+                    optDiv.appendChild(row);
+                });
+            }
+        }
+    }
+
+    // ✨ [3번] 편명 -> 구간 자동매칭 및 다중선택
+    function matchLegsFromFlight() {
+        const fNo = document.getElementById('flightNo').value.trim();
+        const optDiv = document.getElementById('legOptions');
+        optDiv.innerHTML = ""; optDiv.style.display = "none";
+
+        if (fNo && DB.flights.length > 0) {
+            const matches = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo.replace(/^0+/, ''));
+            if (matches.length === 1) { 
+                document.getElementById('legFrom').value = matches[0].from; 
+                document.getElementById('legTo').value = matches[0].to; 
+            }
+            else if (matches.length > 1) {
+                optDiv.style.display = "block";
+                matches.forEach(m => {
+                    const row = document.createElement('div'); 
+                    row.className = 'dropdown-opt'; 
+                    row.innerText = `${m.from} ⇄ ${m.to}`;
+                    row.onclick = () => { 
+                        document.getElementById('legFrom').value = m.from; 
+                        document.getElementById('legTo').value = m.to; 
+                        optDiv.style.display = "none"; 
+                    };
+                    optDiv.appendChild(row);
+                });
             }
         }
     }
@@ -252,11 +310,10 @@
         row.id = `row-${id}`;
         const isAp = data.asAp === 'AP';
         
-        // ✨ 돋보기 버튼 템플릿에 추가
         row.innerHTML = `
             <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this); matchATA(${id});" placeholder="결함 내용">${data.defect || ''}</textarea></div>
-            <div><input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="근거"></div>
+            <div><input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="근거 입력"></div>
             <div class="ata-wrapper"><input type="text" id="ata-${id}" value="${data.ata || ''}" oninput="checkATA(${id})"><span id="warning-${id}" class="ata-warning">⚠️ DB와 상이</span></div>
             <button class="btn-search" onclick="smartSearchDB(${id})" title="DB 수동 검색">🔍</button>
             <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
@@ -280,7 +337,7 @@
         document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // ✨ [2번 기능] 타이핑 시 빈칸만 자동 매칭 (ATA, ACTION 분리)
+    // [2번] 타이핑 시 빈칸만 자동 매칭
     function matchATA(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
@@ -308,7 +365,7 @@
         checkATA(id, ataMatch ? ataMatch.code : null);
     }
 
-    // ✨ [2번 기능] 돋보기 버튼 클릭 시 덮어쓰기 검색
+    // [2번] 돋보기 버튼 클릭 시 덮어쓰기 검색
     function smartSearchDB(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
@@ -365,14 +422,23 @@
         warn.style.display = (val && dbCode && val !== dbCode) ? "block" : "none";
     }
 
+    // ✨ 구간 ⇄ 전환 시 편명 자동매칭 재실행
     function swapLegs() {
         const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
         [f.value, t.value] = [t.value, f.value];
-        autoMatchFlight(); 
+        matchFlightFromLegs(); 
     }
 
     window.onload = () => { 
         loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
+
+        // ✨ 바탕 클릭 시 드롭다운 닫기
+        window.addEventListener('click', (e) => { 
+            if (!e.target.closest('.input-group')) {
+                document.getElementById('flightOptions').style.display = "none"; 
+                document.getElementById('legOptions').style.display = "none"; 
+            }
+        });
 
         const pasteArea = document.getElementById('pasteArea');
 
@@ -385,7 +451,7 @@
             applyTransform();
         });
 
-        // [1번 기능] 5픽셀 거리 계산으로 클릭/드래그 완벽 분리
+        // [1번] 마우스 누른 좌표 저장
         pasteArea.addEventListener('mousedown', (e) => {
             if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
             e.preventDefault(); 
@@ -402,6 +468,7 @@
             applyTransform();
         });
 
+        // [1번] 마우스 뗄 때 5픽셀 미만 이동이면 클릭으로 인정
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 let diffX = Math.abs(e.clientX - clickStartX);
@@ -468,13 +535,14 @@
             document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, "");
             fillAcType(); 
             
-            document.getElementById('legFrom').value = data.legFrom || "";
-            document.getElementById('legTo').value = data.legTo || "";
-            
+            // ✨ 3번: AI가 편명을 가져오면 구간을 맞추고, 구간을 가져오면 편명을 맞추는 로직
             if (data.flightNo) {
                 document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, '');
+                matchLegsFromFlight();
             } else {
-                autoMatchFlight(); 
+                document.getElementById('legFrom').value = data.legFrom || "";
+                document.getElementById('legTo').value = data.legTo || "";
+                matchFlightFromLegs(); 
             }
 
             document.getElementById('defectRowsContainer').innerHTML = "";
