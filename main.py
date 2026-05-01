@@ -8,7 +8,6 @@ from fastapi.responses import FileResponse
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Render 환경변수에서 API 키를 가져옵니다.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 
@@ -24,11 +23,14 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-        # 최신 Gemini 3 Flash Preview 모델 사용
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
         prompt = """
         당신은 항공 정비 로그 분석 전문가입니다. 'DEFER(이월)'가 적용된 항목만 추출하세요.
+
+        [문서 종류 판별]
+        - 문서 상단에 'CABIN LOG'라고 적혀있거나, DEFECT 란에 'LEG' 칸이 없으면 CABIN LOG입니다.
+        - 문서 상단에 'FLIGHT LOG'라고 적혀있거나, DEFECT 란에 'LEG' 칸이 있으면 FLIGHT LOG입니다.
         
         [🚨수정 사항 처리 규칙]
         - 글자에 취소선(Strikethrough)이 그어져 있고 그 주변(위, 아래, 옆)에 다른 단어가 적혀 있다면, 취소선이 그어진 단어는 무시하고 새로 적힌 단어를 채택하세요.
@@ -40,7 +42,9 @@ async def extract_text(file: UploadFile = File(...)):
         3. flightNo: 'FLIGHT NO' 칸의 숫자 (예: 335).
         
         [결함 항목 (items)]
-        - asAp: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 없으면 'AP'. (Cabin Log의 경우 도장이 없어도 정황상 수리 조치가 완료된 것이면 'AS'로 판단하되, 기본은 비어있으면 'AP'로 분류).
+        - asAp: 
+          - CABIN LOG인 경우: 무조건 'AS'로 고정하세요.
+          - FLIGHT LOG인 경우: 왼쪽 'ENTERED BY' 칸에 타원형 도장(Stamp)이 찍혀 있으면 'AS', 손글씨 서명만 있거나 비어있으면 'AP'.
         - defect: 결함 내용 전체. (취소선 반영하여 최종 수정된 내용으로 추출)
         - reason: 반드시 오른쪽 'ACTION TAKEN' 영역 상단의 'DEFER No.' 칸에 체크된 항목(MEL, NEF 등)과 그 옆의 손글씨 번호를 결합 (예: MEL 25-20-05A).
         - ata: 'ATA CODE' 칸에 숫자가 적혀있다면 추출. 없으면 공란.
