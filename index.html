@@ -19,13 +19,13 @@
         .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
-        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; align-items: center; position: relative; }
+        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* ✨ 다중 선택 팝업(드롭다운) 스타일 */
-        .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--border); z-index: 1000; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 4px; }
+        /* 다중 선택 팝업 */
+        .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
         .dropdown-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; }
-        .dropdown-opt:hover { background: #f1f1f1; color: var(--secondary); }
+        .dropdown-opt:hover { background: var(--secondary); color: white; }
 
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
@@ -35,27 +35,30 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-grid { display: grid; grid-template-columns: 100px 1fr 140px 80px 30px 30px; gap: 8px; align-items: start; transition: 0.3s; }
+        /* ✨ 그리드 재설정: 개별 돋보기를 위해 search-wrap 활용 */
+        .defect-grid { display: grid; grid-template-columns: 90px 1fr 180px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
         
         .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
-        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 18px; text-align: right; }
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
         .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        .defect-row input, .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; }
-        .defect-row input { height: 38px; }
-        .defect-row textarea { resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; transition: height 0.1s; } 
+        /* ✨ 돋보기 포함된 검색 그룹 스타일 */
+        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; background: white; }
+        .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; }
+        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .search-wrap button:hover { background: #2c3e50; }
+
+        .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; transition: height 0.1s; } 
         
         .ata-wrapper { position: relative; }
         .ata-warning { color: var(--warning); font-size: 10px; font-weight: bold; position: absolute; bottom: -16px; left: 0; display: none; white-space: nowrap; }
         
-        .btn-search { background: #34495e; color: white; border: none; border-radius: 4px; height: 38px; cursor: pointer; font-size: 12px; transition: 0.2s; padding: 0; }
-        .btn-search:hover { background: #2c3e50; }
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
@@ -68,29 +71,18 @@
         .top-section.expanded .right-panel { flex: 1.5; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px 1fr 110px 65px 30px 30px; } 
+        .top-section.expanded .defect-grid { grid-template-columns: 85px 1fr 140px 100px 30px; } 
         .top-section.expanded #pasteArea { min-height: 600px; }
         .top-section.expanded #pasteArea img { max-height: 85vh; }
-
-        .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
-        .text-extract-mode #pasteArea img { max-height: 180px; }
 
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
         .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn-tool.btn-close { background: #e74c3c; }
-        .btn-tool:hover { transform: scale(1.1); filter: brightness(1.1); }
 
         .action-buttons { display: flex; gap: 10px; }
         .btn-extract { color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-extract.main { flex: 2; background: #27ae60; }
         .btn-extract.sub { flex: 1; background: #8e44ad; }
-        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
-
-        #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
-
-        .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
-        .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
     </style>
 </head>
 <body>
@@ -130,47 +122,36 @@
                         <div id="legOptions" class="dropdown-list"></div>
                     </div>
                 </div>
-                <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
             </div>
 
             <div class="dynamic-container">
                 <div class="dynamic-header"><span>결함 및 조치내역</span><button class="btn-add" onclick="addRow()">+</button></div>
-                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>검색</span><span>삭제</span></div>
+                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>삭제</span></div>
                 <div id="defectRowsContainer"></div>
             </div>
         </div>
         <div class="right-panel" id="rightPanel">
             <div id="pasteArea">📋 이미지를 붙여넣으세요<br>(Ctrl+V)</div>
-            <textarea id="rawTextArea" placeholder="추출된 텍스트가 이곳에 표시됩니다..."></textarea>
             <div class="action-buttons">
                 <button class="btn-extract main" id="btnExtractMain" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
                 <button class="btn-extract sub" id="btnExtractRaw" onclick="extractRawText()">📝 TEXT 추출</button>
             </div>
         </div>
     </div>
-    <div class="bottom-section">
-        <button class="btn-mail bg-occ">OCC 전송</button><button class="btn-mail bg-icn">ICN 전송</button><button class="btn-mail bg-gmp">GMP 전송</button><button class="btn-mail bg-duty">DUTY 전송</button>
-    </div>
 </div>
 
 <script>
-    let fileToUpload = null;
-    let rowIdCounter = 0;
+    let fileToUpload = null; let rowIdCounter = 0;
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
-    
-    // [1번] 드래그 방지 변수
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
-    let isDragging = false, startDragX = 0, startDragY = 0;
-    let clickStartX = 0, clickStartY = 0;
+    let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
 
     function handleCSVUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
             let newAta = [], newAction = [], newFlights = [], newAc = {};
-            let lastAtaCode = "";
             
             lines.forEach(line => {
                 const parts = line.split(',').map(p => p.trim());
@@ -178,16 +159,13 @@
                     const type = parts[0].toUpperCase();
                     if (type === 'ATA') {
                         let val = parts[1];
-                        if (val !== "") lastAtaCode = val; else val = lastAtaCode;
                         const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && val && key !== 'KEYWORD') newAta.push({ keyword: key, code: val });
-                    } 
-                    else if (type === 'ACTION' && parts.length >= 3) {
+                    } else if (type === 'ACTION' && parts.length >= 3) {
                         let reasonVal = parts[1];
                         const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && reasonVal && key !== 'KEYWORD') newAction.push({ keyword: key, reason: reasonVal });
-                    }
-                    else if (type === 'FLIGHT' && parts.length >= 4) {
+                    } else if (type === 'FLIGHT' && parts.length >= 4) {
                         newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
                     } else if (type === 'AC' && parts.length >= 3) {
                         newAc[parts[1]] = parts[2];
@@ -197,27 +175,16 @@
             
             newAta.sort((a, b) => b.keyword.length - a.keyword.length);
             newAction.sort((a, b) => b.keyword.length - a.keyword.length);
-            DB.ataDatabase = newAta;
-            DB.actionDatabase = newAction;
-            DB.flights = newFlights;
-            DB.ac = newAc;
+            DB.ataDatabase = newAta; DB.actionDatabase = newAction; DB.flights = newFlights; DB.ac = newAc;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
-            alert(`✅ DB 세팅 완료!\n- ATA: ${newAta.length}건\n- ACTION: ${newAction.length}건\n- FLIGHT: ${newFlights.length}건\n- AC: ${Object.keys(newAc).length}대`);
-            location.reload(); 
+            alert(`✅ DB 세팅 완료!`); location.reload(); 
         };
         reader.readAsText(file);
     }
 
     function loadDB() {
         const saved = localStorage.getItem('integratedDB');
-        if (saved) {
-            DB = JSON.parse(saved);
-            if (!Array.isArray(DB.flights)) DB.flights = [];
-            if (!DB.actionDatabase) DB.actionDatabase = [];
-            if (!DB.ac) DB.ac = {}; 
-            DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length);
-            DB.actionDatabase.sort((a, b) => b.keyword.length - a.keyword.length);
-        }
+        if (saved) { DB = JSON.parse(saved); DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length); DB.actionDatabase.sort((a, b) => b.keyword.length - a.keyword.length); }
     }
 
     function fillAcType() {
@@ -225,7 +192,7 @@
         document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
-    // ✨ [3번] 구간 -> 편명 자동매칭 및 다중선택
+    // 4번: 구간 -> 편명 자동매칭 및 다중선택
     function matchFlightFromLegs() {
         const f = document.getElementById('legFrom').value.toUpperCase();
         const t = document.getElementById('legTo').value.toUpperCase();
@@ -238,22 +205,20 @@
             const matches = DB.flights.filter(item => item.from === f && item.to === t);
             if (matches.length === 1) { 
                 input.value = String(matches[0].no).replace(/^0+/, ''); 
-            }
-            else if (matches.length > 1) {
+            } else if (matches.length > 1) {
                 optDiv.style.display = "block";
                 matches.forEach(m => {
                     const cleanNo = String(m.no).replace(/^0+/, '');
                     const row = document.createElement('div'); 
-                    row.className = 'dropdown-opt'; 
-                    row.innerText = `OZ${cleanNo}`;
-                    row.onclick = () => { input.value = cleanNo; optDiv.style.display = "none"; };
+                    row.className = 'dropdown-opt'; row.innerText = `OZ${cleanNo}`;
+                    row.onmousedown = () => { input.value = cleanNo; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
                 });
             }
         }
     }
 
-    // ✨ [3번] 편명 -> 구간 자동매칭 및 다중선택
+    // 4번: 편명 -> 구간 자동매칭 및 다중선택
     function matchLegsFromFlight() {
         const fNo = document.getElementById('flightNo').value.trim();
         const optDiv = document.getElementById('legOptions');
@@ -264,14 +229,12 @@
             if (matches.length === 1) { 
                 document.getElementById('legFrom').value = matches[0].from; 
                 document.getElementById('legTo').value = matches[0].to; 
-            }
-            else if (matches.length > 1) {
+            } else if (matches.length > 1) {
                 optDiv.style.display = "block";
                 matches.forEach(m => {
                     const row = document.createElement('div'); 
-                    row.className = 'dropdown-opt'; 
-                    row.innerText = `${m.from} ⇄ ${m.to}`;
-                    row.onclick = () => { 
+                    row.className = 'dropdown-opt'; row.innerText = `${m.from} ⇄ ${m.to}`;
+                    row.onmousedown = () => { 
                         document.getElementById('legFrom').value = m.from; 
                         document.getElementById('legTo').value = m.to; 
                         optDiv.style.display = "none"; 
@@ -289,55 +252,52 @@
         el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
     }
 
-    function refreshAllHeights() {
-        document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx));
-    }
+    function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
 
     function removeDefectRow(btn) {
         const container = document.getElementById('defectRowsContainer');
-        if (container.querySelectorAll('.defect-row').length > 1) {
-            btn.parentElement.remove();
-            updateNums();
-        }
+        if (container.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); }
     }
 
     function addRow(data = {}) {
-        rowIdCounter++;
-        const id = rowIdCounter;
+        rowIdCounter++; const id = rowIdCounter;
         const container = document.getElementById('defectRowsContainer');
-        const row = document.createElement('div');
-        row.className = 'defect-grid defect-row';
-        row.id = `row-${id}`;
+        const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         const isAp = data.asAp === 'AP';
         
+        // ✨ 3번 문제 해결: 적용근거와 ATA 각각 독립된 돋보기 버튼 탑재
         row.innerHTML = `
             <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this); matchATA(${id});" placeholder="결함 내용">${data.defect || ''}</textarea></div>
-            <div><input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="근거 입력"></div>
-            <div class="ata-wrapper"><input type="text" id="ata-${id}" value="${data.ata || ''}" oninput="checkATA(${id})"><span id="warning-${id}" class="ata-warning">⚠️ DB와 상이</span></div>
-            <button class="btn-search" onclick="smartSearchDB(${id})" title="DB 수동 검색">🔍</button>
+            
+            <div class="search-wrap">
+                <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="근거">
+                <button onclick="searchReasonOnly(${id})" title="근거 수동 검색">🔍</button>
+            </div>
+            
+            <div class="ata-wrapper">
+                <div class="search-wrap">
+                    <input type="text" id="ata-${id}" value="${data.ata || ''}" oninput="checkATA(${id})">
+                    <button onclick="searchATAOnly(${id})" title="ATA 수동 검색">🔍</button>
+                </div>
+                <span id="warning-${id}" class="ata-warning">⚠️ DB와 상이</span>
+            </div>
+            
             <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
         `;
-        container.appendChild(row);
-        updateNums();
+        container.appendChild(row); updateNums();
         
-        if(data.defect) { 
-            setTimeout(() => {
-                autoResize(document.getElementById(`defect-${id}`));
-                matchATA(id); 
-            }, 50);
-        }
+        if(data.defect) { setTimeout(() => { autoResize(document.getElementById(`defect-${id}`)); matchATA(id); }, 100); }
     }
 
     function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
     function setAsAp(id, type) {
         const row = document.getElementById(`row-${id}`);
         row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-        document.getElementById(`asAp-${id}`).value = type;
+        event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // [2번] 타이핑 시 빈칸만 자동 매칭
+    // 2번 검색 로직 엄격하게 변경: 정확한 단어 매칭(\b) 우선 적용
     function matchATA(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         const ataInput = document.getElementById(`ata-${id}`);
@@ -346,17 +306,15 @@
         let ataMatch = null;
         for (const item of DB.ataDatabase) {
             const kw = item.keyword.trim(); if (!kw) continue;
-            const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp("\\b" + safeKw + "\\b", "i");
-            if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { ataMatch = item; break; }
+            const regex = new RegExp("\\b" + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\b", "i");
+            if (regex.test(text)) { ataMatch = item; break; }
         }
 
         let actionMatch = null;
         for (const item of DB.actionDatabase) {
             const kw = item.keyword.trim(); if (!kw) continue;
-            const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp("\\b" + safeKw + "\\b", "i");
-            if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { actionMatch = item; break; }
+            const regex = new RegExp("\\b" + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\b", "i");
+            if (regex.test(text)) { actionMatch = item; break; }
         }
 
         if (ataMatch && !ataInput.value.trim()) ataInput.value = ataMatch.code;
@@ -365,40 +323,41 @@
         checkATA(id, ataMatch ? ataMatch.code : null);
     }
 
-    // [2번] 돋보기 버튼 클릭 시 덮어쓰기 검색
-    function smartSearchDB(id) {
+    // ✨ 3번: 근거(Reason)만 단독으로 덮어쓰기 검색
+    function searchReasonOnly(id) {
         const text = document.getElementById(`defect-${id}`).value.toUpperCase();
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
 
-        let ataMatch = null, actionMatch = null;
-        
-        for (const item of DB.ataDatabase) {
-            const kw = item.keyword.trim(); if (!kw) continue;
-            const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp("\\b" + safeKw + "\\b", "i");
-            if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { ataMatch = item; break; }
-        }
-
+        let actionMatch = null;
         for (const item of DB.actionDatabase) {
             const kw = item.keyword.trim(); if (!kw) continue;
-            const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp("\\b" + safeKw + "\\b", "i");
-            if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { actionMatch = item; break; }
+            const regex = new RegExp("\\b" + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\b", "i");
+            if (regex.test(text)) { actionMatch = item; break; }
         }
 
-        if (ataMatch || actionMatch) {
-            if (ataMatch) document.getElementById(`ata-${id}`).value = ataMatch.code;
-            if (actionMatch) document.getElementById(`reason-${id}`).value = actionMatch.reason;
-            
-            checkATA(id, ataMatch ? ataMatch.code : null); 
-            
-            let msg = `✅ DB 매칭 완료!`;
-            if (ataMatch) msg += `\n- ATA: ${ataMatch.code}`;
-            if (actionMatch) msg += `\n- 근거: ${actionMatch.reason}`;
-            alert(msg);
-        } else {
-            alert("🔍 일치하는 DB 키워드를 찾지 못했습니다.");
+        if (actionMatch) {
+            document.getElementById(`reason-${id}`).value = actionMatch.reason;
+            alert(`✅ 근거 매칭 완료!\n- 적용근거: ${actionMatch.reason}`);
+        } else { alert("🔍 일치하는 근거(ACTION) DB 키워드를 찾지 못했습니다."); }
+    }
+
+    // ✨ 3번: ATA만 단독으로 덮어쓰기 검색
+    function searchATAOnly(id) {
+        const text = document.getElementById(`defect-${id}`).value.toUpperCase();
+        if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
+
+        let ataMatch = null;
+        for (const item of DB.ataDatabase) {
+            const kw = item.keyword.trim(); if (!kw) continue;
+            const regex = new RegExp("\\b" + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\b", "i");
+            if (regex.test(text)) { ataMatch = item; break; }
         }
+
+        if (ataMatch) {
+            document.getElementById(`ata-${id}`).value = ataMatch.code;
+            checkATA(id, ataMatch.code); 
+            alert(`✅ ATA 매칭 완료!\n- ATA Code: ${ataMatch.code}`);
+        } else { alert("🔍 일치하는 ATA DB 키워드를 찾지 못했습니다."); }
     }
 
     function checkATA(id, dbCode = null) {
@@ -409,31 +368,24 @@
         if (dbCode === null) {
             const text = document.getElementById(`defect-${id}`).value.toUpperCase();
             for (const item of DB.ataDatabase) {
-                const kw = item.keyword.trim();
-                if (!kw) continue;
-                const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp("\\b" + safeKw + "\\b", "i");
-                if (kw.length >= 5 ? text.includes(kw.toUpperCase()) : regex.test(text)) { 
-                    dbCode = item.code; 
-                    break; 
-                }
+                const kw = item.keyword.trim(); if (!kw) continue;
+                const regex = new RegExp("\\b" + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\b", "i");
+                if (regex.test(text)) { dbCode = item.code; break; }
             }
         }
         warn.style.display = (val && dbCode && val !== dbCode) ? "block" : "none";
     }
 
-    // ✨ 구간 ⇄ 전환 시 편명 자동매칭 재실행
     function swapLegs() {
         const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
-        [f.value, t.value] = [t.value, f.value];
-        matchFlightFromLegs(); 
+        [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
     }
 
     window.onload = () => { 
         loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
 
-        // ✨ 바탕 클릭 시 드롭다운 닫기
-        window.addEventListener('click', (e) => { 
+        // 바탕 클릭 시 드롭다운 닫기
+        window.addEventListener('mousedown', (e) => { 
             if (!e.target.closest('.input-group')) {
                 document.getElementById('flightOptions').style.display = "none"; 
                 document.getElementById('legOptions').style.display = "none"; 
@@ -441,41 +393,26 @@
         });
 
         const pasteArea = document.getElementById('pasteArea');
-
         pasteArea.addEventListener('wheel', (e) => {
-            if (!document.getElementById('pastedImg')) return;
-            e.preventDefault(); 
-            const zoomAmount = e.deltaY < 0 ? 0.15 : -0.15; 
-            currentScale += zoomAmount;
-            currentScale = Math.max(0.2, Math.min(currentScale, 6)); 
-            applyTransform();
+            if (!document.getElementById('pastedImg')) return; e.preventDefault(); 
+            currentScale += e.deltaY < 0 ? 0.15 : -0.15; 
+            currentScale = Math.max(0.2, Math.min(currentScale, 6)); applyTransform();
         });
 
-        // [1번] 마우스 누른 좌표 저장
         pasteArea.addEventListener('mousedown', (e) => {
             if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
-            e.preventDefault(); 
-            isDragging = true; 
-            clickStartX = e.clientX; 
-            clickStartY = e.clientY; 
-            startDragX = e.clientX - translateX; 
-            startDragY = e.clientY - translateY;
+            e.preventDefault(); isDragging = true; clickStartX = e.clientX; clickStartY = e.clientY; 
+            startDragX = e.clientX - translateX; startDragY = e.clientY - translateY;
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            translateX = e.clientX - startDragX; translateY = e.clientY - startDragY;
-            applyTransform();
+            if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
         });
 
-        // [1번] 마우스 뗄 때 5픽셀 미만 이동이면 클릭으로 인정
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
-                let diffX = Math.abs(e.clientX - clickStartX);
-                let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5) {
-                    if (e.target.id === 'pastedImg') toggleExpand();
-                }
+                let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
+                if (diffX < 5 && diffY < 5) { if (e.target.id === 'pastedImg') toggleExpand(); }
             }
             isDragging = false;
         });
@@ -484,103 +421,49 @@
     document.body.addEventListener('paste', (e) => {
         const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
         if (item) {
-            fileToUpload = item.getAsFile();
-            const url = URL.createObjectURL(fileToUpload);
-            
+            fileToUpload = item.getAsFile(); const url = URL.createObjectURL(fileToUpload);
             currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
             document.getElementById('mainTopSection').classList.remove('expanded'); 
-            
-            document.getElementById('rightPanel').classList.remove('text-extract-mode');
-            document.getElementById('rawTextArea').style.display = 'none';
-
             document.getElementById('pasteArea').innerHTML = `
-                <div class="img-tools">
-                    <button class="btn-tool" onclick="rotateImg(event)" title="90도 회전">↻</button>
-                    <button class="btn-tool btn-close" onclick="location.reload()" title="지우기">✖</button>
-                </div>
-                <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;" title="클릭: 뷰어 확대/축소\n마우스 휠: 줌(Zoom)\n드래그: 상하좌우 이동">
+                <div class="img-tools"><button class="btn-tool" onclick="rotateImg(event)">↻</button><button class="btn-tool btn-close" onclick="location.reload()">✖</button></div>
+                <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
             `;
         }
     });
 
-    function applyTransform() {
-        const img = document.getElementById('pastedImg');
-        if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; }
-    }
-
-    function rotateImg(e) {
-        e.stopPropagation(); currentRotation += 90; applyTransform();
-    }
-
+    function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
+    function rotateImg(e) { e.stopPropagation(); currentRotation += 90; applyTransform(); }
     function toggleExpand() {
-        const topSection = document.getElementById('mainTopSection');
-        topSection.classList.toggle('expanded');
+        document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
         setTimeout(refreshAllHeights, 310);
     }
 
     async function extractText() {
         if (!fileToUpload) return alert("사진을 먼저 붙여넣으세요!");
-        const btn = document.getElementById('btnExtractMain');
-        btn.innerText = "분석 중... ⏳";
-        btn.disabled = true; 
-        const formData = new FormData();
-        formData.append("file", fileToUpload);
+        const btn = document.getElementById('btnExtractMain'); btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
+        const formData = new FormData(); formData.append("file", fileToUpload);
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
-            document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, "");
-            fillAcType(); 
+            document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, ""); fillAcType(); 
             
-            // ✨ 3번: AI가 편명을 가져오면 구간을 맞추고, 구간을 가져오면 편명을 맞추는 로직
             if (data.flightNo) {
-                document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, '');
-                matchLegsFromFlight();
+                document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, ''); matchLegsFromFlight();
             } else {
-                document.getElementById('legFrom').value = data.legFrom || "";
-                document.getElementById('legTo').value = data.legTo || "";
-                matchFlightFromLegs(); 
+                document.getElementById('legFrom').value = data.legFrom || ""; document.getElementById('legTo').value = data.legTo || ""; matchFlightFromLegs(); 
             }
 
-            document.getElementById('defectRowsContainer').innerHTML = "";
-            rowIdCounter = 0;
-            if (data.items && data.items.length > 0) {
+            document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
+            if (data.items && data.items.length > 0) { 
                 data.items.forEach(item => addRow(item)); 
-            } else { 
-                addRow(); 
-                alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
-            }
-        } catch (e) { 
-            alert("⚠️ 화면 스크립트 에러 발생: " + e.message); 
-            console.error(e);
-        } finally { 
-            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
-            btn.disabled = false; 
-        }
-    }
-
-    async function extractRawText() {
-        if (!fileToUpload) return alert("사진을 먼저 붙여넣으세요!");
-        const btn = document.getElementById('btnExtractRaw');
-        btn.innerText = "추출 중... ⏳"; 
-        btn.disabled = true;
-        const formData = new FormData(); 
-        formData.append("file", fileToUpload);
-
-        try {
-            const res = await fetch("/extract_raw", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
-            
-            document.getElementById('rightPanel').classList.add('text-extract-mode');
-            const textArea = document.getElementById('rawTextArea');
-            textArea.style.display = 'block';
-            textArea.value = data.text || "추출된 텍스트가 없습니다.";
-
-        } catch (e) { alert("⚠️ 통신 에러 발생: " + e.message); } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; }
+                // 1번: 데이터 삽입 후 0.1초 뒤 무조건 텍스트 높이 재계산
+                setTimeout(refreshAllHeights, 100); 
+            } else { addRow(); alert("🔍 이월 대상 결함 내역을 찾지 못했습니다."); }
+        } catch (e) { alert("⚠️ 에러: " + e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
     }
 </script>
 </body>
