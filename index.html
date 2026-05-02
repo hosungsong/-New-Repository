@@ -116,7 +116,7 @@
                     <label>편명</label>
                     <div class="box">
                         <span class="prefix">OZ</span>
-                        <input type="text" id="flightNo" placeholder="AUTO" oninput="matchLegsFromFlight()">
+                        <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
                         <div id="flightOptions" class="dropdown-list"></div>
                     </div>
                 </div>
@@ -129,6 +129,7 @@
                         <div id="legOptions" class="dropdown-list"></div>
                     </div>
                 </div>
+                <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
             </div>
 
             <div class="dynamic-container">
@@ -169,11 +170,13 @@
                 if (parts.length >= 2) {
                     const type = parts[0].toUpperCase();
                     if (type === 'ATA') {
+                        let val = parts[1];
                         const key = parts[2] ? parts[2].toUpperCase() : "";
-                        if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
+                        if (key && val && key !== 'KEYWORD') newAta.push({ keyword: key, code: val });
                     } else if (type === 'ACTION' && parts.length >= 3) {
+                        let reasonVal = parts[1];
                         const key = parts[2] ? parts[2].toUpperCase() : "";
-                        if (key && parts[1] && key !== 'KEYWORD') newAction.push({ keyword: key, reason: parts[1] });
+                        if (key && reasonVal && key !== 'KEYWORD') newAction.push({ keyword: key, reason: reasonVal });
                     } else if (type === 'FLIGHT' && parts.length >= 4) {
                         newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
                     } else if (type === 'AC' && parts.length >= 3) {
@@ -182,6 +185,8 @@
                 }
             });
             
+            newAta.sort((a, b) => b.keyword.length - a.keyword.length);
+            newAction.sort((a, b) => b.keyword.length - a.keyword.length);
             DB.ataDatabase = newAta; DB.actionDatabase = newAction; DB.flights = newFlights; DB.ac = newAc;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
             alert(`✅ DB 세팅 완료!`); location.reload(); 
@@ -191,7 +196,7 @@
 
     function loadDB() {
         const saved = localStorage.getItem('integratedDB');
-        if (saved) { DB = JSON.parse(saved); }
+        if (saved) { DB = JSON.parse(saved); DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length); DB.actionDatabase.sort((a, b) => b.keyword.length - a.keyword.length); }
     }
 
     function fillAcType() {
@@ -270,7 +275,6 @@
         const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         const isAp = data.asAp === 'AP';
         
-        // ✨ 멍청한 자동완성(oninput) 제거! 오직 수동 돋보기(AI)만 남김
         row.innerHTML = `
             <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
@@ -300,7 +304,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // ✨ 진짜 똑똑해진 AI 서버 통신 검색 함수
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
@@ -420,23 +423,16 @@
             document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
             if (data.items && data.items.length > 0) { 
                 data.items.forEach(item => addRow(item)); 
-                setTimeout(refreshAllHeights, 150); // ✨ 1번 문제: 시간차를 두고 확실히 늘리기
-            } else { addRow(); alert("🔍 이월 대상 결함 내역을 찾지 못했습니다."); }
+                
+                // ✨ 수정사항: 결과물을 다 뿌린 후 무조건 수동 입력용 빈칸 한 줄 유지!
+                addRow();
+                
+                setTimeout(refreshAllHeights, 150); 
+            } else { 
+                addRow(); 
+                alert("🔍 이월 대상 결함 내역을 찾지 못했습니다."); 
+            }
         } catch (e) { alert("⚠️ 에러: " + e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
-    }
-
-    async function extractRawText() {
-        if (!fileToUpload) return alert("사진을 먼저 붙여넣으세요!");
-        const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
-        const formData = new FormData(); formData.append("file", fileToUpload);
-
-        try {
-            const res = await fetch("/extract_raw", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
-            document.getElementById('rightPanel').classList.add('text-extract-mode');
-            const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
-        } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; }
     }
 </script>
 </body>
