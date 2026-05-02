@@ -24,7 +24,6 @@
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
-        /* text-transform 제거하여 수동 입력 시 대소문자 유지 */
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
         .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
@@ -56,7 +55,6 @@
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .search-wrap button:hover { background: #2c3e50; }
 
-        /* textarea text-transform 제거 및 초기 높이 제어 속성 최적화 */
         .defect-row textarea { 
             width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
             font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
@@ -75,13 +73,11 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🔥 확대 모드: 좌우 50:50 비율 보장 및 버튼 짤림 방지 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(180px, 1fr) 130px 90px 30px; } 
-        /* 버튼이 보이도록 pasteArea의 높이를 유동적으로 제한 */
         .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
         .top-section.expanded #pasteArea img { max-height: 100%; }
 
@@ -204,14 +200,14 @@
     }
 
     // =========================================================================
-    // 🔥 [이메일 전송 기능] mailto를 활용한 로컬 메일앱 호출
+    // 🔥 [이메일 전송 기능] 구글 메일(Gmail) 웹 창 직접 호출 로직
     // =========================================================================
     function sendEmailViaMailto(target) {
         // 1. CSV 데이터베이스에서 검색 -> 2. 로컬스토리지에서 검색
         let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
         
         if (!emails) {
-            emails = prompt(`📧 [${target} 전송 설정]\n수신할 이메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
+            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
             if (emails && emails.trim() !== "") {
                 localStorage.setItem(`logScanner_email_${target}`, emails.trim());
             } else {
@@ -230,9 +226,13 @@
         const bodyText = `[Dispatch Approval] HL${기번}(${acType}) OZ${flightNo}, ${legFrom}-${legTo} 확인 완료 했습니다.`;
 
         // 전송 확인 팝업
-        if (confirm(`📧 [ ${target} 메일 작성 ]\n\n기본 메일 앱(아웃룩 등)을 열어 아래 내용으로 메일을 작성합니다.\n\n• 수신: ${emails}\n• 제목: ${subjectText}\n• 내용: ${bodyText}\n\n계속하시겠습니까?`)) {
-            // mailto 링크 실행 (텍스트 인코딩 필수)
-            window.location.href = `mailto:${emails}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+        if (confirm(`📧 [ ${target} 메일 작성 ]\n\n구글 메일 창을 열어 아래 내용으로 작성합니다.\n\n• 수신: ${emails}\n• 제목: ${subjectText}\n• 내용: ${bodyText}\n\n계속하시겠습니까?`)) {
+            
+            // 🔥 아웃룩(mailto) 대신, 구글 메일(Gmail) Compose 창을 강제로 띄우는 URL
+            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+            
+            // 새 탭에서 구글 메일 쓰기 창 열기
+            window.open(gmailUrl, '_blank');
         }
     }
 
@@ -290,7 +290,6 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
 
-                    // DUTY 포맷 (이모지, 색상 제거, ATA 포함)
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
                                     `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
@@ -349,7 +348,6 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
                     
-                    // OCC 포맷 (이모지 포함, 색상 제거, ATA 제외)
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
                                     `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br><br>`;
