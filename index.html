@@ -148,15 +148,99 @@
         </div>
     </div>
     <div class="bottom-section">
-        <button class="btn-mail bg-occ">OCC 전송</button><button class="btn-mail bg-icn">ICN 전송</button><button class="btn-mail bg-gmp">GMP 전송</button><button class="btn-mail bg-duty">DUTY 전송</button>
+        <button class="btn-mail bg-occ" id="btn-occ" onclick="sendWebhook('OCC')">OCC 전송</button>
+        <button class="btn-mail bg-icn">ICN 전송</button>
+        <button class="btn-mail bg-gmp">GMP 전송</button>
+        <button class="btn-mail bg-duty" id="btn-duty" onclick="sendWebhook('DUTY')">DUTY 전송</button>
     </div>
 </div>
 
 <script>
+    // =======================================================================
+    // 🔔 구글 챗 웹훅 주소 설정 영역 (나중에 여기서 실전용 주소로 수정하세요!)
+    // =======================================================================
+    const WEBHOOK_URLS = {
+        "OCC": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc",
+        "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc"
+    };
+    // =======================================================================
+
     let fileToUpload = null; let rowIdCounter = 0;
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
+
+    // ✨ 구글 챗 메시지 쏘는 메인 함수
+    async function sendWebhook(target) {
+        const url = WEBHOOK_URLS[target];
+        if (!url) { alert(target + " 용 웹훅 주소가 비어있습니다."); return; }
+
+        // 화면 데이터 수집
+        const regNo = document.getElementById('regNo').value.trim() || '미상';
+        const acType = document.getElementById('acType').value.trim() || '미상';
+        const flightNo = document.getElementById('flightNo').value.trim() || '미상';
+        const legFrom = document.getElementById('legFrom').value.trim() || '???';
+        const legTo = document.getElementById('legTo').value.trim() || '???';
+        const isHandover = document.getElementById('handover').checked ? "위탁 O" : "위탁 X";
+
+        let defectText = "";
+        let defectCount = 0;
+        const rows = document.querySelectorAll('.defect-row');
+        
+        rows.forEach(row => {
+            const id = row.id.split('-')[1];
+            const asAp = document.getElementById(`asAp-${id}`).value;
+            const defect = document.getElementById(`defect-${id}`).value.trim();
+            const reason = document.getElementById(`reason-${id}`).value.trim() || '입력 안됨';
+            const ata = document.getElementById(`ata-${id}`).value.trim() || '입력 안됨';
+
+            if (defect) {
+                defectCount++;
+                defectText += `*${defectCount}. [${asAp}]* ${defect}\n  └ 📌 근거: ${reason}  |  ATA: ${ata}\n\n`;
+            }
+        });
+
+        if (defectCount === 0) defectText = "기록된 결함 내용이 없습니다.";
+
+        // 메시지 예쁘게 꾸미기
+        const payload = {
+            "text": `🔔 *[${target}] 정비 로그 이월(DEFER) 발생*\n` +
+                    `--------------------------------------\n` +
+                    `✈️ *기본 정보*\n` +
+                    ` • 기번: HL${regNo} (${acType})\n` +
+                    ` • 편명: OZ${flightNo}\n` +
+                    ` • 구간: ${legFrom} ➔ ${legTo}\n` +
+                    ` • 위탁: [ ${isHandover} ]\n` +
+                    `--------------------------------------\n` +
+                    `🛠️ *결함 및 조치 내역*\n\n` +
+                    `${defectText}`
+        };
+
+        const btn = document.getElementById(`btn-${target.toLowerCase()}`);
+        const originText = btn.innerText;
+        btn.innerText = "전송 중... ⏳";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert(`✅ ${target} 채널로 구글 챗 메시지가 전송되었습니다!`);
+            } else {
+                alert(`⚠️ 구글 챗 전송 실패 (HTTP 에러코드: ${res.status})`);
+            }
+        } catch (error) {
+            // 브라우저 보안(CORS) 때문에 fetch 에러가 날 수 있음. 이 경우 백엔드를 거쳐야 함.
+            alert(`⚠️ 네트워크 에러가 발생했습니다: ${error.message}\n(브라우저 CORS 정책 제한일 수 있습니다)`);
+        } finally {
+            btn.innerText = originText;
+            btn.disabled = false;
+        }
+    }
 
     function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
@@ -420,7 +504,6 @@
                 matchFlightFromLegs(); 
             }
 
-            // 🚨 핵심 해결: 이제 기존 빈칸을 삭제(초기화)하는 innerHTML = "" 코드가 없습니다!
             if (data.items && data.items.length > 0) { 
                 data.items.forEach(item => addRow(item)); 
                 setTimeout(refreshAllHeights, 150); 
