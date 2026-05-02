@@ -70,16 +70,15 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        .top-section.expanded .left-panel { flex: 0.8; }
+        /* ✨ 1번 해결: 사진 확대(expanded) 시 DEFECT 공간을 완벽하게 보호하도록 비율 수정 */
+        .top-section.expanded .left-panel { flex: 0.9; }
         .top-section.expanded .right-panel { flex: 1.5; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px 1fr 180px 100px 30px; } 
+        /* DEFECT(1fr)를 살리기 위해 적용근거를 120px, ATA를 80px로 희생! */
+        .top-section.expanded .defect-grid { grid-template-columns: 80px 1fr 120px 80px 30px; } 
         .top-section.expanded #pasteArea { min-height: 600px; }
         .top-section.expanded #pasteArea img { max-height: 85vh; }
-
-        .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
-        .text-extract-mode #pasteArea img { max-height: 180px; }
 
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
         .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -166,14 +165,10 @@
 </div>
 
 <script>
-    // =======================================================================
-    // 🔔 구글 챗 웹훅 주소 설정
-    // =======================================================================
     const WEBHOOK_URLS = {
         "OCC": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc",
         "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc"
     };
-    // =======================================================================
 
     let fileToUpload = null; let rowIdCounter = 0;
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
@@ -201,15 +196,14 @@
 
         let 이름 = localStorage.getItem('logScanner_userName');
         if (!이름) {
-            이름 = prompt("전송자 성함을 입력해주세요. (이후 우측 상단에서 변경 가능합니다)", "");
+            이름 = prompt("전송자 성함을 입력해주세요.", "");
             if (이름 && 이름.trim() !== "") {
                 localStorage.setItem('logScanner_userName', 이름.trim());
                 updateUserNameDisplay();
             } else 이름 = "미상";
         }
 
-        const 기번_raw = document.getElementById('regNo').value.trim();
-        const 기번 = 기번_raw || '미확인';
+        const 기번 = document.getElementById('regNo').value.trim() || '미확인';
         const acType = document.getElementById('acType').value.trim() || '기종미상';
         const flightNo = document.getElementById('flightNo').value.trim() || '미상';
         const legFrom = document.getElementById('legFrom').value.trim() || '???';
@@ -219,17 +213,11 @@
 
         const rows = document.querySelectorAll('.defect-row');
         let defectCount = 0;
-        
-        // ----------------------------------------------------
-        // 🚀 타겟 분기 처리: DUTY (Plain Text) vs OCC (CardsV2)
-        // ----------------------------------------------------
         let payload;
 
         if (target === "DUTY") {
-            // [DUTY 전송 모드] - 기존 Plain Text & MultiLine 들여쓰기 
             const 기번표시 = "HL" + 기번 + " (" + acType + ")";
             const 위탁 = 위탁체크박스상태 ? '*Y* 🔹' : '*N* 🔸';
-
             const formatMultiLine = (text, spaces = '             ') => {
                 if (!text) return "";
                 const lines = String(text).split('\n');
@@ -254,9 +242,7 @@
                                   `• *ATA :* ${formatMultiLine(ata_raw)}\n`;
                 }
             });
-
             if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
-
             payload = {
                 "text": `*${이름} DEFER 적용 (${현재시간})*\n\n` +
                         `• *기번 :* ${기번표시}\n` +
@@ -266,13 +252,9 @@
                         `--------------------------------------\n` +
                         `${결함내역들}`
             };
-
         } else if (target === "OCC") {
-            // [OCC 전송 모드] - CardsV2 HTML + GPS/NOTAM 검토 로직
             const 기번표시 = "HL" + 기번;
             const 편명구간 = "OZ" + flightNo + " (" + legFrom + "-" + legTo + ")";
-
-            // 기종별 GPS 코드 매핑
             const gpsCodesByAcType = {
                 "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
                 "A330": ["34-50-08D", "34-50-08F"],
@@ -280,15 +262,12 @@
                 "A380": ["34-50-01A", "34-50-01B", "34-50-01C"],
                 "B777": ["34-58-01A", "34-58-01B"]
             };
-
             let searchAcType = acType.toUpperCase();
             if (searchAcType.includes("A32N")) searchAcType = searchAcType.replace("A32N", "A321");
-
             let targetGpsCodes = [];
             for (const ac in gpsCodesByAcType) {
                 if (searchAcType.includes(ac)) { targetGpsCodes = gpsCodesByAcType[ac]; break; }
             }
-
             const formatMultiLineHtml = (text) => {
                 if (!text) return "";
                 const lines = String(text).split('\n');
@@ -296,30 +275,25 @@
             };
 
             let html결함 = ""; let html근거 = ""; let hasGpsIssue = false;
-
             rows.forEach(row => {
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
                 const 근거_raw = document.getElementById(`reason-${id}`).value.trim();
-
                 if (결함_raw) {
                     defectCount++;
                     html결함 += `[${defectCount}] ${formatMultiLineHtml(결함_raw)}<br>`;
                     html근거 += `[${defectCount}] ${formatMultiLineHtml(근거_raw || '미입력')}<br>`;
-
                     const cleanBasisRaw = (근거_raw || "").toUpperCase().replace(/\s+/g, '');
                     if (!hasGpsIssue) {
                         hasGpsIssue = targetGpsCodes.some(code => cleanBasisRaw.includes(code.toUpperCase().replace(/\s+/g, '')));
                     }
                 }
             });
-
             if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
 
             const gpsTerm = searchAcType.includes("A350") ? "GNSS" : "GPS";
             const gpsNotice = hasGpsIssue 
-                ? `<br><br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
-                : "";
+                ? `<br><br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` : "";
 
             const htmlText = 
                 "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
@@ -327,15 +301,9 @@
                 "• <b>편명 :</b> " + 편명구간 + "<br>" +
                 "• <b>결함 :</b><br>" + html결함 +
                 "• <b>근거 :</b><br>" + html근거 + 
-                gpsNotice + "<br><br>" + 
-                "<i>" + 이름 + " / " + 현재시간 + "</i>";
+                gpsNotice + "<br><br>" + "<i>" + 이름 + " / " + 현재시간 + "</i>";
 
-            payload = {
-                cardsV2: [{
-                    cardId: "dispatchApprovalCard",
-                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
-                }]
-            };
+            payload = { cardsV2: [{ cardId: "dispatchApprovalCard", card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] } }] };
         }
 
         const btn = document.getElementById(`btn-${target.toLowerCase()}`);
@@ -347,7 +315,6 @@
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
 
-    // 이하 기존 함수들 완벽 유지 -------------------------------------------
     function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -359,11 +326,9 @@
                 if (parts.length >= 2) {
                     const type = parts[0].toUpperCase();
                     if (type === 'ATA') {
-                        const key = parts[2] ? parts[2].toUpperCase() : "";
-                        if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
+                        if (parts[2] && parts[1]) newAta.push({ keyword: parts[2].toUpperCase(), code: parts[1] });
                     } else if (type === 'ACTION' && parts.length >= 3) {
-                        const key = parts[2] ? parts[2].toUpperCase() : "";
-                        if (key && parts[1] && key !== 'KEYWORD') newAction.push({ keyword: key, reason: parts[1] });
+                        if (parts[2] && parts[1]) newAction.push({ keyword: parts[2].toUpperCase(), reason: parts[1] });
                     } else if (type === 'FLIGHT' && parts.length >= 4) {
                         newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
                     } else if (type === 'AC' && parts.length >= 3) {
@@ -388,10 +353,15 @@
         document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
+    // ✨ 3번 해결: 사용자가 누르거나 치는 모든 글자에서 'OZ' 글자와 앞자리 '0'을 완벽하게 삭제
     function matchFlightFromLegs() {
         const f = document.getElementById('legFrom').value.toUpperCase(); const t = document.getElementById('legTo').value.toUpperCase();
         const input = document.getElementById('flightNo'); const optDiv = document.getElementById('flightOptions');
         optDiv.innerHTML = ""; optDiv.style.display = "none";
+        
+        // 입력창에 수동으로 타자 칠 때도 'OZ' 방어
+        input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
+
         if (f.length === 3 && t.length === 3 && DB.flights.length > 0) {
             const matches = DB.flights.filter(item => item.from === f && item.to === t);
             if (matches.length === 1) input.value = String(matches[0].no).replace(/^0+/, '');
@@ -408,11 +378,14 @@
     }
 
     function matchLegsFromFlight() {
-        const fNo = document.getElementById('flightNo').value.trim();
+        const input = document.getElementById('flightNo');
+        input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
+        
+        const fNo = input.value.trim();
         const optDiv = document.getElementById('legOptions');
         optDiv.innerHTML = ""; optDiv.style.display = "none";
         if (fNo && DB.flights.length > 0) {
-            const matches = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo.replace(/^0+/, ''));
+            const matches = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo);
             if (matches.length === 1) { document.getElementById('legFrom').value = matches[0].from; document.getElementById('legTo').value = matches[0].to; } 
             else if (matches.length > 1) {
                 optDiv.style.display = "block";
@@ -429,6 +402,7 @@
         if (!el) return; el.style.height = '38px'; 
         const newHeight = el.scrollHeight; el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
     }
+
     function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
 
     function removeDefectRow(btn) {
@@ -558,26 +532,30 @@
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
         });
+        
+        // 🚨 2번 해결: 마우스 뗄 때 (화면 축소/확대 시) 0.3초 애니메이션 중간중간에 높이를 재계산해서 굳는 현상 방지!
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5 && e.button === 0) { if (e.target.id === 'pastedImg') toggleExpand(); }
+                if (diffX < 5 && diffY < 5 && e.button === 0) { 
+                    if (e.target.id === 'pastedImg') toggleExpand(); 
+                }
             }
             isDragging = false;
         });
+        window.addEventListener('resize', refreshAllHeights);
     };
-
-    document.body.addEventListener('paste', (e) => {
-        const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
-        if (item) loadAndDisplayImage(item.getAsFile());
-    });
 
     function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
     function rotateImg(e) { e.stopPropagation(); currentRotation += 90; applyTransform(); }
+    
+    // ✨ 2번 해결: 화면 전환 시 여러 번 높이를 새로고침하여 텍스트칸 굳어버림 완벽 방지
     function toggleExpand() {
         document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
-        setTimeout(refreshAllHeights, 310);
+        setTimeout(refreshAllHeights, 50);
+        setTimeout(refreshAllHeights, 150);
+        setTimeout(refreshAllHeights, 350);
     }
 
     async function extractText() {
@@ -587,13 +565,20 @@
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
             const data = await res.json();
+            
+            // ✨ 3번 해결: AI가 응답한 편명 데이터에서도 OZ를 날려버림
             if (data.regNo) { document.getElementById('regNo').value = data.regNo.replace(/^HL/, ""); fillAcType(); }
-            if (data.flightNo) { document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, ''); matchLegsFromFlight(); } 
+            if (data.flightNo) { 
+                let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/, '').replace(/^0+/, '');
+                document.getElementById('flightNo').value = cleanFno; 
+                matchLegsFromFlight(); 
+            } 
             else if (data.legFrom || data.legTo) {
                 if (data.legFrom) document.getElementById('legFrom').value = data.legFrom; 
                 if (data.legTo) document.getElementById('legTo').value = data.legTo; 
                 matchFlightFromLegs(); 
             }
+            
             const firstRowDefect = document.getElementById('defect-1');
             const firstRowIsEmpty = firstRowDefect && firstRowDefect.value.trim() === '';
             if (data.items && data.items.length > 0) {
