@@ -166,10 +166,14 @@
 </div>
 
 <script>
+    // =======================================================================
+    // 🔔 구글 챗 웹훅 주소 설정
+    // =======================================================================
     const WEBHOOK_URLS = {
         "OCC": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc",
         "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc"
     };
+    // =======================================================================
 
     let fileToUpload = null; let rowIdCounter = 0;
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
@@ -204,52 +208,135 @@
             } else 이름 = "미상";
         }
 
-        const 기번 = document.getElementById('regNo').value.trim() || '미확인';
-        const 기종 = document.getElementById('acType').value.trim() || '기번재확인';
-        const 기번표시 = "HL" + 기번 + " (" + 기종 + ")";
+        const 기번_raw = document.getElementById('regNo').value.trim();
+        const 기번 = 기번_raw || '미확인';
+        const acType = document.getElementById('acType').value.trim() || '기종미상';
         const flightNo = document.getElementById('flightNo').value.trim() || '미상';
         const legFrom = document.getElementById('legFrom').value.trim() || '???';
         const legTo = document.getElementById('legTo').value.trim() || '???';
-        const 위탁 = document.getElementById('handover').checked ? '*Y* 🔹' : '*N* 🔸';
+        const 위탁체크박스상태 = document.getElementById('handover').checked;
         const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 
-        const formatMultiLine = (text, spaces = '             ') => {
-            if (!text) return "";
-            const lines = String(text).split('\n');
-            return lines.length <= 1 ? text : lines[0] + '\n' + lines.slice(1).map(line => spaces + line).join('\n');
-        };
-
-        let 결함내역들 = ""; let defectCount = 0;
         const rows = document.querySelectorAll('.defect-row');
-        rows.forEach(row => {
-            const id = row.id.split('-')[1];
-            const 구분_raw = document.getElementById(`asAp-${id}`).value;
-            const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-            const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
-            const ata_raw = document.getElementById(`ata-${id}`).value.trim() || '미입력';
+        let defectCount = 0;
+        
+        // ----------------------------------------------------
+        // 🚀 타겟 분기 처리: DUTY (Plain Text) vs OCC (CardsV2)
+        // ----------------------------------------------------
+        let payload;
 
-            if (결함_raw) {
-                defectCount++;
-                let 구분아이콘 = (구분_raw === "AP") ? " 👨‍✈️" : " 🔧";
-                결함내역들 += `\n*${defectCount}번 항목*\n` +
-                              `• *구분 :* ${formatMultiLine(구분_raw + 구분아이콘)}\n` +
-                              `• *결함 :* ${formatMultiLine(결함_raw)}\n` +
-                              `• *근거 :* ${formatMultiLine(근거_raw)}\n` +
-                              `• *ATA :* ${formatMultiLine(ata_raw)}\n`;
+        if (target === "DUTY") {
+            // [DUTY 전송 모드] - 기존 Plain Text & MultiLine 들여쓰기 
+            const 기번표시 = "HL" + 기번 + " (" + acType + ")";
+            const 위탁 = 위탁체크박스상태 ? '*Y* 🔹' : '*N* 🔸';
+
+            const formatMultiLine = (text, spaces = '             ') => {
+                if (!text) return "";
+                const lines = String(text).split('\n');
+                return lines.length <= 1 ? text : lines[0] + '\n' + lines.slice(1).map(line => spaces + line).join('\n');
+            };
+
+            let 결함내역들 = "";
+            rows.forEach(row => {
+                const id = row.id.split('-')[1];
+                const 구분_raw = document.getElementById(`asAp-${id}`).value;
+                const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
+                const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
+                const ata_raw = document.getElementById(`ata-${id}`).value.trim() || '미입력';
+
+                if (결함_raw) {
+                    defectCount++;
+                    let 구분아이콘 = (구분_raw === "AP") ? " 👨‍✈️" : " 🔧";
+                    결함내역들 += `\n*${defectCount}번 항목*\n` +
+                                  `• *구분 :* ${formatMultiLine(구분_raw + 구분아이콘)}\n` +
+                                  `• *결함 :* ${formatMultiLine(결함_raw)}\n` +
+                                  `• *근거 :* ${formatMultiLine(근거_raw)}\n` +
+                                  `• *ATA :* ${formatMultiLine(ata_raw)}\n`;
+                }
+            });
+
+            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+
+            payload = {
+                "text": `*${이름} DEFER 적용 (${현재시간})*\n\n` +
+                        `• *기번 :* ${기번표시}\n` +
+                        `• *편명 :* OZ${flightNo}\n` +
+                        `• *구간 :* ${legFrom} ➔ ${legTo}\n` +
+                        `• *위탁 :* ${위탁}\n` +
+                        `--------------------------------------\n` +
+                        `${결함내역들}`
+            };
+
+        } else if (target === "OCC") {
+            // [OCC 전송 모드] - CardsV2 HTML + GPS/NOTAM 검토 로직
+            const 기번표시 = "HL" + 기번;
+            const 편명구간 = "OZ" + flightNo + " (" + legFrom + "-" + legTo + ")";
+
+            // 기종별 GPS 코드 매핑
+            const gpsCodesByAcType = {
+                "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
+                "A330": ["34-50-08D", "34-50-08F"],
+                "A350": ["34-50-01A", "34-50-01B", "34-50-01C", "34-50-06A", "34-52-06B", "34-50-06C"],
+                "A380": ["34-50-01A", "34-50-01B", "34-50-01C"],
+                "B777": ["34-58-01A", "34-58-01B"]
+            };
+
+            let searchAcType = acType.toUpperCase();
+            if (searchAcType.includes("A32N")) searchAcType = searchAcType.replace("A32N", "A321");
+
+            let targetGpsCodes = [];
+            for (const ac in gpsCodesByAcType) {
+                if (searchAcType.includes(ac)) { targetGpsCodes = gpsCodesByAcType[ac]; break; }
             }
-        });
 
-        if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+            const formatMultiLineHtml = (text) => {
+                if (!text) return "";
+                const lines = String(text).split('\n');
+                return lines.length <= 1 ? text : lines[0] + '<br>' + lines.slice(1).map(line => '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + line).join('<br>');
+            };
 
-        const payload = {
-            "text": `*${이름} DEFER 적용 (${현재시간})*\n\n` +
-                    `• *기번 :* ${기번표시}\n` +
-                    `• *편명 :* OZ${flightNo}\n` +
-                    `• *구간 :* ${legFrom} ➔ ${legTo}\n` +
-                    `• *위탁 :* ${위탁}\n` +
-                    `--------------------------------------\n` +
-                    `${결함내역들}`
-        };
+            let html결함 = ""; let html근거 = ""; let hasGpsIssue = false;
+
+            rows.forEach(row => {
+                const id = row.id.split('-')[1];
+                const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
+                const 근거_raw = document.getElementById(`reason-${id}`).value.trim();
+
+                if (결함_raw) {
+                    defectCount++;
+                    html결함 += `[${defectCount}] ${formatMultiLineHtml(결함_raw)}<br>`;
+                    html근거 += `[${defectCount}] ${formatMultiLineHtml(근거_raw || '미입력')}<br>`;
+
+                    const cleanBasisRaw = (근거_raw || "").toUpperCase().replace(/\s+/g, '');
+                    if (!hasGpsIssue) {
+                        hasGpsIssue = targetGpsCodes.some(code => cleanBasisRaw.includes(code.toUpperCase().replace(/\s+/g, '')));
+                    }
+                }
+            });
+
+            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+
+            const gpsTerm = searchAcType.includes("A350") ? "GNSS" : "GPS";
+            const gpsNotice = hasGpsIssue 
+                ? `<br><br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
+                : "";
+
+            const htmlText = 
+                "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
+                "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
+                "• <b>편명 :</b> " + 편명구간 + "<br>" +
+                "• <b>결함 :</b><br>" + html결함 +
+                "• <b>근거 :</b><br>" + html근거 + 
+                gpsNotice + "<br><br>" + 
+                "<i>" + 이름 + " / " + 현재시간 + "</i>";
+
+            payload = {
+                cardsV2: [{
+                    cardId: "dispatchApprovalCard",
+                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
+                }]
+            };
+        }
 
         const btn = document.getElementById(`btn-${target.toLowerCase()}`);
         const originText = btn.innerText; btn.innerText = "전송 중... ⏳"; btn.disabled = true;
@@ -260,6 +347,7 @@
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
 
+    // 이하 기존 함수들 완벽 유지 -------------------------------------------
     function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -353,7 +441,6 @@
         const container = document.getElementById('defectRowsContainer');
         const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         const isAp = data.asAp === 'AP';
-        // ✨ Placeholder 문구 확실히 적용 (결함 내용, MEL/CDL/NEF 등, ATA CODE)
         row.innerHTML = `
             <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
@@ -507,9 +594,10 @@
                 if (data.legTo) document.getElementById('legTo').value = data.legTo; 
                 matchFlightFromLegs(); 
             }
-            
+            const firstRowDefect = document.getElementById('defect-1');
+            const firstRowIsEmpty = firstRowDefect && firstRowDefect.value.trim() === '';
             if (data.items && data.items.length > 0) {
-                document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
+                if (firstRowIsEmpty) { document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0; }
                 data.items.forEach(item => addRow(item));
                 setTimeout(refreshAllHeights, 150); 
             } else alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
