@@ -1,4 +1,7 @@
 import os, io, json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from PIL import Image
 import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File
@@ -27,6 +30,7 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
+        # 🔥 AI의 착시 현상을 강제로 교정하는 매우 강력한 프롬프트
         prompt = """
         당신은 20년 경력의 항공 정비 로그 분석 마스터입니다. 'DEFER(이월)'가 적용된 항목만 정확하게 추출하세요.
 
@@ -49,14 +53,16 @@ async def extract_text(file: UploadFile = File(...)):
           - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 서명만 있거나 비어있으면 'AP'.
         - defect: 결함 내용 전체. (27 L SIDE, 24J 등 결함 앞쪽 번호 절대 누락 금지)
         - reason: 'DEFER No.' 칸의 체크 항목(MEL, NEF, CDL, AMM) + 손글씨 번호.
-          🚨 [DEFER No. 체크박스 판독 절대 규칙 - 오독 금지!]
-          사진의 DEFER No. 칸은 항상 "MEL □ NEF □ AMM □" 순서로 고정되어 있습니다. 
-          V표시(체크)가 몇 번째 네모칸에 있는지 확인하세요.
-          - 1번째 네모칸에 V표시 -> "MEL"
-          - 2번째 네모칸에 V표시 -> "NEF"
-          - 3번째 네모칸에 V표시 -> "AMM"
-          (취소선이 그어진 것은 무시하고, 최종적으로 명확하게 V 체크된 칸을 기준으로 판단하세요.)
-          그 뒤에 적힌 손글씨 번호(예: 33-21-01-01)를 끝까지 이어서 적으세요. (가로줄 7, 세로줄 1 주의)
+        
+          🚨🚨 [시각적 착시 방지 절대 규칙 - 목숨 걸고 지킬 것] 🚨🚨
+          사진의 DEFER No. 칸은 무조건 "MEL □ NEF □ AMM □" 순서입니다.
+          손글씨 숫자(예: 23-30-12)가 'AMM' 글자를 침범하거나 바로 옆에 바짝 붙어서 시작한다고 해서, 절대 'AMM'으로 묶어서 오독하지 마세요!! 숫자의 위치에 현혹되지 말고, 오직 **V표시(체크)가 들어간 네모칸의 순서**만 세어서 판단하세요.
+          
+          - 1번째 네모칸에 체크(V) -> "MEL"
+          - 2번째 네모칸에 체크(V) -> 무조건 "NEF" (가운데 네모칸이면 무조건 NEF입니다!)
+          - 3번째 네모칸에 체크(V) -> "AMM"
+          
+          체크된 위치를 정확히 파악한 후, 그 글자 뒤에 손글씨 숫자를 끝까지 이어서 적으세요.
         - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
         
         🚨 중요: 모든 출력 텍스트(value)는 반드시 대문자(UPPERCASE)로 변환하세요.
@@ -64,7 +70,7 @@ async def extract_text(file: UploadFile = File(...)):
         응답은 순수 JSON만 출력하세요.
         {
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AS", "defect": "27 L SIDE CEILING LIGHT OUT", "reason": "MEL 33-21-01-01-01", "ata": "3321"} ]
+          "items": [ {"asAp": "AS", "defect": "14E HANDSET WIRE TORN", "reason": "NEF 23-30-12", "ata": "4420"} ]
         }
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
@@ -91,25 +97,52 @@ async def smart_search(req: SmartSearchRequest):
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
         prompt = f"""
-        당신은 20년 경력의 항공 정비 마스터입니다.
-        사용자가 입력한 결함(Defect) 내용의 진짜 항공기 시스템 문맥(Context)을 파악하세요.
+        사용자가 입력한 결함(Defect) 내용에 알맞은 {req.search_type} 항목 딱 1개를 고르세요.
         결함 내용: "{req.defect}"
-        
-        아래는 사용자의 커스텀 데이터베이스({req.search_type} DB)입니다. (형식: [정답값]::[키워드])
-        정비사로서 결함의 원인과 가장 알맞은 항목 딱 1개만 골라서 그 항목의 '정답값'을 찾아주세요.
-        
         [초압축 커스텀 DB 목록]
         {req.db_text}
         
-        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요. 매칭되는 것이 도저히 없다면 빈 문자열("")로 두세요.
-        {{
-            "matched_value": "찾은 정답값(대문자)"
-        }}
+        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
+        {{"matched_value": "찾은 정답값(대문자)"}}
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
     except Exception as e:
         return {"error": str(e)}
+
+class EmailRequest(BaseModel):
+    target: str
+    to_emails: str
+    subject: str
+    body_html: str
+    sender_name: str
+
+@app.post("/send_email")
+async def send_email(req: EmailRequest):
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")      
+    smtp_password = os.environ.get("SMTP_PASSWORD") 
+
+    if not smtp_user or not smtp_password:
+        return {"error": "서버에 이메일 전송을 위한 SMTP 설정이 되어있지 않습니다."}
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"{req.sender_name} <{smtp_user}>"
+        msg['To'] = req.to_emails
+        msg['Subject'] = req.subject
+        msg.attach(MIMEText(req.body_html, 'html'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        
+        return {"status": "success"}
+    except Exception as e:
+        return {"error": f"메일 전송 실패: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
