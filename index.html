@@ -38,7 +38,8 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-grid { display: grid; grid-template-columns: 90px 1fr 180px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
+        /* 결함 그리드 - minmax로 축소 방지 */
+        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 180px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -55,7 +56,12 @@
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .search-wrap button:hover { background: #2c3e50; }
 
-        .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; transition: height 0.1s; text-transform: uppercase; } 
+        /* Textarea 높이 초기화 및 제어 */
+        .defect-row textarea { 
+            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
+            font-size: 13px; height: 38px; min-height: 38px; resize: none; overflow: hidden; 
+            line-height: 1.4; font-family: inherit; transition: height 0.1s; text-transform: uppercase; 
+        } 
         
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
@@ -70,11 +76,12 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        .top-section.expanded .left-panel { flex: 0.8; }
-        .top-section.expanded .right-panel { flex: 1.5; }
+        /* 확대 모드 (50:50 비율) */
+        .top-section.expanded .left-panel { flex: 1; }
+        .top-section.expanded .right-panel { flex: 1; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px 1fr 180px 100px 30px; } 
+        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(150px, 1fr) 130px 90px 30px; } 
         .top-section.expanded #pasteArea { min-height: 600px; }
         .top-section.expanded #pasteArea img { max-height: 85vh; }
 
@@ -225,12 +232,8 @@
         if (target === "DUTY") {
             const 기번표시 = "HL" + 기번 + " (" + acType + ")";
             const 위탁 = 위탁체크박스상태 ? '*Y* 🔹' : '*N* 🔸';
-
-            const formatMultiLine = (text, spaces = '             ') => {
-                if (!text) return "";
-                const lines = String(text).split('\n');
-                return lines.length <= 1 ? text : lines[0] + '\n' + lines.slice(1).map(line => spaces + line).join('\n');
-            };
+            // 편명과 구간 병합
+            const 편명구간 = `OZ${flightNo} (${legFrom} ➔ ${legTo})`;
 
             let 결함내역들 = "";
             rows.forEach(row => {
@@ -242,12 +245,13 @@
 
                 if (결함_raw) {
                     defectCount++;
-                    let 구분아이콘 = (구분_raw === "AP") ? " 👨‍✈️" : " 🔧";
-                    결함내역들 += `\n*${defectCount}번 항목*\n` +
-                                  `• *구분 :* ${formatMultiLine(구분_raw + 구분아이콘)}\n` +
-                                  `• *결함 :* ${formatMultiLine(결함_raw)}\n` +
-                                  `• *근거 :* ${formatMultiLine(근거_raw)}\n` +
-                                  `• *ATA :* ${formatMultiLine(ata_raw)}\n`;
+                    let 구분아이콘 = (구분_raw === "AP") ? "👨‍✈️" : "🔧";
+                    // 항목 간 묶음 서식 적용
+                    결함내역들 += `\n*<font color="#3498db">[ ${defectCount}번 항목 ]</font>*\n` +
+                                  `• *구분:* ${구분_raw} ${구분아이콘} | *ATA:* ${ata_raw}\n` +
+                                  `• *결함:* ${결함_raw}\n` +
+                                  `• *근거:* ${근거_raw}\n` +
+                                  `--------------------------------------\n`;
                 }
             });
 
@@ -256,16 +260,15 @@
             payload = {
                 "text": `*${이름} DEFER 적용 (${현재시간})*\n\n` +
                         `• *기번 :* ${기번표시}\n` +
-                        `• *편명 :* OZ${flightNo}\n` +
-                        `• *구간 :* ${legFrom} ➔ ${legTo}\n` +
+                        `• *편명 :* ${편명구간}\n` +
                         `• *위탁 :* ${위탁}\n` +
-                        `--------------------------------------\n` +
+                        `======================================\n` +
                         `${결함내역들}`
             };
 
         } else if (target === "OCC") {
             const 기번표시 = "HL" + 기번;
-            const 편명구간 = "OZ" + flightNo + " (" + legFrom + "-" + legTo + ")";
+            const 편명구간 = `OZ${flightNo} (${legFrom}-${legTo})`;
 
             const gpsCodesByAcType = {
                 "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
@@ -283,25 +286,20 @@
                 if (searchAcType.includes(ac)) { targetGpsCodes = gpsCodesByAcType[ac]; break; }
             }
 
-            const formatMultiLineHtml = (text) => {
-                if (!text) return "";
-                const lines = String(text).split('\n');
-                return lines.length <= 1 ? text : lines[0] + '<br>' + lines.slice(1).map(line => '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' + line).join('<br>');
-            };
-
-            let html결함 = ""; let html근거 = ""; let hasGpsIssue = false;
+            let html결함묶음 = ""; 
+            let hasGpsIssue = false;
 
             rows.forEach(row => {
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                const 근거_raw = document.getElementById(`reason-${id}`).value.trim();
+                const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
 
                 if (결함_raw) {
                     defectCount++;
-                    html결함 += `[${defectCount}] ${formatMultiLineHtml(결함_raw)}<br>`;
-                    html근거 += `[${defectCount}] ${formatMultiLineHtml(근거_raw || '미입력')}<br>`;
+                    // OCC 카드 내에서도 묶어서 표시
+                    html결함묶음 += `<b>[${defectCount}]</b> ${결함_raw}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#7f8c8d">➔ ${근거_raw}</font><br><br>`;
 
-                    const cleanBasisRaw = (근거_raw || "").toUpperCase().replace(/\s+/g, '');
+                    const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
                     if (!hasGpsIssue) {
                         hasGpsIssue = targetGpsCodes.some(code => cleanBasisRaw.includes(code.toUpperCase().replace(/\s+/g, '')));
                     }
@@ -312,15 +310,14 @@
 
             const gpsTerm = searchAcType.includes("A350") ? "GNSS" : "GPS";
             const gpsNotice = hasGpsIssue 
-                ? `<br><br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
+                ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
                 : "";
 
             const htmlText = 
                 "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
                 "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
-                "• <b>편명 :</b> " + 편명구간 + "<br>" +
-                "• <b>결함 :</b><br>" + html결함 +
-                "• <b>근거 :</b><br>" + html근거 + 
+                "• <b>편명 :</b> " + 편명구간 + "<br><br>" +
+                "• <b>결함내역 및 근거 :</b><br>" + html결함묶음 +
                 gpsNotice + "<br><br>" + 
                 "<i>" + 이름 + " / " + 현재시간 + "</i>";
 
@@ -425,11 +422,15 @@
     }
 
     function autoResize(el) {
-        if (!el) return; el.style.height = '38px'; 
-        const newHeight = el.scrollHeight; el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
+        if (!el) return; 
+        el.style.height = '38px'; // 강제 초기화
+        const newHeight = el.scrollHeight; 
+        el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
     }
 
-    function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
+    function refreshAllHeights() { 
+        document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); 
+    }
 
     function removeDefectRow(btn) {
         const container = document.getElementById('defectRowsContainer');
@@ -497,7 +498,6 @@
         [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
     }
 
-    // ✨ 에러 방지막(try-catch)을 씌운 안전한 이미지 로드
     function loadAndDisplayImage(file) {
         try {
             if (!file) throw new Error("파일이 존재하지 않습니다.");
@@ -518,6 +518,7 @@
                 </div>
                 <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
             `;
+            setTimeout(refreshAllHeights, 50); // 높이 복구
         } catch (e) {
             alert("사진을 불러오지 못했습니다: " + e.message);
         }
@@ -534,6 +535,7 @@
                 <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
             </div>
         `;
+        setTimeout(refreshAllHeights, 50); // 축소 시 높이 복구
     }
 
     function handleImageFile(event) {
@@ -591,7 +593,6 @@
         });
     };
 
-    // ✨ 글로벌 붙여넣기 이벤트 안전하게 재작성 (어디서든 Ctrl+V 가능)
     window.addEventListener('paste', function(e) {
         if (!e.clipboardData) return;
         const items = e.clipboardData.items;
@@ -600,7 +601,7 @@
                 e.preventDefault();
                 const file = items[i].getAsFile();
                 if (file) loadAndDisplayImage(file);
-                return; // 하나 넣었으면 바로 종료
+                return; 
             }
         }
     });
@@ -611,7 +612,7 @@
     function toggleExpand() {
         document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
-        setTimeout(refreshAllHeights, 50);
+        setTimeout(refreshAllHeights, 50); // 토글 시 높이 복구
         setTimeout(refreshAllHeights, 150);
         setTimeout(refreshAllHeights, 350);
     }
