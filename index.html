@@ -238,7 +238,7 @@
         const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
         const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
 
-        // 🔥 세련된 그림형 숫자(이모지) 배열
+        // 세련된 그림형 숫자(이모지) 배열
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         if (target === "DUTY") {
@@ -257,7 +257,7 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
 
-                    // 🔥 DUTY도 OCC와 동일한 '카드 뷰 HTML' 서식 적용 (글자 크기 동일화, 색상 제거, ATA 포함)
+                    // DUTY 포맷 (이모지, ATA 포함)
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
                                     `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
@@ -267,16 +267,16 @@
 
             if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
 
-            // 🔥 페이로드를 일반 text가 아닌 cardsV2로 변경하여 컴팩트한 디자인 적용
+            // 🔥 타이틀 "정비 이월 사항 전달"로 변경, 이름은 최하단 배치
             const htmlText = 
-                `🛠️ <b>${이름} DEFER 적용</b><br><br>` +
+                `🛠️ <b>정비 이월 사항 전달</b><br><br>` +
                 `• <b>기번 :</b> ${기번표시}<br>` +
                 `• <b>편명 :</b> ${편명구간}<br>` +
                 `• <b>작성자 :</b> ${공통작성자}<br>` +
                 `• <b>위탁 :</b> ${위탁}<br><br>` +
                 `<b>[ 결함내역 및 조치 ]</b><br>` +
                 html결함묶음 +
-                `<i>${현재시간}</i>`;
+                `<i>${이름} / ${현재시간}</i>`;
 
             payload = {
                 cardsV2: [{
@@ -317,7 +317,7 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
                     
-                    // 🔥 파란색 글씨 (<font color>) 완전 제거, OCC 서식 (ATA 제외)
+                    // OCC 포맷 (이모지 포함, 색상 제거, ATA 제외)
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
                                     `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br><br>`;
@@ -336,7 +336,6 @@
                 ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
                 : "";
 
-            // 🔥 작성자 제외
             const htmlText = 
                 "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
                 "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
