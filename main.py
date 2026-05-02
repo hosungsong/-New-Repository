@@ -25,7 +25,6 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-        # 🚨 OCR은 고도의 공간 인지가 필요하므로 메인 모델 유지
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
         prompt = """
@@ -50,13 +49,14 @@ async def extract_text(file: UploadFile = File(...)):
           - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 서명만 있거나 비어있으면 'AP'.
         - defect: 결함 내용 전체. (27 L SIDE, 24J 등 결함 앞쪽 번호 절대 누락 금지)
         - reason: 'DEFER No.' 칸의 체크 항목(MEL, NEF, CDL, AMM) + 손글씨 번호.
-          🚨 1) 체크박스 판독 주의 (공간 인지): 양식은 'MEL □ NEF □ AMM □' 형태입니다. 
-                 네모칸(□) 안에 V표시가 있다면, 그 네모칸의 **바로 왼쪽**에 적힌 글자가 정답입니다!
-                 - 'MEL' 글자 바로 오른쪽 네모칸에 체크가 있다면 정답은 'MEL'입니다. (절대 우측의 NEF로 오독하지 마세요!)
-                 - 'NEF' 글자 바로 오른쪽 네모칸에 체크가 있다면 정답은 'NEF'입니다.
-          2) 길이 누락 주의: 손글씨 번호가 33-21-01-01-01 처럼 길면 마지막 마디까지 100% 다 적으세요.
-          3) 숫자 1과 7 구별: 상단에 가로줄이 있으면 '7', 단순 세로줄이면 '1'입니다. (예: 25-29-07)
-          4) 양식에 인쇄된 글자(CAT, C, N, D 등)는 철저히 무시하세요.
+          🚨 [DEFER No. 체크박스 판독 절대 규칙 - 오독 금지!]
+          사진의 DEFER No. 칸은 항상 "MEL □ NEF □ AMM □" 순서로 고정되어 있습니다. 
+          V표시(체크)가 몇 번째 네모칸에 있는지 확인하세요.
+          - 1번째 네모칸에 V표시 -> "MEL"
+          - 2번째 네모칸에 V표시 -> "NEF"
+          - 3번째 네모칸에 V표시 -> "AMM"
+          (취소선이 그어진 것은 무시하고, 최종적으로 명확하게 V 체크된 칸을 기준으로 판단하세요.)
+          그 뒤에 적힌 손글씨 번호(예: 33-21-01-01)를 끝까지 이어서 적으세요. (가로줄 7, 세로줄 1 주의)
         - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
         
         🚨 중요: 모든 출력 텍스트(value)는 반드시 대문자(UPPERCASE)로 변환하세요.
@@ -80,11 +80,6 @@ async def extract_raw_text(file: UploadFile = File(...)):
         return {"text": response.text.strip()}
     except Exception as e: return {"error": str(e)}
 
-class DBItem(BaseModel):
-    keyword: str
-    code: Optional[str] = None
-    reason: Optional[str] = None
-
 class SmartSearchRequest(BaseModel):
     defect: str
     search_type: str
@@ -94,8 +89,7 @@ class SmartSearchRequest(BaseModel):
 async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
-        # 🚨 비용 방어 및 속도 향상을 위해 검색 기능만 Lite 모델로 전격 교체
-        model = genai.GenerativeModel('gemini-flash-lite-latest') 
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
         prompt = f"""
         당신은 20년 경력의 항공 정비 마스터입니다.
         사용자가 입력한 결함(Defect) 내용의 진짜 항공기 시스템 문맥(Context)을 파악하세요.
