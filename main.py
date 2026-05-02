@@ -30,11 +30,12 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
+        # 🔥 로그북 종류(CABIN/FLIGHT)에 따른 체크박스 구조 완벽 분리 지시
         prompt = """
         당신은 20년 경력의 항공 정비 로그 분석 마스터입니다. 'DEFER(이월)'가 적용된 항목만 정확하게 추출하세요.
 
         [문서 종류 판별 기준 (매우 중요)]
-        - FLIGHT LOG: 사진 상단 텍스트에 'FLIGHT'라는 단어가 포함되어 있거나, DEFECT 란에 'LEG' 입력 칸이 있는 경우.
+        - FLIGHT LOG: 사진 상단 텍스트에 'FLIGHT'라는 단어가 포함되어 있거나, DEFECT 란에 'LEG' 입력 칸이 있는 경우. (FLIGHT & MAINT LOG 등)
         - CABIN LOG: 문서 상단에 'CABIN LOG'라고만 적혀있거나, DEFECT 란에 'LEG' 칸이 전혀 없는 경우.
         
         [추출 대상 조건 (누락 절대 금지!)]
@@ -58,15 +59,25 @@ async def extract_text(file: UploadFile = File(...)):
           결함 내용 본문은 항상 'ITEM', 'LEG', 'ATA CODE'가 인쇄된 칸의 **바로 아래 넓은 칸**부터 시작됩니다. 
           (단, 본문 안의 24J 등 좌석 번호나 위치 정보는 포함하세요.)
 
-        - reason: 'DEFER No.' 칸의 체크 항목(MEL, NEF, CDL, AMM) + 손글씨 번호.
-          🚨🚨 [시각적 착시 방지 절대 규칙] 🚨🚨
-          사진의 DEFER No. 칸은 무조건 "MEL □ NEF □ AMM □" 순서입니다.
-          손글씨 숫자가 'AMM' 글자를 침범하더라도 절대 'AMM'으로 오독하지 마세요!! 
-          오직 **V표시(체크)가 들어간 네모칸의 순서**만 세어서 판단하세요.
-          - 1번째 칸 체크 -> "MEL"
-          - 2번째 칸 체크 -> 무조건 "NEF" (가운데 네모칸이면 NEF입니다!)
-          - 3번째 칸 체크 -> "AMM"
-          체크된 위치 파악 후, 그 뒤에 손글씨 숫자를 끝까지 이어서 적으세요.
+        - reason: 'DEFER No.' 칸의 표시(체크, V, X 등) 항목 + 손글씨 번호.
+          🚨🚨 [문서 종류별 체크박스 판독 절대 규칙 - 목숨 걸고 지킬 것] 🚨🚨
+          CABIN LOG와 FLIGHT LOG는 체크박스 배열이 완전히 다릅니다! 판별된 문서 종류에 따라 아래 규칙을 엄격히 적용하세요.
+
+          [1] CABIN LOG 인 경우:
+          - 체크박스(□)의 **왼쪽**에 글자가 있습니다. 총 3개의 네모칸이 있습니다.
+          - 1번째 칸에 표시 -> "MEL"
+          - 2번째 칸에 표시 -> "NEF" (가운데 네모칸이면 무조건 NEF입니다!)
+          - 3번째 칸에 표시 -> "AMM"
+
+          [2] FLIGHT LOG (FLIGHT & MAINT LOG) 인 경우:
+          - 체크박스(□)의 **바로 위**에 글자가 있습니다. 총 5개의 네모칸이 일렬로 있습니다.
+          - 1번째 칸(첫 번째)에 표시 -> "MEL"
+          - 2번째 칸에 표시 -> "CDL"
+          - 3번째 칸에 표시 -> "NEF"
+          - 4번째 칸에 표시 -> "SRM"
+          - 5번째 칸에 표시 -> "AMM"
+
+          체크나 엑스 표시된 위치를 정확히 파악한 후, 그 글자(MEL, NEF, CDL 등) 뒤에 근처에 적힌 손글씨 숫자를 끝까지 이어서 적으세요. (예: NEF 23-30-12)
           
         - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
         
@@ -75,7 +86,7 @@ async def extract_text(file: UploadFile = File(...)):
         응답은 순수 JSON만 출력하세요.
         {
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AS", "defect": "ENG 2 REVERSER CTL FAULT DISPLAYED.", "reason": "NEF 23-30-12", "ata": "7834"} ]
+          "items": [ {"asAp": "AS", "defect": "DURING CRZ, ENG 2 REVERSER CTL FAULT DISPLAYED.", "reason": "NEF 23-30-12", "ata": "7834"} ]
         }
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
@@ -101,7 +112,6 @@ async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
-        # 🔥 완벽한 문맥 기반 검색 및 '코드'만 잘라내는 철창 룰 적용
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
         사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 1개의 항목을 찾으세요.
