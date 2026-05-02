@@ -202,7 +202,7 @@
     }
 
     // =========================================================================
-    // 🔥 [이메일 전송 기능] 구글 메일(Gmail) 웹 창 직접 호출 로직 (포맷 변경 완료)
+    // 🔥 [이메일 전송 기능] 확인 팝업 생략하고 즉시 Gmail 창 호출
     // =========================================================================
     function sendEmailViaMailto(target) {
         let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
@@ -250,10 +250,9 @@
             bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
         });
 
-        if (confirm(`📧 [ ${target} 메일 작성 ]\n\n구글 메일 창을 열어 아래 내용으로 작성합니다.\n\n• 수신: ${emails}\n• 제목: ${subjectText}\n• 내용:\n${bodyText}\n\n계속하시겠습니까?`)) {
-            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
-            window.open(gmailUrl, '_blank');
-        }
+        // 🔥 불필요한 confirm 팝업을 날려버리고 즉시 새 탭 오픈!
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+        window.open(gmailUrl, '_blank');
     }
 
     // =========================================================================
