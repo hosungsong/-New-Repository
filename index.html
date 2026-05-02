@@ -232,21 +232,21 @@
         let defectCount = 0;
         let payload;
 
-        // 🔥 공통 작성자(AS/AP) 추출 (DUTY 전송용)
+        // 🔥 공통 작성자(AS/AP) 추출
         const firstId = rows[0].id.split('-')[1];
         const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
         const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
         const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
 
-        // 세련된 그림형 숫자(이모지) 배열
+        // 🔥 세련된 그림형 숫자(이모지) 배열
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         if (target === "DUTY") {
             const 기번표시 = "HL" + 기번 + " (" + acType + ")";
-            const 위탁 = 위탁체크박스상태 ? '*Y* 🔹' : '*N* 🔸';
+            const 위탁 = 위탁체크박스상태 ? 'Y 🔹' : 'N 🔸';
             const 편명구간 = `OZ${flightNo} (${legFrom} ➔ ${legTo})`;
 
-            let 결함내역들 = "";
+            let html결함묶음 = "";
             rows.forEach(row => {
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
@@ -257,24 +257,32 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
 
-                    결함내역들 += `\n${badge} *DEFECT INFO*\n` +
-                                  `  • *결함:* ${결함_raw}\n` +
-                                  `  • *근거:* ${근거_raw}\n` +
-                                  `  • *ATA:* ${ata_raw}\n` +
-                                  `--------------------------------------\n`;
+                    // 🔥 DUTY도 OCC와 동일한 '카드 뷰 HTML' 서식 적용 (글자 크기 동일화, 색상 제거, ATA 포함)
+                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
+                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
+                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
+                                    `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br><br>`;
                 }
             });
 
             if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
 
+            // 🔥 페이로드를 일반 text가 아닌 cardsV2로 변경하여 컴팩트한 디자인 적용
+            const htmlText = 
+                `🛠️ <b>${이름} DEFER 적용</b><br><br>` +
+                `• <b>기번 :</b> ${기번표시}<br>` +
+                `• <b>편명 :</b> ${편명구간}<br>` +
+                `• <b>작성자 :</b> ${공통작성자}<br>` +
+                `• <b>위탁 :</b> ${위탁}<br><br>` +
+                `<b>[ 결함내역 및 조치 ]</b><br>` +
+                html결함묶음 +
+                `<i>${현재시간}</i>`;
+
             payload = {
-                "text": `*${이름} DEFER 적용 (${현재시간})*\n\n` +
-                        `• *기번 :* ${기번표시}\n` +
-                        `• *편명 :* ${편명구간}\n` +
-                        `• *작성자 :* ${공통작성자}\n` +
-                        `• *위탁 :* ${위탁}\n` +
-                        `======================================\n` +
-                        `${결함내역들}`
+                cardsV2: [{
+                    cardId: "dutyCard",
+                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
+                }]
             };
 
         } else if (target === "OCC") {
@@ -309,9 +317,10 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
                     
+                    // 🔥 파란색 글씨 (<font color>) 완전 제거, OCC 서식 (ATA 제외)
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>근거:</b> <font color="#3498db">${근거_raw}</font><br><br>`;
+                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br><br>`;
 
                     const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
                     if (!hasGpsIssue) {
@@ -327,7 +336,7 @@
                 ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
                 : "";
 
-            // 🔥 OCC 전송 텍스트에서 '작성자' 정보 제거
+            // 🔥 작성자 제외
             const htmlText = 
                 "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
                 "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
