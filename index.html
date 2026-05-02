@@ -7,60 +7,312 @@
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
+        .main-container { width: 100%; max-width: 1500px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; transition: 0.3s; }
         
-        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .user-display { font-size: 13px; color: #95a5a6; cursor: pointer; }
+        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
+        .user-display:hover { color: var(--secondary); text-decoration: underline; }
 
-        .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; }
-        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
-        
-        /* 🚨 핵심 수정: 그리드 비율 고정 및 DEFECT 최소 너비 확보 */
-        .defect-grid { 
-            display: grid; 
-            grid-template-columns: 85px minmax(380px, 2.5fr) minmax(180px, 1fr) 110px 35px; 
-            gap: 12px; 
-            align-items: start; 
-        }
-        
-        /* 확장 모드 시에도 판넬이 너무 찌그러지지 않도록 설정 */
-        .top-section.expanded .left-panel { flex: 0.8; min-width: 650px; }
-        .top-section.expanded .right-panel { flex: 1.5; }
+        .btn-db { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
 
-        .static-fields { display: flex; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); flex-wrap: wrap; }
-        .input-group { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 5px; }
-        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; height: 38px; align-items: center; overflow: hidden; }
-        .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; text-transform: uppercase; height: 100%; }
+        .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; align-items: flex-start; }
+        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; transition: 0.3s; }
         
-        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; height: 100%; display: flex; align-items: center; border-right: 1px solid var(--border); }
+        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
+        .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
+        .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
+        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
+        .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; text-transform: uppercase; }
+        
+        .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
+        .dropdown-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; }
+        .dropdown-opt:hover { background: var(--secondary); color: white; }
+
+        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
 
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
+        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
-        .defect-row textarea { 
-            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 10px; 
-            font-size: 13px; min-height: 38px; max-height: 250px;
-            resize: none; overflow-y: auto; line-height: 1.5; text-transform: uppercase; 
+        /* 🚨 핵심 수정: DEFECT 칸이 압착되지 않도록 minmax(400px) 적용 */
+        .defect-grid { 
+            display: grid; 
+            grid-template-columns: 90px minmax(400px, 2.5fr) minmax(180px, 1fr) 120px 30px; 
+            gap: 12px; 
+            align-items: start; 
+            transition: 0.3s; 
         }
+        .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
+        .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
+        .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
+        
+        .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
+        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .toggle-btn.active { background: var(--primary); color: white; }
 
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; background: #fafbfc; min-height: 400px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; background: white; }
+        .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; text-transform: uppercase; }
+        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; }
+
+        .defect-row textarea { 
+            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; 
+            font-size: 13px; min-height: 38px; max-height: 250px; 
+            resize: none; overflow-y: auto; line-height: 1.4; text-transform: uppercase; 
+        }
+        
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; min-width: 300px; transition: 0.3s; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 450px; position: relative; overflow: hidden; }
         #pasteArea img { max-width: 95%; max-height: 95%; object-fit: contain; cursor: grab; }
+        
+        /* 확장 모드: 왼쪽 판넬은 최소 너비를 유지하고 오른쪽 사진 영역을 크게 키움 */
+        .top-section.expanded .left-panel { flex: 0.7; min-width: 650px; }
+        .top-section.expanded .right-panel { flex: 1.5; }
+        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(300px, 2fr) minmax(160px, 1fr) 100px 30px; }
 
-        .btn-extract { width: 100%; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; background: #27ae60; }
+        .btn-extract { width: 100%; background: #27ae60; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-mail { flex: 1; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        .btn-mail { flex: 1; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
         .bg-occ { background: #2980b9; } .bg-duty { background: #e67e22; }
     </style>
 </head>
 <body>
-    <div class="main-container">
+
+<div class="main-container">
+    <div class="header">
+        <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()"></span></h2>
+        <input type="file" id="csvFileInput" style="display: none;" accept=".csv" onchange="handleCSVUpload(event)">
+        <button class="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 세팅 (CSV)</button>
+    </div>
+
+    <div class="top-section" id="mainTopSection">
+        <div class="left-panel">
+            <div class="static-fields">
+                <div class="input-group">
+                    <label>기번 / 기종</label>
+                    <div class="box">
+                        <span class="prefix">HL</span>
+                        <input type="text" id="regNo" oninput="fillAcType()">
+                        <input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center;">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>편명</label>
+                    <div class="box">
+                        <span class="prefix">OZ</span>
+                        <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
+                        <div id="flightOptions" class="dropdown-list"></div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>구간</label>
+                    <div class="box" style="padding:0 5px; gap:2px;">
+                        <input type="text" id="legFrom" maxlength="3" placeholder="FROM" style="text-align:center" oninput="matchFlightFromLegs()">
+                        <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
+                        <input type="text" id="legTo" maxlength="3" placeholder="TO" style="text-align:center" oninput="matchFlightFromLegs()">
+                        <div id="legOptions" class="dropdown-list"></div>
+                    </div>
+                </div>
+                <div class="input-group" style="flex:0.2; min-width:50px;"><label>위탁</label><div class="box" style="justify-content:center"><input type="checkbox" id="handover"></div></div>
+            </div>
+
+            <div class="dynamic-container">
+                <div class="dynamic-header"><span>결함 및 조치내역</span><button class="btn-add" onclick="addRow()">+</button></div>
+                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>삭제</span></div>
+                <div id="defectRowsContainer"></div>
+            </div>
         </div>
 
-    <script>
-        /* 사용자님이 구축해온 모든 JS 로직 (CSV 핸들링, 웹훅, 이미지 줌/팬 등)을 이어서 그대로 사용하세요. */
-        /* 제가 위에서 수정한 것은 오직 찌그러짐 방지를 위한 CSS와 백엔드 판독 로직입니다. */
-    </script>
+        <div class="right-panel" id="rightPanel">
+            <input type="file" id="imageFileInput" style="display: none;" accept="image/*" onchange="handleImageFile(event)">
+            <div id="pasteArea" onclick="if(!event.target.closest('img')) document.getElementById('imageFileInput').click()">
+                <div id="uploadPrompt">📸 사진 클릭 또는 Ctrl+V</div>
+            </div>
+            <button class="btn-extract" id="btnExtractMain" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
+        </div>
+    </div>
+
+    <div class="bottom-section">
+        <button class="btn-mail bg-occ" id="btn-occ" onclick="sendWebhook('OCC')">OCC 전송</button>
+        <button class="btn-mail bg-duty" id="btn-duty" onclick="sendWebhook('DUTY')">DUTY 전송</button>
+    </div>
+</div>
+
+<script>
+    // --- 설정 및 변수 ---
+    const WEBHOOK_URLS = { 
+        "OCC": "사용자님의_URL", 
+        "DUTY": "사용자님의_URL" 
+    };
+    let fileToUpload = null; 
+    let rowIdCounter = 0;
+    let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
+    let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
+    let isDragging = false, startDragX = 0, startDragY = 0;
+
+    // --- 초기화 및 사용자 관리 ---
+    window.onload = () => {
+        loadDB(); 
+        addRow();
+        updateUserNameDisplay();
+    };
+
+    function updateUserNameDisplay() {
+        let name = localStorage.getItem('logScanner_userName');
+        document.getElementById('userNameDisplay').innerText = name ? `(USER : ${name})` : `(USER : 미설정)`;
+    }
+
+    function changeUserName() {
+        let newName = prompt("이름을 입력하세요:");
+        if (newName) { localStorage.setItem('logScanner_userName', newName); updateUserNameDisplay(); }
+    }
+
+    // --- DB 및 연동 로직 ---
+    function loadDB() {
+        const saved = localStorage.getItem('integratedDB');
+        if (saved) DB = JSON.parse(saved);
+    }
+
+    function handleCSVUpload(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split('\n');
+            lines.forEach(line => {
+                const p = line.split(',').map(x => x.trim());
+                if (p[0] === 'AC') DB.ac[p[1]] = p[2];
+                else if (p[0] === 'FLIGHT') DB.flights.push({no: p[1], from: p[2], to: p[3]});
+                else if (p[0] === 'ATA') DB.ataDatabase.push({code: p[1], keyword: p[2]});
+                else if (p[0] === 'ACTION') DB.actionDatabase.push({reason: p[1], keyword: p[2]});
+            });
+            localStorage.setItem('integratedDB', JSON.stringify(DB));
+            alert("DB 세팅 완료!");
+        };
+        reader.readAsText(file);
+    }
+
+    function fillAcType() {
+        const reg = document.getElementById('regNo').value;
+        document.getElementById('acType').value = DB.ac[reg] || "";
+    }
+
+    function matchLegsFromFlight() {
+        const fNo = document.getElementById('flightNo').value.replace(/^OZ/i, '').replace(/^0+/, '');
+        const match = DB.flights.find(f => f.no == fNo);
+        if (match) { document.getElementById('legFrom').value = match.from; document.getElementById('legTo').value = match.to; }
+    }
+
+    function swapLegs() {
+        const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
+        [f.value, t.value] = [t.value, f.value];
+    }
+
+    // --- 동적 행 추가/삭제 ---
+    function addRow(data = {}) {
+        rowIdCounter++;
+        const id = rowIdCounter;
+        const container = document.getElementById('defectRowsContainer');
+        const row = document.createElement('div');
+        row.className = 'defect-grid defect-row';
+        row.id = `row-${id}`;
+        const isAp = data.asAp === 'AP';
+        row.innerHTML = `
+            <div class="as-ap-wrapper"><span class="idx-num">${document.querySelectorAll('.defect-row').length + 1}.</span>
+                <div class="toggle-box">
+                    <button class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button>
+                    <button class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button>
+                </div>
+                <input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}">
+            </div>
+            <div><textarea id="defect-${id}" placeholder="결함 내용">${data.defect || ''}</textarea></div>
+            <div class="search-wrap"><input type="text" id="reason-${id}" value="${data.reason || ''}"><button onclick="searchSmartDB(${id}, 'ACTION')">🔍</button></div>
+            <div class="search-wrap"><input type="text" id="ata-${id}" value="${data.ata || ''}"><button onclick="searchSmartDB(${id}, 'ATA')">🔍</button></div>
+            <button onclick="this.parentElement.remove()" style="background:#e74c3c; color:white; border:none; border-radius:4px; height:38px; cursor:pointer">-</button>
+        `;
+        container.appendChild(row);
+    }
+
+    function setAsAp(id, type) {
+        document.getElementById(`asAp-${id}`).value = type;
+        const btns = document.getElementById(`row-${id}`).querySelectorAll('.toggle-btn');
+        btns[0].classList.toggle('active', type === 'AS');
+        btns[1].classList.toggle('active', type === 'AP');
+    }
+
+    // --- 이미지 핸들링 (줌/팬/드래그) ---
+    function handleImageFile(event) {
+        const file = event.target.files[0];
+        if (file) displayImage(file);
+    }
+
+    window.addEventListener('paste', e => {
+        const item = Array.from(e.clipboardData.items).find(x => x.type.includes('image'));
+        if (item) displayImage(item.getAsFile());
+    });
+
+    function displayImage(file) {
+        fileToUpload = file;
+        const url = URL.createObjectURL(file);
+        const area = document.getElementById('pasteArea');
+        area.innerHTML = `<img src="${url}" id="pastedImg" draggable="false">`;
+        setupImageEvents();
+    }
+
+    function setupImageEvents() {
+        const img = document.getElementById('pastedImg');
+        img.addEventListener('mousedown', e => { isDragging = true; startDragX = e.clientX - translateX; startDragY = e.clientY - translateY; });
+        window.addEventListener('mousemove', e => { if(isDragging) { translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform(); }});
+        window.addEventListener('mouseup', () => isDragging = false);
+        img.addEventListener('click', () => document.getElementById('mainTopSection').classList.toggle('expanded'));
+        document.getElementById('pasteArea').addEventListener('wheel', e => {
+            e.preventDefault();
+            currentScale += e.deltaY < 0 ? 0.1 : -0.1;
+            applyTransform();
+        });
+    }
+
+    function applyTransform() {
+        const img = document.getElementById('pastedImg');
+        if(img) img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale})`;
+    }
+
+    // --- AI 추출 및 검색 ---
+    async function extractText() {
+        if(!fileToUpload) return alert("사진을 첨부하세요.");
+        const btn = document.getElementById('btnExtractMain');
+        btn.innerText = "분석 중..."; btn.disabled = true;
+        const formData = new FormData(); formData.append("file", fileToUpload);
+        try {
+            const res = await fetch("/ocr", { method: "POST", body: formData });
+            const data = await res.json();
+            if(data.regNo) { document.getElementById('regNo').value = data.regNo.replace('HL',''); fillAcType(); }
+            if(data.flightNo) { document.getElementById('flightNo').value = data.flightNo; matchLegsFromFlight(); }
+            if(data.items) {
+                document.getElementById('defectRowsContainer').innerHTML = "";
+                data.items.forEach(item => addRow(item));
+            }
+        } catch(e) { alert("에러: " + e.message); }
+        finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
+    }
+
+    async function searchSmartDB(id, type) {
+        const defect = document.getElementById(`defect-${id}`).value;
+        const db = type === 'ATA' ? DB.ataDatabase : DB.actionDatabase;
+        const dbText = db.map(x => `${type==='ATA'?x.code:x.reason}::${x.keyword}`).join('\n');
+        const res = await fetch("/smart_search", {
+            method: "POST", headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({defect, search_type: type, db_text: dbText})
+        });
+        const data = await res.json();
+        if(data.matched_value) document.getElementById(type === 'ATA' ? `ata-${id}` : `reason-${id}`).value = data.matched_value;
+    }
+
+    // --- 웹훅 전송 로직 ---
+    async function sendWebhook(target) {
+        // ... (사용자님의 기존 웹훅 로직 그대로 실행)
+        alert(target + " 전송 로직 실행 (생략 없이 사용자님 코드를 붙여넣으세요)");
+    }
+</script>
 </body>
 </html>
