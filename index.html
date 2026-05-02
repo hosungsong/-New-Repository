@@ -57,7 +57,6 @@
 
         .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; transition: height 0.1s; text-transform: uppercase; } 
         
-        .ata-wrapper { position: relative; }
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
@@ -68,10 +67,8 @@
         
         .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
         
-        /* ✨ 카메라 버튼 및 안내문구 스타일 업데이트 */
-        .upload-prompt { padding: 20px; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
-        .camera-btn { font-size: 40px; margin-bottom: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 75px; height: 75px; background: white; border: 2px solid #bdc3c7; border-radius: 50%; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .camera-btn:hover { background: var(--bg); transform: scale(1.08); border-color: var(--secondary); box-shadow: 0 6px 15px rgba(52, 152, 219, 0.2); }
+        .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
+        .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
         .top-section.expanded .left-panel { flex: 0.8; }
         .top-section.expanded .right-panel { flex: 1.5; }
@@ -93,6 +90,8 @@
         .btn-extract.main { flex: 2; background: #27ae60; }
         .btn-extract.sub { flex: 1; background: #8e44ad; }
         .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
 
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -146,17 +145,17 @@
             </div>
         </div>
         <div class="right-panel" id="rightPanel">
-            <input type="file" id="imageFileInput" style="display: none;" accept="image/*" onchange="handleImageFile(event)">
+            
+            <input type="file" id="imageFileInput" style="position: absolute; width: 1px; height: 1px; opacity: 0; z-index: -1;" accept="image/*" onchange="handleImageFile(event)">
             
             <div id="pasteArea">
-                <div class="upload-prompt">
-                    <div class="camera-btn" onclick="document.getElementById('imageFileInput').click()" title="클릭하여 파일 찾기">
-                        <span>📸</span>
-                    </div>
-                    <div style="pointer-events: none;">카메라 아이콘을 터치하여 사진 첨부</div>
-                    <span style="font-size: 12px; color: #7f8c8d; margin-top: 8px; font-weight: normal; pointer-events: none;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
+                <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
+                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
+                    이곳을 터치(클릭)하여 사진 첨부<br>
+                    <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
                 </div>
             </div>
+            <textarea id="rawTextArea" placeholder="추출된 텍스트가 이곳에 표시됩니다..."></textarea>
             <div class="action-buttons">
                 <button class="btn-extract main" id="btnExtractMain" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
                 <button class="btn-extract sub" onclick="extractRawText()">📝 TEXT 추출</button>
@@ -185,7 +184,7 @@
     function updateUserNameDisplay() {
         let name = localStorage.getItem('logScanner_userName');
         const displayEl = document.getElementById('userNameDisplay');
-        displayEl.innerText = name ? `(USER : ${name})` : `(USER : 미설정)`;
+        if (displayEl) displayEl.innerText = name ? `(USER : ${name})` : `(USER : 미설정)`;
     }
 
     function changeUserName() {
@@ -498,34 +497,41 @@
         [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
     }
 
+    // ✨ 에러 방지막(try-catch)을 씌운 안전한 이미지 로드
     function loadAndDisplayImage(file) {
-        fileToUpload = file; const url = URL.createObjectURL(fileToUpload);
-        currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
-        document.getElementById('mainTopSection').classList.remove('expanded'); 
-        document.getElementById('rightPanel').classList.remove('text-extract-mode');
-        document.getElementById('rawTextArea').style.display = 'none';
+        try {
+            if (!file) throw new Error("파일이 존재하지 않습니다.");
+            
+            fileToUpload = file; 
+            const url = URL.createObjectURL(fileToUpload);
+            
+            currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
+            document.getElementById('mainTopSection').classList.remove('expanded'); 
+            document.getElementById('rightPanel').classList.remove('text-extract-mode');
+            document.getElementById('rawTextArea').style.display = 'none';
 
-        document.getElementById('pasteArea').innerHTML = `
-            <div class="img-tools">
-                <button class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
-                <button class="btn-tool" onclick="rotateImg(event)">↻</button>
-                <button class="btn-tool btn-close" onclick="resetImage(event)">✖</button>
-            </div>
-            <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
-        `;
+            document.getElementById('pasteArea').innerHTML = `
+                <div class="img-tools">
+                    <button class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
+                    <button class="btn-tool" onclick="rotateImg(event)">↻</button>
+                    <button class="btn-tool btn-close" onclick="resetImage(event)">✖</button>
+                </div>
+                <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
+            `;
+        } catch (e) {
+            alert("사진을 불러오지 못했습니다: " + e.message);
+        }
     }
 
     function resetImage(e) {
         if(e) e.stopPropagation();
-        fileToUpload = null; document.getElementById('imageFileInput').value = "";
+        fileToUpload = null; 
+        document.getElementById('imageFileInput').value = "";
         document.getElementById('mainTopSection').classList.remove('expanded');
         document.getElementById('pasteArea').innerHTML = `
-            <div class="upload-prompt">
-                <div class="camera-btn" onclick="document.getElementById('imageFileInput').click()" title="클릭하여 파일 찾기">
-                    <span>📸</span>
-                </div>
-                <div style="pointer-events: none;">카메라 아이콘을 터치하여 사진 첨부</div>
-                <span style="font-size: 12px; color: #7f8c8d; margin-top: 8px; font-weight: normal; pointer-events: none;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
+            <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
+                <div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치(클릭)하여 사진 첨부<br>
+                <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
             </div>
         `;
     }
@@ -542,8 +548,8 @@
 
         window.addEventListener('mousedown', (e) => { 
             if (!e.target.closest('.input-group')) {
-                document.getElementById('flightOptions').style.display = "none"; 
-                document.getElementById('legOptions').style.display = "none"; 
+                const opt1 = document.getElementById('flightOptions'); if(opt1) opt1.style.display = "none"; 
+                const opt2 = document.getElementById('legOptions'); if(opt2) opt2.style.display = "none"; 
             }
         });
 
@@ -583,16 +589,21 @@
             }
             isDragging = false;
         });
-        
-        // ✨ 글로벌 Ctrl+V 지원 (화면 어디서든 사진 붙여넣기)
-        window.addEventListener('paste', (e) => {
-            const item = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).find(x => x.type.indexOf("image") !== -1);
-            if (item) {
-                e.preventDefault();
-                loadAndDisplayImage(item.getAsFile());
-            }
-        });
     };
+
+    // ✨ 글로벌 붙여넣기 이벤트 안전하게 재작성 (어디서든 Ctrl+V 가능)
+    window.addEventListener('paste', function(e) {
+        if (!e.clipboardData) return;
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                e.preventDefault();
+                const file = items[i].getAsFile();
+                if (file) loadAndDisplayImage(file);
+                return; // 하나 넣었으면 바로 종료
+            }
+        }
+    });
 
     function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
     function rotateImg(e) { e.stopPropagation(); currentRotation += 90; applyTransform(); }
@@ -613,6 +624,7 @@
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
             const data = await res.json();
+            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
             if (data.regNo) { document.getElementById('regNo').value = data.regNo.replace(/^HL/, ""); fillAcType(); }
             if (data.flightNo) { 
@@ -626,11 +638,8 @@
                 matchFlightFromLegs(); 
             }
             
-            const firstRowDefect = document.getElementById('defect-1');
-            const firstRowIsEmpty = firstRowDefect && firstRowDefect.value.trim() === '';
-            
             if (data.items && data.items.length > 0) {
-                if (firstRowIsEmpty) { document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0; }
+                document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
                 data.items.forEach(item => addRow(item));
                 setTimeout(refreshAllHeights, 150); 
             } else {
