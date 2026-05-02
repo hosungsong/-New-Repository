@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 app = FastAPI()
-# CORS 설정: 프론트엔드와 원활한 통신을 위해 전체 허용
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -22,72 +21,100 @@ async def keep_alive_ping(): return {"status": "awake"}
 
 @app.post("/ocr")
 async def extract_text(file: UploadFile = File(...)):
-    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
-    try:
-        content = await file.read()
-        image = Image.open(io.BytesIO(content))
-        # 사용자 검증 모델 유지
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
+    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
+    try:
+        content = await file.read()
+        image = Image.open(io.BytesIO(content))
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        prompt = """
-        당신은 20년 경력의 항공 정비 로그 분석 마스터입니다.
-        아래 지시사항을 0.1%의 오차도 없이 수행하세요.
+        prompt = """
+        당신은 20년 경력의 항공 정비 로그 분석 마스터입니다. 'DEFER(이월)'가 적용된 항목만 정확하게 추출하세요.
 
-        [🚨 체크박스 공간 인지 규칙 - 절대 준수]
-        - 양식: [텍스트] □ (예: MEL □ NEF □ AMM □)
-        - 규칙: 체크(V, X, 또는 칠해짐)가 표시된 네모칸(□)을 찾고, 그 네모칸의 **바로 왼쪽**에 있는 단어를 'reason'으로 추출하세요.
-        - 중요: 'CABIN LOG면 NEF일 것이다'라는 선입견을 버리세요. 시각적으로 'MEL' 옆에 체크가 있다면 무조건 'MEL'입니다.
+        [문서 종류 판별 기준 (매우 중요)]
+        - FLIGHT LOG: 사진 상단 텍스트에 'FLIGHT'라는 단어가 포함되어 있거나, DEFECT 란에 'LEG' 입력 칸이 있는 경우.
+        - CABIN LOG: 문서 상단에 'CABIN LOG'라고만 적혀있거나, DEFECT 란에 'LEG' 칸이 전혀 없는 경우.
+        
+        [추출 대상 조건 (누락 절대 금지!)]
+        - 'ACTION TAKEN' 칸에 'DEFERRED'라는 단어가 적혀 있거나, 'DEFER No.' 체크박스에 표시가 된 항목은 단 하나도 빠짐없이 모두 추출하세요.
+        - 단, 결함 내용이 아예 없는 빈 줄(Empty row)은 결과(items)에 절대 포함하지 마세요.
+        
+        [공통 추출 지시]
+        1. regNo: 'HL'로 시작하는 기번 숫자.
+        2. legFrom, legTo: 구간 정보 3자리 영문.
+        3. flightNo: 'FLIGHT NO' 칸의 숫자. 🚨중요: 'OZ' 영문자나 앞자리 '0'은 무조건 버리고 순수 숫자만 추출하세요.
+        
+        [결함 추출 (items) 상세 규칙 🚨]
+        - asAp: 
+          - CABIN LOG인 경우: 무조건 'AS' 고정!
+          - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 서명만 있거나 비어있으면 'AP'.
+        - defect: 결함 내용 전체. (27 L SIDE, 24J 등 결함 앞쪽 번호 절대 누락 금지)
+        - reason: 'DEFER No.' 칸의 체크 항목(MEL, NEF, CDL, AMM) + 손글씨 번호.
+          🚨 1) 체크박스 판독 주의 (공간 인지): 양식은 'MEL □ NEF □ AMM □' 형태입니다. 
+                 네모칸(□) 안에 V표시가 있다면, 그 네모칸의 **바로 왼쪽**에 적힌 글자가 정답입니다!
+                 - 'MEL' 글자 바로 오른쪽 네모칸에 체크가 있다면 정답은 'MEL'입니다. (절대 우측의 NEF로 오독하지 마세요!)
+                 - 'NEF' 글자 바로 오른쪽 네모칸에 체크가 있다면 정답은 'NEF'입니다.
+          2) 길이 누락 주의: 손글씨 번호가 33-21-01-01-01 처럼 길면 마지막 마디까지 100% 다 적으세요.
+          3) 숫자 1과 7 구별: 상단에 가로줄이 있으면 '7', 단순 세로줄이면 '1'입니다. (예: 25-29-07)
+          4) 양식에 인쇄된 글자(CAT, C, N, D 등)는 철저히 무시하세요.
+        - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
+        
+        🚨 중요: 모든 출력 텍스트(value)는 반드시 대문자(UPPERCASE)로 변환하세요.
 
-        [추출 대상 및 데이터 가공]
-        - 'ACTION TAKEN' 칸에 'DEFERRED'가 포함된 항목만 추출.
-        - regNo: 'HL' 뒤의 숫자.
-        - flightNo: 'OZ'와 앞자리 '0'을 제거한 순수 숫자. (예: OZ0752 -> 752)
-        - asAp: 
-            - CABIN LOG: 무조건 'AS'
-            - FLIGHT LOG: 정비사 도장(Stamp) 확인 시 'AS', 서명만 있으면 'AP'
-        - defect: 결함 위치(27L, 34K 등)와 결함 내용 전체.
-        - reason: 판독된 체크박스 텍스트(MEL/NEF 등) + 근거 번호 전체.
-        - 모든 결과는 대문자(UPPERCASE).
-
-        응답 형식 (순수 JSON):
-        {
-          "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AS", "defect": "DEFECT TEXT", "reason": "MEL 25-21-01", "ata": "2521"} ]
-        }
-        """
-        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
-        return json.loads(response.text.strip())
-    except Exception as e: return {"error": f"AI 분석 오류: {str(e)}"}
+        응답은 순수 JSON만 출력하세요.
+        {
+          "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
+          "items": [ {"asAp": "AS", "defect": "27 L SIDE CEILING LIGHT OUT", "reason": "MEL 33-21-01-01-01", "ata": "3321"} ]
+        }
+        """
+        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
+        return json.loads(response.text.strip())
+    except Exception as e: return {"error": f"AI 분석 오류: {str(e)}"}
 
 @app.post("/extract_raw")
 async def extract_raw_text(file: UploadFile = File(...)):
-    try:
-        content = await file.read(); image = Image.open(io.BytesIO(content))
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
-        response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image])
-        return {"text": response.text.strip()}
-    except Exception as e: return {"error": str(e)}
+    try:
+        content = await file.read(); image = Image.open(io.BytesIO(content))
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image])
+        return {"text": response.text.strip()}
+    except Exception as e: return {"error": str(e)}
+
+class DBItem(BaseModel):
+    keyword: str
+    code: Optional[str] = None
+    reason: Optional[str] = None
 
 class SmartSearchRequest(BaseModel):
-    defect: str
-    search_type: str
-    db_text: str
+    defect: str
+    search_type: str
+    db_text: str
 
 @app.post("/smart_search")
 async def smart_search(req: SmartSearchRequest):
-    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
-    try:
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
-        prompt = f"""
-        정비사 문맥으로 매칭하세요.
-        결함: "{req.defect}"
-        DB: {req.db_text}
-        형식: {{"matched_value": "값"}}
-        """
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
-        return json.loads(response.text.strip())
-    except Exception as e: return {"error": str(e)}
+    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
+    try:
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        prompt = f"""
+        당신은 20년 경력의 항공 정비 마스터입니다.
+        사용자가 입력한 결함(Defect) 내용의 진짜 항공기 시스템 문맥(Context)을 파악하세요.
+        결함 내용: "{req.defect}"
+        
+        아래는 사용자의 커스텀 데이터베이스({req.search_type} DB)입니다. (형식: [정답값]::[키워드])
+        정비사로서 결함의 원인과 가장 알맞은 항목 딱 1개만 골라서 그 항목의 '정답값'을 찾아주세요.
+        
+        [초압축 커스텀 DB 목록]
+        {req.db_text}
+        
+        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요. 매칭되는 것이 도저히 없다면 빈 문자열("")로 두세요.
+        {{
+            "matched_value": "찾은 정답값(대문자)"
+        }}
+        """
+        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
+        return json.loads(response.text.strip())
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
