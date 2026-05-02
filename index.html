@@ -227,31 +227,40 @@
         const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 
         const rows = document.querySelectorAll('.defect-row');
+        if (rows.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+        
         let defectCount = 0;
         let payload;
+
+        // 🔥 공통 작성자(AS/AP) 추출 (DUTY 전송용)
+        const firstId = rows[0].id.split('-')[1];
+        const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
+        const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
+        const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
+
+        // 세련된 그림형 숫자(이모지) 배열
+        const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         if (target === "DUTY") {
             const 기번표시 = "HL" + 기번 + " (" + acType + ")";
             const 위탁 = 위탁체크박스상태 ? '*Y* 🔹' : '*N* 🔸';
-            // 편명과 구간 병합
             const 편명구간 = `OZ${flightNo} (${legFrom} ➔ ${legTo})`;
 
             let 결함내역들 = "";
             rows.forEach(row => {
                 const id = row.id.split('-')[1];
-                const 구분_raw = document.getElementById(`asAp-${id}`).value;
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
                 const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
                 const ata_raw = document.getElementById(`ata-${id}`).value.trim() || '미입력';
 
                 if (결함_raw) {
                     defectCount++;
-                    let 구분아이콘 = (구분_raw === "AP") ? " 👨‍✈️" : " 🔧";
-                    // 항목 간 묶음 서식 적용 및 이쁘게 포맷팅
-                    결함내역들 += `\n*<font color="#3498db">[ ${defectCount}번 항목 ]</font>*\n` +
-                                  `• *구분 :* ${구분_raw}${구분아이콘} | *ATA :* ${ata_raw}\n` +
-                                  `• *결함 :* ${결함_raw}\n` +
-                                  `• *근거 :* ${근거_raw}\n` +
+                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
+
+                    결함내역들 += `\n${badge} *DEFECT INFO*\n` +
+                                  `  • *결함:* ${결함_raw}\n` +
+                                  `  • *근거:* ${근거_raw}\n` +
+                                  `  • *ATA:* ${ata_raw}\n` +
                                   `--------------------------------------\n`;
                 }
             });
@@ -262,6 +271,7 @@
                 "text": `*${이름} DEFER 적용 (${현재시간})*\n\n` +
                         `• *기번 :* ${기번표시}\n` +
                         `• *편명 :* ${편명구간}\n` +
+                        `• *작성자 :* ${공통작성자}\n` +
                         `• *위탁 :* ${위탁}\n` +
                         `======================================\n` +
                         `${결함내역들}`
@@ -297,8 +307,11 @@
 
                 if (결함_raw) {
                     defectCount++;
-                    // OCC 카드 내에서도 결함/근거를 묶어서 표시
-                    html결함묶음 += `<b>[${defectCount}]</b> ${결함_raw}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#7f8c8d">➔ ${근거_raw}</font><br><br>`;
+                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
+                    
+                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
+                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
+                                    `&nbsp;&nbsp;• <b>근거:</b> <font color="#3498db">${근거_raw}</font><br><br>`;
 
                     const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
                     if (!hasGpsIssue) {
@@ -314,12 +327,13 @@
                 ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
                 : "";
 
+            // 🔥 OCC 전송 텍스트에서 '작성자' 정보 제거
             const htmlText = 
                 "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
                 "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
                 "• <b>편명 :</b> " + 편명구간 + "<br><br>" +
-                "• <b>결함내역 및 근거 :</b><br>" + html결함묶음 +
-                gpsNotice + "<br><br>" + 
+                "<b>[ 결함내역 및 조치 ]</b><br>" + html결함묶음 +
+                gpsNotice + 
                 "<i>" + 이름 + " / " + 현재시간 + "</i>";
 
             payload = {
