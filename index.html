@@ -34,7 +34,6 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* ✨ 원래의 타이트하고 완벽했던 황금 비율로 롤백 (180px) */
         .defect-grid { display: grid; grid-template-columns: 90px 1fr 180px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -63,12 +62,11 @@
         #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: max-height 0.3s; }
         #pasteArea img:active { cursor: grabbing; }
         
-        /* ✨ 확장 모드 비율도 원복 */
         .top-section.expanded .left-panel { flex: 0.8; }
         .top-section.expanded .right-panel { flex: 1.5; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px 1fr 140px 100px 30px; } 
+        .top-section.expanded .defect-grid { grid-template-columns: 85px 1fr 180px 100px 30px; } 
         .top-section.expanded #pasteArea { min-height: 600px; }
         .top-section.expanded #pasteArea img { max-height: 85vh; }
 
@@ -447,10 +445,13 @@
             if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
         });
 
+        // 🚨 1번 문제 해결: 마우스 이벤트(좌클릭 0번)일 때만 확대 실행! (우클릭 2번 방지)
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5) { if (e.target.id === 'pastedImg') toggleExpand(); }
+                if (diffX < 5 && diffY < 5 && e.button === 0) { 
+                    if (e.target.id === 'pastedImg') toggleExpand(); 
+                }
             }
             isDragging = false;
         });
@@ -487,22 +488,11 @@
                 matchFlightFromLegs(); 
             }
 
-            // 첫 번째 수동 입력 칸 보호! 값이 있으면 그 밑에 추가, 아예 비어있으면 거기를 채움
-            const firstRowDefect = document.getElementById('defect-1');
-            const firstRowIsEmpty = firstRowDefect && firstRowDefect.value.trim() === '';
-            
-            if (data.items && data.items.length > 0) {
-                if (firstRowIsEmpty) {
-                    // 첫 번째 칸이 비어있으면 싹 지우고 채움 (초기 상태)
-                    document.getElementById('defectRowsContainer').innerHTML = ""; 
-                    rowIdCounter = 0;
-                    data.items.forEach(item => addRow(item));
-                    addRow(); // 그리고 젤 밑에 새 빈칸 추가
-                } else {
-                    // 이미 입력된 게 있으면 건드리지 않고 밑에 이어서 추가
-                    data.items.forEach(item => addRow(item));
-                    addRow();
-                }
+            // 🚨 2번 문제 해결: 무의미한 빈칸 추가 삭제. 딱 검색된 만큼만 그림.
+            if (data.items && data.items.length > 0) { 
+                document.getElementById('defectRowsContainer').innerHTML = ""; 
+                rowIdCounter = 0;
+                data.items.forEach(item => addRow(item)); 
                 setTimeout(refreshAllHeights, 150); 
             } else { 
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다."); 
