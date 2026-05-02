@@ -30,7 +30,6 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        # 🔥 AI의 착시 현상을 강제로 교정하는 매우 강력한 프롬프트
         prompt = """
         당신은 20년 경력의 항공 정비 로그 분석 마스터입니다. 'DEFER(이월)'가 적용된 항목만 정확하게 추출하세요.
 
