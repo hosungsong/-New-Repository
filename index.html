@@ -75,11 +75,13 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
+        /* 🔥 확대 모드: 좌우 50:50 비율 보장 및 버튼 짤림 방지 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(180px, 1fr) 130px 90px 30px; } 
+        /* 버튼이 보이도록 pasteArea의 높이를 유동적으로 제한 */
         .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
         .top-section.expanded #pasteArea img { max-height: 100%; }
 
@@ -176,9 +178,10 @@
 </div>
 
 <script>
+    // 🔥 실전용 Webhook URL 교체 완료
     const WEBHOOK_URLS = {
-        "OCC": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc",
-        "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAeFqbrlM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0O7s7w-wY1pTHNpPFMt8Pgg2sYtYvQErELuCP4ywOPc"
+        "OCC": "https://chat.googleapis.com/v1/spaces/AAQAkm9cIHk/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DHRSasF0dZDVUu2cb2QUqM5RNjQOD3Q5BIpWOBEjJro",
+        "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAyIkJVWM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=vrARRhME-upDKnSnLiWZ2qnycamT6XyxhaSSZH8vOXg"
     };
 
     let fileToUpload = null; let rowIdCounter = 0;
@@ -202,7 +205,7 @@
     }
 
     // =========================================================================
-    // 🔥 [이메일 전송 기능] 확인 팝업 생략하고 즉시 Gmail 창 호출
+    // 🔥 [이메일 전송 기능] 확인 팝업 생략하고 즉시 Gmail 창 호출 (양식 변경 완료)
     // =========================================================================
     function sendEmailViaMailto(target) {
         let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
