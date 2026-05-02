@@ -52,7 +52,6 @@
         .toggle-btn.active { background: var(--primary); color: white; }
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; background: white; }
-        /* text-transform 제거 */
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; }
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .search-wrap button:hover { background: #2c3e50; }
@@ -102,7 +101,7 @@
         #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
 
         .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
     </style>
 </head>
@@ -172,8 +171,8 @@
     </div>
     <div class="bottom-section">
         <button class="btn-mail bg-occ" id="btn-occ" onclick="sendWebhook('OCC')">OCC 전송</button>
-        <button class="btn-mail bg-icn">ICN 전송</button>
-        <button class="btn-mail bg-gmp">GMP 전송</button>
+        <button class="btn-mail bg-icn" id="btn-icn" onclick="sendEmailViaMailto('ICN')">ICN 전송</button>
+        <button class="btn-mail bg-gmp" id="btn-gmp" onclick="sendEmailViaMailto('GMP')">GMP 전송</button>
         <button class="btn-mail bg-duty" id="btn-duty" onclick="sendWebhook('DUTY')">DUTY 전송</button>
     </div>
 </div>
@@ -185,7 +184,7 @@
     };
 
     let fileToUpload = null; let rowIdCounter = 0;
-    let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {} };
+    let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
 
@@ -204,6 +203,42 @@
         }
     }
 
+    // =========================================================================
+    // 🔥 [이메일 전송 기능] mailto를 활용한 로컬 메일앱 호출
+    // =========================================================================
+    function sendEmailViaMailto(target) {
+        // 1. CSV 데이터베이스에서 검색 -> 2. 로컬스토리지에서 검색
+        let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
+        
+        if (!emails) {
+            emails = prompt(`📧 [${target} 전송 설정]\n수신할 이메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
+            if (emails && emails.trim() !== "") {
+                localStorage.setItem(`logScanner_email_${target}`, emails.trim());
+            } else {
+                return; // 취소 시 종료
+            }
+        }
+
+        const 기번 = document.getElementById('regNo').value.trim() || '미확인';
+        const acType = document.getElementById('acType').value.trim() || '기종미상';
+        const flightNo = document.getElementById('flightNo').value.trim() || '미상';
+        const legFrom = document.getElementById('legFrom').value.trim().toUpperCase() || '???';
+        const legTo = document.getElementById('legTo').value.trim().toUpperCase() || '???';
+
+        // 사용자 요구 포맷
+        const subjectText = `[Dispatch Approval] HL${기번}(${acType}) OZ${flightNo} ${legFrom}-${legTo}`;
+        const bodyText = `[Dispatch Approval] HL${기번}(${acType}) OZ${flightNo}, ${legFrom}-${legTo} 확인 완료 했습니다.`;
+
+        // 전송 확인 팝업
+        if (confirm(`📧 [ ${target} 메일 작성 ]\n\n기본 메일 앱(아웃룩 등)을 열어 아래 내용으로 메일을 작성합니다.\n\n• 수신: ${emails}\n• 제목: ${subjectText}\n• 내용: ${bodyText}\n\n계속하시겠습니까?`)) {
+            // mailto 링크 실행 (텍스트 인코딩 필수)
+            window.location.href = `mailto:${emails}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+        }
+    }
+
+    // =========================================================================
+    // 🔥 [웹훅 전송] OCC & DUTY 
+    // =========================================================================
     async function sendWebhook(target) {
         const url = WEBHOOK_URLS[target];
         if (!url) { alert(target + " 용 웹훅 주소가 설정되지 않았습니다."); return; }
@@ -232,13 +267,11 @@
         let defectCount = 0;
         let payload;
 
-        // 🔥 공통 작성자(AS/AP) 추출
         const firstId = rows[0].id.split('-')[1];
         const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
         const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
         const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
 
-        // 세련된 그림형 숫자(이모지) 배열
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         if (target === "DUTY") {
@@ -257,7 +290,7 @@
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
 
-                    // DUTY 포맷 (이모지, ATA 포함)
+                    // DUTY 포맷 (이모지, 색상 제거, ATA 포함)
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
                                     `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
@@ -267,7 +300,6 @@
 
             if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
 
-            // 🔥 타이틀 "정비 이월 사항 전달"로 변경, 이름은 최하단 배치
             const htmlText = 
                 `🛠️ <b>정비 이월 사항 전달</b><br><br>` +
                 `• <b>기번 :</b> ${기번표시}<br>` +
@@ -366,7 +398,7 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
-            let newAta = [], newAction = [], newFlights = [], newAc = {};
+            let newAta = [], newAction = [], newFlights = [], newAc = {}, newEmails = {};
             lines.forEach(line => {
                 const parts = line.split(',').map(p => p.trim());
                 if (parts.length >= 2) {
@@ -381,10 +413,13 @@
                         newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
                     } else if (type === 'AC' && parts.length >= 3) {
                         newAc[parts[1]] = parts[2];
+                    } else if (type === 'EMAIL' && parts.length >= 3) {
+                        // 🔥 이메일 CSV 파싱 로직 추가 (예: EMAIL, ICN, user@abc.com)
+                        newEmails[parts[1].toUpperCase()] = parts.slice(2).join(',').trim();
                     }
                 }
             });
-            DB.ataDatabase = newAta; DB.actionDatabase = newAction; DB.flights = newFlights; DB.ac = newAc;
+            DB.ataDatabase = newAta; DB.actionDatabase = newAction; DB.flights = newFlights; DB.ac = newAc; DB.emails = newEmails;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
             alert(`✅ DB 세팅 완료!`); location.reload(); 
         };
@@ -537,7 +572,6 @@
                 </div>
                 <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
             `;
-            // 초기화 시 높이 정렬
             setTimeout(refreshAllHeights, 50);
         } catch (e) {
             alert("사진을 불러오지 못했습니다: " + e.message);
@@ -555,7 +589,6 @@
                 <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
             </div>
         `;
-        // 리셋 시 높이 정렬
         setTimeout(refreshAllHeights, 50);
     }
 
@@ -634,7 +667,6 @@
         document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
         
-        // 🔥 확장/축소 렌더링 완료 타이밍을 기다리며 텍스트 박스 높이 원상복구
         setTimeout(refreshAllHeights, 50);
         setTimeout(refreshAllHeights, 150);
         setTimeout(refreshAllHeights, 400); 
