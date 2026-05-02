@@ -30,7 +30,6 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        # 🔥 ITEM 번호 추출 금지 및 시각적 착시 방지 프롬프트 완벽 적용
         prompt = """
         당신은 20년 경력의 항공 정비 로그 분석 마스터입니다. 'DEFER(이월)'가 적용된 항목만 정확하게 추출하세요.
 
@@ -57,16 +56,17 @@ async def extract_text(file: UploadFile = File(...)):
           사진의 'ITEM' 칸(보통 1, 2, 3 또는 A, B, C가 적힌 작은 네모 칸)에 있는 번호나 알파벳은 결함 텍스트가 아닙니다! 
           추출한 defect 결과 텍스트 맨 앞에 이 ITEM 번호/알파벳을 절대 붙이지 마세요.
           결함 내용 본문은 항상 'ITEM', 'LEG', 'ATA CODE'가 인쇄된 칸의 **바로 아래 넓은 칸**부터 시작됩니다. 
-          (단, 결함 내용 본문 안에 쓰여진 24J 같은 좌석 번호나 27 L SIDE 같은 위치 정보는 누락하지 말고 반드시 포함하세요.)
+          (단, 본문 안의 24J 등 좌석 번호나 위치 정보는 포함하세요.)
 
         - reason: 'DEFER No.' 칸의 체크 항목(MEL, NEF, CDL, AMM) + 손글씨 번호.
-          🚨🚨 [시각적 착시 방지 절대 규칙 - 목숨 걸고 지킬 것] 🚨🚨
+          🚨🚨 [시각적 착시 방지 절대 규칙] 🚨🚨
           사진의 DEFER No. 칸은 무조건 "MEL □ NEF □ AMM □" 순서입니다.
-          손글씨 숫자(예: 23-30-12)가 'AMM' 글자를 침범하거나 바로 옆에 바짝 붙어서 시작한다고 해서, 절대 'AMM'으로 묶어서 오독하지 마세요!! 숫자의 위치에 현혹되지 말고, 오직 **V표시(체크)가 들어간 네모칸의 순서**만 세어서 판단하세요.
-          - 1번째 네모칸에 체크(V) -> "MEL"
-          - 2번째 네모칸에 체크(V) -> 무조건 "NEF" (가운데 네모칸이면 무조건 NEF입니다!)
-          - 3번째 네모칸에 체크(V) -> "AMM"
-          체크된 위치를 정확히 파악한 후, 그 글자 뒤에 손글씨 숫자를 끝까지 이어서 적으세요.
+          손글씨 숫자가 'AMM' 글자를 침범하더라도 절대 'AMM'으로 오독하지 마세요!! 
+          오직 **V표시(체크)가 들어간 네모칸의 순서**만 세어서 판단하세요.
+          - 1번째 칸 체크 -> "MEL"
+          - 2번째 칸 체크 -> 무조건 "NEF" (가운데 네모칸이면 NEF입니다!)
+          - 3번째 칸 체크 -> "AMM"
+          체크된 위치 파악 후, 그 뒤에 손글씨 숫자를 끝까지 이어서 적으세요.
           
         - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
         
@@ -75,7 +75,7 @@ async def extract_text(file: UploadFile = File(...)):
         응답은 순수 JSON만 출력하세요.
         {
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AS", "defect": "DURING CRZ, ENG 2 REVERSER CTL FAULT DISPLAYED.", "reason": "NEF 23-30-12", "ata": "7834"} ]
+          "items": [ {"asAp": "AS", "defect": "ENG 2 REVERSER CTL FAULT DISPLAYED.", "reason": "NEF 23-30-12", "ata": "7834"} ]
         }
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
@@ -101,14 +101,26 @@ async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
+        # 🔥 완벽한 문맥 기반 검색 및 '코드'만 잘라내는 철창 룰 적용
         prompt = f"""
-        사용자가 입력한 결함(Defect) 내용에 알맞은 {req.search_type} 항목 딱 1개를 고르세요.
-        결함 내용: "{req.defect}"
-        [초압축 커스텀 DB 목록]
+        당신은 항공 정비 데이터베이스 검색 마스터입니다.
+        사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 1개의 항목을 찾으세요.
+
+        사용자 결함 내용: "{req.defect}"
+
+        [DB 목록 형식]
+        결함적용코드::결함키워드
+
+        [DB 목록]
         {req.db_text}
         
-        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
-        {{"matched_value": "찾은 정답값(대문자)"}}
+        🚨 출력 절대 규칙 🚨
+        1. 정답을 찾으면 '::' 앞부분인 [결함적용코드]만 정확히 추출하세요. (예: NEF 25-10-01)
+        2. '::' 기호나 그 뒤의 결함키워드(예: ENG 2 FADEC...)는 절대 출력에 포함하지 마세요. 오직 코드만 필요합니다.
+        3. 응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
+
+        출력 예시:
+        {{"matched_value": "NEF 25-10-01"}}
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
