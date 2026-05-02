@@ -19,9 +19,6 @@ async def serve_frontend(): return FileResponse("index.html")
 @app.get("/ping")
 async def keep_alive_ping(): return {"status": "awake"}
 
-# ----------------------------------------
-# 기존: 사진 분석용 OCR 라우터
-# ----------------------------------------
 @app.post("/ocr")
 async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
@@ -31,32 +28,34 @@ async def extract_text(file: UploadFile = File(...)):
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
         prompt = """
-        당신은 항공 정비 로그 분석 전문가입니다. 'DEFER(이월)'가 적용된 항목만 추출하세요.
+        당신은 항공 정비 로그 분석 전문가입니다. 'DEFER(이월)'가 적용된 결함만 정확하게 추출하세요.
 
         [문서 종류 판별 기준 (매우 중요)]
-        - FLIGHT LOG: 사진 상단 텍스트에 'FLIGHT'라는 단어가 포함되어 있거나 (예: FLIGHT LOG, FLIGHT & MAINT. LOG), DEFECT 란에 'LEG' 입력 칸이 있는 경우 무조건 FLIGHT LOG로 판단합니다.
+        - FLIGHT LOG: 사진 상단 텍스트에 'FLIGHT'라는 단어가 포함되어 있거나, DEFECT 란에 'LEG' 입력 칸이 있는 경우.
         - CABIN LOG: 문서 상단에 'CABIN LOG'라고만 적혀있거나, DEFECT 란에 'LEG' 칸이 전혀 없는 경우.
         
-        [수정 사항 처리 규칙]
-        - 글자에 취소선(Strikethrough)이 있고 근처에 다른 단어가 있다면 취소선 단어는 무시하고 새 단어를 채택.
+        [추출 대상 조건 (누락 절대 금지!)]
+        - 'ACTION TAKEN' 칸에 'DEFERRED'라는 단어가 적혀 있거나, 'DEFER No.' 체크박스에 표시가 된 항목은 **단 하나도 빠짐없이 모두** 추출하세요. (예: 24J Table Unbalanced 등)
+        - 🚨 단, 결함 내용이 아예 없는 빈 줄(Empty object)은 결과 배열(items)에 절대 포함하지 마세요.
         
-        [공통 추출]
-        1. regNo: 'HL'로 시작하는 기번.
-        2. legFrom, legTo: 구간 정보 3자리 영문.
-        3. flightNo: 'FLIGHT NO' 칸의 숫자.
-        
-        [결함 추출 (items)]
+        [결함 추출 (items) 상세 규칙]
         - asAp: 
-          - CABIN LOG인 경우: 무조건 'AS'로 고정!
-          - FLIGHT LOG인 경우: 왼쪽 'ENTERED BY' 칸에 타원형/원형의 '정비사 도장(Stamp)'이 명확하게 찍혀 있으면 'AS'. 글씨(서명)만 있거나 텅 비어있으면 무조건 'AP'.
-        - defect: 결함 내용 전체.
-        - reason: 'DEFER No.' 칸에 체크된 항목(MEL, NEF 등)과 손글씨 번호 결합 (예: MEL 25-20-05A).
+          - CABIN LOG인 경우: 무조건 'AS' 고정!
+          - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 서명만 있거나 비어있으면 'AP'.
+        - defect: 결함 내용 전체. 
+          - 🚨 앞에 적힌 숫자나 좌석번호(예: 24J, 27)는 절대 누락하지 마세요. 
+          - 애매한 필기체는 취소선이 아니므로 무조건 살려서 추출하세요. 완벽한 가로줄만 취소선으로 인정합니다.
+        - reason: 'DEFER No.' 칸의 정확한 체크 항목(MEL, NEF, CDL, AMM) + 손글씨 번호.
+          - 체크박스의 'V' 표시 위치를 아주 정확히 판독하세요. (MEL에 체크되었으면 반드시 MEL 출력)
+          - 손글씨 번호(예: 33-21-01-01)만 길게 모두 추출하고, 양식에 미리 인쇄된 'CAT', 'C', 'N', 'D' 같은 글자는 절대 포함하지 마세요.
         - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
         
+        🚨 중요: 모든 출력 텍스트(value)는 반드시 **대문자(UPPERCASE)**로 변환하여 출력하세요.
+
         응답은 순수 JSON만 출력하세요.
         {
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AS", "defect": "", "reason": "", "ata": ""} ]
+          "items": [ {"asAp": "AS", "defect": "27 L SIDE CEILING LIGHT OUT", "reason": "MEL 33-21-01-01", "ata": "3321"} ]
         }
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
@@ -72,9 +71,6 @@ async def extract_raw_text(file: UploadFile = File(...)):
         return {"text": response.text.strip()}
     except Exception as e: return {"error": str(e)}
 
-# ----------------------------------------
-# 신규: 진짜 AI 문맥 기반 스마트 DB 검색 라우터
-# ----------------------------------------
 class DBItem(BaseModel):
     keyword: str
     code: Optional[str] = None
@@ -93,24 +89,17 @@ async def smart_search(req: SmartSearchRequest):
         db_json = json.dumps([d.dict() for d in req.db], ensure_ascii=False)
         
         prompt = f"""
-        당신은 20년 경력의 B777, A350 항공 정비 마스터입니다.
+        당신은 20년 경력의 항공 정비 마스터입니다.
         사용자가 입력한 결함(Defect) 내용의 **진짜 항공기 시스템 문맥(Context)**을 파악하세요.
-        (예: 'NO SEAT'라는 단어가 승객 좌석인지, 밸브의 안착 불량(Hydraulic/Pneumatic)인지 문맥으로 구별해야 합니다.)
-
         결함 내용: "{req.defect}"
-
-        아래는 사용자의 커스텀 데이터베이스({req.search_type} DB)입니다. 
-        절대로 단순 글자(Ctrl+F) 매칭을 하지 말고, 정비사로서 결함의 원인을 파악하여 이 DB 안에서 가장 알맞은 항목 딱 1개만 골라주세요.
-        
+        아래 커스텀 데이터베이스({req.search_type} DB)에서 단순 글자 매칭이 아닌, 정비사로서 결함의 원인과 가장 알맞은 항목 딱 1개만 골라주세요.
         [커스텀 DB 목록]
         {db_json}
-        
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요. 매칭되는 것이 도저히 없다면 빈 문자열("")로 두세요.
         {{
-            "matched_value": "여기서 찾은 가장 적절한 code 또는 reason 값"
+            "matched_value": "찾은 값(대문자)"
         }}
         """
-        
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
     except Exception as e:
