@@ -345,6 +345,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // ✨ 100만 토큰 우회를 위한 DB 압축 전송 로직
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
@@ -357,9 +358,16 @@
         if (!dbToSearch || dbToSearch.length === 0) return alert(`⚠️ 해당 DB(${searchType})가 등록되어 있지 않습니다.`);
         const btn = document.getElementById(btnId); btn.innerText = "⏳"; btn.disabled = true;
 
+        // DB 배열을 "정답값::키워드" 형태의 문자열 1개로 압축 (JSON 중괄호 및 불필요 토큰 완벽 제거)
+        const compressedDB = dbToSearch.map(d => {
+            const val = isAta ? d.code : d.reason;
+            return `${val}::${d.keyword}`;
+        }).join('\n');
+
         try {
             const res = await fetch("/smart_search", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ defect: text, search_type: searchType, db: dbToSearch })
+                method: "POST", headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ defect: text, search_type: searchType, db_text: compressedDB })
             });
             const data = await res.json();
             if (data.error) { alert("⚠️ " + data.error); }
@@ -445,13 +453,10 @@
             if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
         });
 
-        // 🚨 1번 문제 해결: 마우스 이벤트(좌클릭 0번)일 때만 확대 실행! (우클릭 2번 방지)
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5 && e.button === 0) { 
-                    if (e.target.id === 'pastedImg') toggleExpand(); 
-                }
+                if (diffX < 5 && diffY < 5 && e.button === 0) { if (e.target.id === 'pastedImg') toggleExpand(); }
             }
             isDragging = false;
         });
@@ -488,7 +493,6 @@
                 matchFlightFromLegs(); 
             }
 
-            // 🚨 2번 문제 해결: 무의미한 빈칸 추가 삭제. 딱 검색된 만큼만 그림.
             if (data.items && data.items.length > 0) { 
                 document.getElementById('defectRowsContainer').innerHTML = ""; 
                 rowIdCounter = 0;
@@ -498,20 +502,6 @@
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다."); 
             }
         } catch (e) { alert("⚠️ 에러: " + e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
-    }
-
-    async function extractRawText() {
-        if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
-        const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
-        const formData = new FormData(); formData.append("file", fileToUpload);
-
-        try {
-            const res = await fetch("/extract_raw", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
-            document.getElementById('rightPanel').classList.add('text-extract-mode');
-            const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
-        } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; }
     }
 </script>
 </body>
