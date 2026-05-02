@@ -24,6 +24,7 @@
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
+        /* text-transform 제거하여 수동 입력 시 대소문자 유지 */
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
         .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
@@ -55,6 +56,7 @@
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .search-wrap button:hover { background: #2c3e50; }
 
+        /* textarea text-transform 제거 및 초기 높이 제어 속성 최적화 */
         .defect-row textarea { 
             width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
             font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
@@ -73,11 +75,13 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
+        /* 🔥 확대 모드: 좌우 50:50 비율 보장 및 버튼 짤림 방지 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(180px, 1fr) 130px 90px 30px; } 
+        /* 버튼이 보이도록 pasteArea의 높이를 유동적으로 제한 */
         .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
         .top-section.expanded #pasteArea img { max-height: 100%; }
 
@@ -203,10 +207,12 @@
         let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
         
         if (!emails) {
-            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).`, "");
+            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
             if (emails && emails.trim() !== "") {
                 localStorage.setItem(`logScanner_email_${target}`, emails.trim());
-            } else return;
+            } else {
+                return;
+            }
         }
 
         const 기번 = document.getElementById('regNo').value.trim() || '미확인';
@@ -225,10 +231,15 @@
             }
         });
 
-        if (defectList.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+        if (defectList.length === 0) {
+            alert("전송할 결함 내용이 없습니다.");
+            return;
+        }
 
         let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}`;
-        if (defectList.length > 1) { subjectText += ` etc`; }
+        if (defectList.length > 1) {
+            subjectText += ` etc`;
+        }
 
         let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
         defectList.forEach((item, index) => {
@@ -329,7 +340,10 @@
             };
 
             let searchAcType = acType.toUpperCase();
-            if (searchAcType.includes("A32N")) searchAcType = searchAcType.replace("A32N", "A321");
+            // 🔥 웹훅 전송 시에도 A321 정규화 통일 적용
+            if (searchAcType.includes("A321") || searchAcType.includes("A32N")) {
+                searchAcType = "A321";
+            }
 
             let targetGpsCodes = [];
             for (const ac in gpsCodesByAcType) {
@@ -391,7 +405,6 @@
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
 
-    // 🔥 [수정] CSV 파싱 로직: NEF, MEL, 기존 ACTION 완벽 분리 지원
     function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -406,13 +419,10 @@
                         const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
                     } else if (type === 'NEF' && parts.length >= 3) {
-                        // NEF 포맷: NEF, 25-20-01, TABLE UNBALANCED
                         newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase() });
                     } else if (type === 'MEL' && parts.length >= 4) {
-                        // MEL 포맷: MEL, 33-21-01-01A, B777, CEILING LIGHT OUT
                         newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase() });
                     } else if (type === 'ACTION' && parts.length >= 3) {
-                        // 기존 하위 호환
                         const key = parts[2] ? parts[2].toUpperCase() : "";
                         if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key });
                     } else if (type === 'FLIGHT' && parts.length >= 4) {
@@ -527,7 +537,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 [수정] 기종에 따라 MEL DB를 스마트하게 필터링하여 AI에게 전달
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
@@ -540,21 +549,24 @@
         if (!dbToSearch || dbToSearch.length === 0) return alert(`⚠️ 해당 DB(${searchType})가 등록되어 있지 않습니다.`);
         const btn = document.getElementById(btnId); btn.innerText = "⏳"; btn.disabled = true;
 
-        const currentAcType = document.getElementById('acType').value.trim().toUpperCase();
+        let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
+        
+        // 🔥 기종 정규화 (A321, A32N, A321NEO 등을 모두 A321로 통일)
+        if (currentAcType.includes("A321") || currentAcType.includes("A32N")) {
+            currentAcType = "A321";
+        }
+
         let compressedDB = "";
 
         if (isAta) {
             compressedDB = dbToSearch.map(d => `${d.code}::${d.keyword}`).join('\n');
         } else {
-            // 🔥 ACTION(MEL/NEF) 검색 시: 기종 필터링 적용
             const validActions = dbToSearch.filter(d => {
                 if (d.type === 'MEL' && d.acType !== 'ALL') {
-                    // 현재 입력된 기종(예: B777)이 DB의 기종과 일치하는지 확인
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
                 }
-                return true; // NEF나 기존 ACTION 데이터는 통과
+                return true; 
             });
-            // AI에게 전달될 때 "NEF 25-20-01" 형태로 완벽하게 조립해서 전달
             compressedDB = validActions.map(d => {
                 const prefix = d.type ? d.type + ' ' : '';
                 return `${prefix}${d.code}::${d.keyword}`;
