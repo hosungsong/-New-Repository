@@ -24,6 +24,7 @@
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
+        /* text-transform 제거하여 수동 입력 시 대소문자 유지 */
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
         .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
@@ -55,6 +56,7 @@
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .search-wrap button:hover { background: #2c3e50; }
 
+        /* textarea text-transform 제거 및 초기 높이 제어 속성 최적화 */
         .defect-row textarea { 
             width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
             font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
@@ -200,10 +202,9 @@
     }
 
     // =========================================================================
-    // 🔥 [이메일 전송 기능] 구글 메일(Gmail) 웹 창 직접 호출 로직
+    // 🔥 [이메일 전송 기능] 구글 메일(Gmail) 웹 창 직접 호출 로직 (포맷 변경 완료)
     // =========================================================================
     function sendEmailViaMailto(target) {
-        // 1. CSV 데이터베이스에서 검색 -> 2. 로컬스토리지에서 검색
         let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
         
         if (!emails) {
@@ -211,33 +212,52 @@
             if (emails && emails.trim() !== "") {
                 localStorage.setItem(`logScanner_email_${target}`, emails.trim());
             } else {
-                return; // 취소 시 종료
+                return;
             }
         }
 
         const 기번 = document.getElementById('regNo').value.trim() || '미확인';
         const acType = document.getElementById('acType').value.trim() || '기종미상';
-        const flightNo = document.getElementById('flightNo').value.trim() || '미상';
-        const legFrom = document.getElementById('legFrom').value.trim().toUpperCase() || '???';
-        const legTo = document.getElementById('legTo').value.trim().toUpperCase() || '???';
 
-        // 사용자 요구 포맷
-        const subjectText = `[Dispatch Approval] HL${기번}(${acType}) OZ${flightNo} ${legFrom}-${legTo}`;
-        const bodyText = `[Dispatch Approval] HL${기번}(${acType}) OZ${flightNo}, ${legFrom}-${legTo} 확인 완료 했습니다.`;
-
-        // 전송 확인 팝업
-        if (confirm(`📧 [ ${target} 메일 작성 ]\n\n구글 메일 창을 열어 아래 내용으로 작성합니다.\n\n• 수신: ${emails}\n• 제목: ${subjectText}\n• 내용: ${bodyText}\n\n계속하시겠습니까?`)) {
+        // 1. 화면에 있는 결함 목록 긁어오기
+        const rows = document.querySelectorAll('.defect-row');
+        let defectList = [];
+        
+        rows.forEach(row => {
+            const id = row.id.split('-')[1];
+            const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
+            const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
             
-            // 🔥 아웃룩(mailto) 대신, 구글 메일(Gmail) Compose 창을 강제로 띄우는 URL
+            if (결함_raw) {
+                defectList.push({ defect: 결함_raw, reason: 근거_raw });
+            }
+        });
+
+        if (defectList.length === 0) {
+            alert("전송할 결함 내용이 없습니다.");
+            return;
+        }
+
+        // 2. 제목 생성: [Dispatch Approval] HL7700(B777) 결함내용 (2개 이상이면 etc 추가)
+        let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}`;
+        if (defectList.length > 1) {
+            subjectText += ` etc`;
+        }
+
+        // 3. 본문 생성: 사용자 요청 포맷 완벽 반영
+        let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
+        defectList.forEach((item, index) => {
+            bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
+        });
+
+        if (confirm(`📧 [ ${target} 메일 작성 ]\n\n구글 메일 창을 열어 아래 내용으로 작성합니다.\n\n• 수신: ${emails}\n• 제목: ${subjectText}\n• 내용:\n${bodyText}\n\n계속하시겠습니까?`)) {
             const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
-            
-            // 새 탭에서 구글 메일 쓰기 창 열기
             window.open(gmailUrl, '_blank');
         }
     }
 
     // =========================================================================
-    // 🔥 [웹훅 전송] OCC & DUTY 
+    // [웹훅 전송] OCC & DUTY 
     // =========================================================================
     async function sendWebhook(target) {
         const url = WEBHOOK_URLS[target];
@@ -412,7 +432,6 @@
                     } else if (type === 'AC' && parts.length >= 3) {
                         newAc[parts[1]] = parts[2];
                     } else if (type === 'EMAIL' && parts.length >= 3) {
-                        // 🔥 이메일 CSV 파싱 로직 추가 (예: EMAIL, ICN, user@abc.com)
                         newEmails[parts[1].toUpperCase()] = parts.slice(2).join(',').trim();
                     }
                 }
