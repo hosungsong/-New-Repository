@@ -75,13 +75,12 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🔥 확대 모드: 좌우 50:50 비율 보장 및 버튼 짤림 방지 */
+        /* 🔥 확대 모드 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(180px, 1fr) 130px 90px 30px; } 
-        /* 버튼이 보이도록 pasteArea의 높이를 유동적으로 제한 */
         .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
         .top-section.expanded #pasteArea img { max-height: 100%; }
 
@@ -111,7 +110,7 @@
     <div class="header">
         <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()" title="클릭하여 이름 변경"></span></h2>
         <input type="file" id="csvFileInput" style="display: none;" accept=".csv" onchange="handleCSVUpload(event)">
-        <button class="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 세팅 (CSV)</button>
+        <button class="btn-db" id="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 세팅 (CSV)</button>
     </div>
 
     <div class="top-section" id="mainTopSection">
@@ -187,6 +186,55 @@
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
+
+    // =========================================================================
+    // 🔥 [신규] 대용량 DB 처리를 위한 IndexedDB 래퍼(Wrapper) 함수
+    // =========================================================================
+    const DB_NAME = "LogScannerDB";
+    const STORE_NAME = "Storage";
+
+    function saveToIndexedDB(data) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                const store = tx.objectStore(STORE_NAME);
+                store.put(data, "integratedDB"); // DB 구조 전체를 "integratedDB" 키에 저장
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    function loadFromIndexedDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
+                const tx = db.transaction(STORE_NAME, "readonly");
+                const store = tx.objectStore(STORE_NAME);
+                const getReq = store.get("integratedDB");
+                getReq.onsuccess = () => resolve(getReq.result);
+                getReq.onerror = () => reject(getReq.error);
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
 
     function updateUserNameDisplay() {
         let name = localStorage.getItem('logScanner_userName');
@@ -340,7 +388,6 @@
             };
 
             let searchAcType = acType.toUpperCase();
-            // 🔥 웹훅 전송 시에도 A321 정규화 통일 적용
             if (searchAcType.includes("A321") || searchAcType.includes("A32N")) {
                 searchAcType = "A321";
             }
@@ -405,45 +452,71 @@
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
 
+    // 🔥 [수정] 대용량 처리를 위해 버튼 텍스트 변경 후 IndexedDB에 저장하도록 비동기 처리
     function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
+        
+        const btn = document.getElementById('btn-db');
+        const originText = btn.innerText;
+        btn.innerText = "대용량 DB 처리 중... ⏳";
+        btn.disabled = true;
+
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const lines = e.target.result.split('\n');
-            let newAta = [], newAction = [], newFlights = [], newAc = {}, newEmails = {};
-            lines.forEach(line => {
-                const parts = line.split(',').map(p => p.trim());
-                if (parts.length >= 2) {
-                    const type = parts[0].toUpperCase();
-                    if (type === 'ATA') {
-                        const key = parts[2] ? parts[2].toUpperCase() : "";
-                        if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
-                    } else if (type === 'NEF' && parts.length >= 3) {
-                        newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase() });
-                    } else if (type === 'MEL' && parts.length >= 4) {
-                        newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase() });
-                    } else if (type === 'ACTION' && parts.length >= 3) {
-                        const key = parts[2] ? parts[2].toUpperCase() : "";
-                        if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key });
-                    } else if (type === 'FLIGHT' && parts.length >= 4) {
-                        newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
-                    } else if (type === 'AC' && parts.length >= 3) {
-                        newAc[parts[1]] = parts[2];
-                    } else if (type === 'EMAIL' && parts.length >= 3) {
-                        newEmails[parts[1].toUpperCase()] = parts.slice(2).join(',').trim();
+        reader.onload = async function(e) {
+            try {
+                const lines = e.target.result.split('\n');
+                let newAta = [], newAction = [], newFlights = [], newAc = {}, newEmails = {};
+                lines.forEach(line => {
+                    const parts = line.split(',').map(p => p.trim());
+                    if (parts.length >= 2) {
+                        const type = parts[0].toUpperCase();
+                        if (type === 'ATA') {
+                            const key = parts[2] ? parts[2].toUpperCase() : "";
+                            if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
+                        } else if (type === 'NEF' && parts.length >= 3) {
+                            newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase() });
+                        } else if (type === 'MEL' && parts.length >= 4) {
+                            newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase() });
+                        } else if (type === 'ACTION' && parts.length >= 3) {
+                            const key = parts[2] ? parts[2].toUpperCase() : "";
+                            if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key });
+                        } else if (type === 'FLIGHT' && parts.length >= 4) {
+                            newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
+                        } else if (type === 'AC' && parts.length >= 3) {
+                            newAc[parts[1]] = parts[2];
+                        } else if (type === 'EMAIL' && parts.length >= 3) {
+                            newEmails[parts[1].toUpperCase()] = parts.slice(2).join(',').trim();
+                        }
                     }
-                }
-            });
-            DB.ataDatabase = newAta; DB.actionDatabase = newAction; DB.flights = newFlights; DB.ac = newAc; DB.emails = newEmails;
-            localStorage.setItem('integratedDB', JSON.stringify(DB));
-            alert(`✅ DB 세팅 완료!`); location.reload(); 
+                });
+                
+                // 기존 localStorage에서 IndexedDB로 저장 방식 변경
+                const newDB = { ataDatabase: newAta, actionDatabase: newAction, flights: newFlights, ac: newAc, emails: newEmails };
+                await saveToIndexedDB(newDB);
+                
+                // 찌꺼기 로컬 스토리지 데이터 삭제 (최초 1회 정리용)
+                localStorage.removeItem('integratedDB'); 
+                
+                alert(`✅ 대용량 DB 세팅 완료!`); 
+                location.reload(); 
+            } catch (err) {
+                alert("⚠️ DB 저장 중 오류 발생: " + err.message);
+            } finally {
+                btn.innerText = originText;
+                btn.disabled = false;
+            }
         };
         reader.readAsText(file);
     }
 
-    function loadDB() {
-        const saved = localStorage.getItem('integratedDB');
-        if (saved) { DB = JSON.parse(saved); }
+    // 🔥 [수정] IndexedDB에서 비동기적으로 DB를 불러오도록 변경
+    async function loadDB() {
+        try {
+            const saved = await loadFromIndexedDB();
+            if (saved) { DB = saved; }
+        } catch (e) {
+            console.error("DB 로드 실패:", e);
+        }
     }
 
     function fillAcType() {
@@ -551,7 +624,6 @@
 
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         
-        // 🔥 기종 정규화 (A321, A32N, A321NEO 등을 모두 A321로 통일)
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) {
             currentAcType = "A321";
         }
@@ -639,8 +711,11 @@
         event.target.value = ""; 
     }
 
-    window.onload = () => { 
-        loadDB(); addRow(); setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
+    // 🔥 [수정] 비동기로 DB가 로드될 때까지 기다리도록 개선
+    window.onload = async () => { 
+        await loadDB(); 
+        addRow(); 
+        setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
         updateUserNameDisplay(); 
 
         window.addEventListener('mousedown', (e) => { 
