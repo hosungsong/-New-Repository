@@ -30,63 +30,46 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        # 🔥 로그북 종류(CABIN/FLIGHT)에 따른 체크박스 구조 완벽 분리 지시
+        # 🔥 AP/AS 판독 및 체크박스 로직이 극도로 강화된 프롬프트
         prompt = """
-        당신은 20년 경력의 항공 정비 로그 분석 마스터입니다. 'DEFER(이월)'가 적용된 항목만 정확하게 추출하세요.
+        당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 규칙을 0.1%의 오차도 없이 지키세요.
 
-        [문서 종류 판별 기준 (매우 중요)]
-        - FLIGHT LOG: 사진 상단 텍스트에 'FLIGHT'라는 단어가 포함되어 있거나, DEFECT 란에 'LEG' 입력 칸이 있는 경우. (FLIGHT & MAINT LOG 등)
-        - CABIN LOG: 문서 상단에 'CABIN LOG'라고만 적혀있거나, DEFECT 란에 'LEG' 칸이 전혀 없는 경우.
+        [1. 문서 종류 판별]
+        - FLIGHT LOG: 상단에 'FLIGHT & MAINT LOG' 혹은 'FLIGHT' 문구가 있거나 'LEG' 입력란이 있는 경우.
+        - CABIN LOG: 상단에 'CABIN LOG'라고 명시된 경우.
+
+        [2. 작성자(asAp) 판별 절대 규칙 🚨🚨🚨]
+        문서 종류에 따라 아래 기준을 엄격히 적용하여 'AS' 또는 'AP'를 결정하세요.
         
-        [추출 대상 조건 (누락 절대 금지!)]
-        - 'ACTION TAKEN' 칸에 'DEFERRED'라는 단어가 적혀 있거나, 'DEFER No.' 체크박스에 표시가 된 항목은 단 하나도 빠짐없이 모두 추출하세요.
-        - 단, 결함 내용이 아예 없는 빈 줄(Empty row)은 결과(items)에 절대 포함하지 마세요.
+        - CABIN LOG인 경우:
+          - 무조건 'AS'로 고정합니다.
         
-        [공통 추출 지시]
-        1. regNo: 'HL'로 시작하는 기번 숫자.
-        2. legFrom, legTo: 구간 정보 3자리 영문.
-        3. flightNo: 'FLIGHT NO' 칸의 숫자. 🚨중요: 'OZ' 영문자나 앞자리 '0'은 무조건 버리고 순수 숫자만 추출하세요.
-        
-        [결함 추출 (items) 상세 규칙 🚨]
-        - asAp: 
-          - CABIN LOG인 경우: 무조건 'AS' 고정!
-          - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 서명만 있거나 비어있으면 'AP'.
-        
-        - defect: 'DEFECT and WORK ORDER' (또는 결함 기재란)에 직접 손으로 적힌 내용 본문만 추출하세요.
-          🚨🚨 [ITEM 번호 혼입 금지 절대 규칙] 🚨🚨
-          사진의 'ITEM' 칸(보통 1, 2, 3 또는 A, B, C가 적힌 작은 네모 칸)에 있는 번호나 알파벳은 결함 텍스트가 아닙니다! 
-          추출한 defect 결과 텍스트 맨 앞에 이 ITEM 번호/알파벳을 절대 붙이지 마세요.
-          결함 내용 본문은 항상 'ITEM', 'LEG', 'ATA CODE'가 인쇄된 칸의 **바로 아래 넓은 칸**부터 시작됩니다. 
-          (단, 본문 안의 24J 등 좌석 번호나 위치 정보는 포함하세요.)
+        - FLIGHT LOG (FLIGHT & MAINT LOG)인 경우:
+          - 각 ITEM의 'ENTERED BY (SIGNATURE & LICENSE No.)' 칸을 정밀 분석하세요.
+          - 🚨 중요: '도장(Stamp, 원형 또는 사각형의 이름/번호가 새겨진 직인)'이 찍혀 있는 경우에만 'AS'로 분류합니다.
+          - 🚨 중요: 도장 없이 '수기 서명(Signature)'만 있거나, 칸이 비어 있는 경우에는 무조건 'AP'(Airline Pilot)로 분류하세요. 도장이 없으면 정비사가 아닌 운항승무원이 작성한 것입니다.
 
-        - reason: 'DEFER No.' 칸의 표시(체크, V, X 등) 항목 + 손글씨 번호.
-          🚨🚨 [문서 종류별 체크박스 판독 절대 규칙 - 목숨 걸고 지킬 것] 🚨🚨
-          CABIN LOG와 FLIGHT LOG는 체크박스 배열이 완전히 다릅니다! 판별된 문서 종류에 따라 아래 규칙을 엄격히 적용하세요.
+        [3. 결함 본문(defect) 추출 규칙]
+        - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요.
+        - 🚨 주의: 'ITEM' 칸에 적힌 '1', 'A' 같은 인덱스 번호는 결함 내용 앞에 붙이지 마세요.
+        - 단, 결함 내용 중간에 있는 '24J', '27 L SIDE' 같은 위치 정보는 반드시 포함하세요.
 
-          [1] CABIN LOG 인 경우:
-          - 체크박스(□)의 **왼쪽**에 글자가 있습니다. 총 3개의 네모칸이 있습니다.
-          - 1번째 칸에 표시 -> "MEL"
-          - 2번째 칸에 표시 -> "NEF" (가운데 네모칸이면 무조건 NEF입니다!)
-          - 3번째 칸에 표시 -> "AMM"
+        [4. 적용근거(reason) 체크박스 판독 규칙]
+        - CABIN LOG: 박스 3개 (왼쪽 글자 기준). 1:MEL, 2:NEF, 3:AMM.
+        - FLIGHT LOG: 박스 5개 (위쪽 글자 기준). 1:MEL, 2:CDL, 3:NEF, 4:SRM, 5:AMM.
+        - 체크(V)나 엑스(X)가 표시된 칸의 순서를 정확히 세어 해당 글자와 옆의 숫자를 합치세요. (예: NEF 25-10-01)
 
-          [2] FLIGHT LOG (FLIGHT & MAINT LOG) 인 경우:
-          - 체크박스(□)의 **바로 위**에 글자가 있습니다. 총 5개의 네모칸이 일렬로 있습니다.
-          - 1번째 칸(첫 번째)에 표시 -> "MEL"
-          - 2번째 칸에 표시 -> "CDL"
-          - 3번째 칸에 표시 -> "NEF"
-          - 4번째 칸에 표시 -> "SRM"
-          - 5번째 칸에 표시 -> "AMM"
+        [5. 공통 정보]
+        - regNo: 'HL' 뒤의 숫자.
+        - flightNo: 'OZ'나 앞자리 '0'을 뺀 순수 숫자.
+        - legFrom, legTo: 구간 영문 3자리.
 
-          체크나 엑스 표시된 위치를 정확히 파악한 후, 그 글자(MEL, NEF, CDL 등) 뒤에 근처에 적힌 손글씨 숫자를 끝까지 이어서 적으세요. (예: NEF 23-30-12)
-          
-        - ata: 'ATA CODE' 칸 숫자. 없으면 공란.
-        
-        🚨 중요: 모든 출력 텍스트(value)는 반드시 대문자(UPPERCASE)로 변환하세요.
+        🚨 모든 텍스트 결과값은 반드시 대문자(UPPERCASE)로 변환하여 응답하세요.
+        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
 
-        응답은 순수 JSON만 출력하세요.
         {
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AS", "defect": "DURING CRZ, ENG 2 REVERSER CTL FAULT DISPLAYED.", "reason": "NEF 23-30-12", "ata": "7834"} ]
+          "items": [ {"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"} ]
         }
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
@@ -126,11 +109,9 @@ async def smart_search(req: SmartSearchRequest):
         
         🚨 출력 절대 규칙 🚨
         1. 정답을 찾으면 '::' 앞부분인 [결함적용코드]만 정확히 추출하세요. (예: NEF 25-10-01)
-        2. '::' 기호나 그 뒤의 결함키워드(예: ENG 2 FADEC...)는 절대 출력에 포함하지 마세요. 오직 코드만 필요합니다.
+        2. '::' 기호나 그 뒤의 결함키워드는 절대 출력에 포함하지 마세요.
         3. 응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
-
-        출력 예시:
-        {{"matched_value": "NEF 25-10-01"}}
+        {{"matched_value": "코드만 출력"}}
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
