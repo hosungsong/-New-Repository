@@ -185,8 +185,6 @@
                 }
             });
             
-            newAta.sort((a, b) => b.keyword.length - a.keyword.length);
-            newAction.sort((a, b) => b.keyword.length - a.keyword.length);
             DB.ataDatabase = newAta; DB.actionDatabase = newAction; DB.flights = newFlights; DB.ac = newAc;
             localStorage.setItem('integratedDB', JSON.stringify(DB));
             alert(`✅ DB 세팅 완료!`); location.reload(); 
@@ -196,7 +194,7 @@
 
     function loadDB() {
         const saved = localStorage.getItem('integratedDB');
-        if (saved) { DB = JSON.parse(saved); DB.ataDatabase.sort((a, b) => b.keyword.length - a.keyword.length); DB.actionDatabase.sort((a, b) => b.keyword.length - a.keyword.length); }
+        if (saved) { DB = JSON.parse(saved); }
     }
 
     function fillAcType() {
@@ -412,24 +410,21 @@
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
-            document.getElementById('regNo').value = (data.regNo || "").replace(/^HL/, ""); fillAcType(); 
+            if (data.regNo) { document.getElementById('regNo').value = data.regNo.replace(/^HL/, ""); fillAcType(); }
             
             if (data.flightNo) {
                 document.getElementById('flightNo').value = String(data.flightNo).replace(/^0+/, ''); matchLegsFromFlight();
-            } else {
-                document.getElementById('legFrom').value = data.legFrom || ""; document.getElementById('legTo').value = data.legTo || ""; matchFlightFromLegs(); 
+            } else if (data.legFrom || data.legTo) {
+                if (data.legFrom) document.getElementById('legFrom').value = data.legFrom; 
+                if (data.legTo) document.getElementById('legTo').value = data.legTo; 
+                matchFlightFromLegs(); 
             }
 
-            document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
+            // 🚨 핵심 해결: 이제 기존 빈칸을 삭제(초기화)하는 innerHTML = "" 코드가 없습니다!
             if (data.items && data.items.length > 0) { 
                 data.items.forEach(item => addRow(item)); 
-                
-                // ✨ 수정사항: 결과물을 다 뿌린 후 무조건 수동 입력용 빈칸 한 줄 유지!
-                addRow();
-                
                 setTimeout(refreshAllHeights, 150); 
             } else { 
-                addRow(); 
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다."); 
             }
         } catch (e) { alert("⚠️ 에러: " + e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
