@@ -1,868 +1,158 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>정비 이월 전송 시스템</title>
-    <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
-        body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; transition: 0.3s; }
+import os, io, json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from PIL import Image
+import google.generativeai as genai
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import List, Optional
+
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
+
+@app.get("/")
+async def serve_frontend(): return FileResponse("index.html")
+
+@app.get("/ping")
+async def keep_alive_ping(): return {"status": "awake"}
+
+@app.post("/ocr")
+async def extract_text(file: UploadFile = File(...)):
+    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
+    try:
+        content = await file.read()
+        image = Image.open(io.BytesIO(content))
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
+
+        # 🔥 AP/AS 판독 및 체크박스 로직이 극도로 강화된 프롬프트
+        prompt = """
+        당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 규칙을 0.1%의 오차도 없이 지키세요.
+
+        [1. 문서 종류 판별]
+        - FLIGHT LOG: 상단에 'FLIGHT & MAINT LOG' 혹은 'FLIGHT' 문구가 있거나 'LEG' 입력란이 있는 경우.
+        - CABIN LOG: 상단에 'CABIN LOG'라고 명시된 경우.
+
+        [2. 작성자(asAp) 판별 절대 규칙 🚨🚨🚨]
+        문서 종류에 따라 아래 기준을 엄격히 적용하여 'AS' 또는 'AP'를 결정하세요.
         
-        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
-        .header h2 { margin: 0; display: flex; align-items: baseline; }
+        - CABIN LOG인 경우:
+          - 무조건 'AS'로 고정합니다.
         
-        .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
-        .user-display:hover { color: var(--secondary); text-decoration: underline; }
+        - FLIGHT LOG (FLIGHT & MAINT LOG)인 경우:
+          - 각 ITEM의 'ENTERED BY (SIGNATURE & LICENSE No.)' 칸을 정밀 분석하세요.
+          - 🚨 중요: '도장(Stamp, 원형 또는 사각형의 이름/번호가 새겨진 직인)'이 찍혀 있는 경우에만 'AS'로 분류합니다.
+          - 🚨 중요: 도장 없이 '수기 서명(Signature)'만 있거나, 칸이 비어 있는 경우에는 무조건 'AP'(Airline Pilot)로 분류하세요. 도장이 없으면 정비사가 아닌 운항승무원이 작성한 것입니다.
 
-        .btn-db { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        [3. 결함 본문(defect) 및 ATA 추출 규칙]
+        - 'DEFECT and WORK 복사ORDER'란의 손글씨 본문만 추출하세요.
+        - 🚨 주의: 'ITEM' 칸에 적힌 '1', 'A' 같은 인덱스 번호는 결함 내용 앞에 붙이지 마세요.
+        - 단, 결함 내용 중간에 있는 '24J', '27 L SIDE' 같은 위치 정보는 반드시 포함하세요.
+        - 🚨 ATA CODE 규칙: 반드시 좌측의 'ATA CODE' 입력란 안에 적힌 숫자만 추출하세요. 만약 칸이 비어있다면 반드시 빈 문자열("")로 남겨두고, 절대 우측 ACTION TAKEN 란이나 PLACARD 등 다른 곳에 적힌 번호(예: 23-30-05 등)를 유추해서 채워 넣지 마세요!
 
-        .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; align-items: stretch; }
-        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; transition: 0.3s; }
-        
-        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
-        .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
-        .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
-        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
-        /* text-transform 제거하여 수동 입력 시 대소문자 유지 */
-        .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
-        
-        .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
-        .dropdown-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; }
-        .dropdown-opt:hover { background: var(--secondary); color: white; }
+        [4. 적용근거(reason) 체크박스 판독 규칙]
+        - CABIN LOG: 박스 3개 (왼쪽 글자 기준). 1:MEL, 2:NEF, 3:AMM.
+        - FLIGHT LOG: 박스 5개 (위쪽 글자 기준). 1:MEL, 2:CDL, 3:NEF, 4:SRM, 5:AMM.
+        - 체크(V)나 엑스(X)가 표시된 칸의 순서를 정확히 세어 해당 글자와 옆의 숫자를 합치세요. (예: NEF 25-10-01)
 
-        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
-        .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
-        .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+        [5. 공통 정보]
+        - regNo: 'HL' 뒤의 숫자.
+        - flightNo: 'OZ'나 앞자리 '0'을 뺀 순수 숫자.
+        - legFrom, legTo: 구간 영문 3자리.
 
-        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; }
-        .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
-        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
-        
-        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 180px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
-        .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
-        .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
-        .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
-        .defect-row:last-child { border-bottom: none; }
-        
-        .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
-        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
-        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
-        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
-        .toggle-btn.active { background: var(--primary); color: white; }
+        🚨 모든 텍스트 결과값은 반드시 대문자(UPPERCASE)로 변환하여 응답하세요.
+        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
 
-        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; height: 38px; background: white; }
-        .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; }
-        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .search-wrap button:hover { background: #2c3e50; }
-
-        /* textarea text-transform 제거 및 초기 높이 제어 속성 최적화 */
-        .defect-row textarea { 
-            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
-            font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
-        } 
-        
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
-        .btn-remove:hover { background: #c0392b; }
-
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; transition: 0.3s; position: relative; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
-        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: max-height 0.3s; }
-        #pasteArea img:active { cursor: grabbing; }
-        
-        .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
-        
-        .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
-        .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
-
-        /* 🔥 확대 모드 */
-        .top-section.expanded .left-panel { flex: 1; }
-        .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
-        .top-section.expanded .static-fields { flex-wrap: wrap; }
-        .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(180px, 1fr) 130px 90px 30px; } 
-        .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
-        .top-section.expanded #pasteArea img { max-height: 100%; }
-
-        .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
-        .text-extract-mode #pasteArea img { max-height: 180px; }
-
-        .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
-        .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .btn-tool.btn-close { background: #e74c3c; }
-
-        .action-buttons { display: flex; gap: 10px; flex-shrink: 0; }
-        .btn-extract { color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-extract.main { flex: 2; background: #27ae60; }
-        .btn-extract.sub { flex: 1; background: #8e44ad; }
-        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
-
-        #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
-
-        .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
-    </style>
-</head>
-<body>
-
-<div class="main-container">
-    <div class="header">
-        <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()" title="클릭하여 이름 변경"></span></h2>
-        <input type="file" id="csvFileInput" style="display: none;" accept=".csv" onchange="handleCSVUpload(event)">
-        <button class="btn-db" id="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 세팅 (CSV)</button>
-    </div>
-
-    <div class="top-section" id="mainTopSection">
-        <div class="left-panel">
-            <div class="static-fields">
-                <div class="input-group">
-                    <label>기번 / 기종</label>
-                    <div class="box">
-                        <span class="prefix">HL</span>
-                        <input type="text" id="regNo" style="flex: 1;" oninput="fillAcType()">
-                        <input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center; border-left: 1px solid var(--border); font-weight: bold; color: #495057;">
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>편명</label>
-                    <div class="box">
-                        <span class="prefix">OZ</span>
-                        <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
-                        <div id="flightOptions" class="dropdown-list"></div>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>구간</label>
-                    <div class="box leg-box">
-                        <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
-                        <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <div id="legOptions" class="dropdown-list"></div>
-                    </div>
-                </div>
-                <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
-            </div>
-
-            <div class="dynamic-container">
-                <div class="dynamic-header"><span>결함 및 조치내역</span><button class="btn-add" onclick="addRow()">+</button></div>
-                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>삭제</span></div>
-                <div id="defectRowsContainer"></div>
-            </div>
-        </div>
-        <div class="right-panel" id="rightPanel">
-            
-            <input type="file" id="imageFileInput" style="position: absolute; width: 1px; height: 1px; opacity: 0; z-index: -1;" accept="image/*" onchange="handleImageFile(event)">
-            
-            <div id="pasteArea">
-                <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
-                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
-                    이곳을 터치(클릭)하여 사진 첨부<br>
-                    <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
-                </div>
-            </div>
-            <textarea id="rawTextArea" placeholder="추출된 텍스트가 이곳에 표시됩니다..."></textarea>
-            <div class="action-buttons">
-                <button class="btn-extract main" id="btnExtractMain" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
-                <button class="btn-extract sub" onclick="extractRawText()">📝 TEXT 추출</button>
-            </div>
-        </div>
-    </div>
-    <div class="bottom-section">
-        <button class="btn-mail bg-occ" id="btn-occ" onclick="sendWebhook('OCC')">OCC 전송</button>
-        <button class="btn-mail bg-icn" id="btn-icn" onclick="sendEmailViaMailto('ICN')">ICN 전송</button>
-        <button class="btn-mail bg-gmp" id="btn-gmp" onclick="sendEmailViaMailto('GMP')">GMP 전송</button>
-        <button class="btn-mail bg-duty" id="btn-duty" onclick="sendWebhook('DUTY')">DUTY 전송</button>
-    </div>
-</div>
-
-<script>
-    const WEBHOOK_URLS = {
-        "OCC": "https://chat.googleapis.com/v1/spaces/AAQAkm9cIHk/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DHRSasF0dZDVUu2cb2QUqM5RNjQOD3Q5BIpWOBEjJro",
-        "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAyIkJVWM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=vrARRhME-upDKnSnLiWZ2qnycamT6XyxhaSSZH8vOXg"
-    };
-
-    let fileToUpload = null; let rowIdCounter = 0;
-    let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
-    let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
-    let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
-
-    // =========================================================================
-    // 🔥 [신규] 대용량 DB 처리를 위한 IndexedDB 래퍼(Wrapper) 함수
-    // =========================================================================
-    const DB_NAME = "LogScannerDB";
-    const STORE_NAME = "Storage";
-
-    function saveToIndexedDB(data) {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, 1);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
-                }
-            };
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                const store = tx.objectStore(STORE_NAME);
-                store.put(data, "integratedDB"); // DB 구조 전체를 "integratedDB" 키에 저장
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-            };
-            request.onerror = (e) => reject(e.target.error);
-        });
-    }
-
-    function loadFromIndexedDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, 1);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
-                }
-            };
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
-                const tx = db.transaction(STORE_NAME, "readonly");
-                const store = tx.objectStore(STORE_NAME);
-                const getReq = store.get("integratedDB");
-                getReq.onsuccess = () => resolve(getReq.result);
-                getReq.onerror = () => reject(getReq.error);
-            };
-            request.onerror = (e) => reject(e.target.error);
-        });
-    }
-
-    function updateUserNameDisplay() {
-        let name = localStorage.getItem('logScanner_userName');
-        const displayEl = document.getElementById('userNameDisplay');
-        if (displayEl) displayEl.innerText = name ? `(USER : ${name})` : `(USER : 미설정)`;
-    }
-
-    function changeUserName() {
-        let currentName = localStorage.getItem('logScanner_userName') || "";
-        let newName = prompt("전송자로 표시될 성함을 입력해주세요:", currentName);
-        if (newName !== null && newName.trim() !== "") {
-            localStorage.setItem('logScanner_userName', newName.trim());
-            updateUserNameDisplay();
+        {
+          "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
+          "items": [ {"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"} ]
         }
-    }
+        """
+        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
+        return json.loads(response.text.strip())
+    except Exception as e: return {"error": f"AI 분석 오류: {str(e)}"}
 
-    function sendEmailViaMailto(target) {
-        let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
+@app.post("/extract_raw")
+async def extract_raw_text(file: UploadFile = File(...)):
+    try:
+        content = await file.read(); image = Image.open(io.BytesIO(content))
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image])
+        return {"text": response.text.strip()}
+    except Exception as e: return {"error": str(e)}
+
+class SmartSearchRequest(BaseModel):
+    defect: str
+    search_type: str
+    db_text: str
+
+@app.post("/smart_search")
+async def smart_search(req: SmartSearchRequest):
+    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
+    try:
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        prompt = f"""
+        당신은 항공 정비 데이터베이스 검색 마스터입니다.
+        사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 1개의 항목을 찾으세요.
+
+        사용자 결함 내용: "{req.defect}"
+
+        [DB 목록 형식]
+        결함적용코드::결함키워드
+
+        [DB 목록]
+        {req.db_text}
         
-        if (!emails) {
-            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
-            if (emails && emails.trim() !== "") {
-                localStorage.setItem(`logScanner_email_${target}`, emails.trim());
-            } else {
-                return;
-            }
-        }
+        🚨 출력 절대 규칙 🚨
+        1. 정답을 찾으면 '::' 앞부분인 [결함적용코드]만 정확히 추출하세요. (예: NEF 25-10-01)
+        2. '::' 기호나 그 뒤의 결함키워드는 절대 출력에 포함하지 마세요.
+        3. 응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
+        {{"matched_value": "코드만 출력"}}
+        """
+        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
+        return json.loads(response.text.strip())
+    except Exception as e:
+        return {"error": str(e)}
 
-        const 기번 = document.getElementById('regNo').value.trim() || '미확인';
-        const acType = document.getElementById('acType').value.trim() || '기종미상';
+class EmailRequest(BaseModel):
+    target: str
+    to_emails: str
+    subject: str
+    body_html: str
+    sender_name: str
 
-        const rows = document.querySelectorAll('.defect-row');
-        let defectList = [];
+@app.post("/send_email")
+async def send_email(req: EmailRequest):
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")      
+    smtp_password = os.environ.get("SMTP_PASSWORD") 
+
+    if not smtp_user or not smtp_password:
+        return {"error": "서버에 이메일 전송을 위한 SMTP 설정이 되어있지 않습니다."}
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"{req.sender_name} <{smtp_user}>"
+        msg['To'] = req.to_emails
+        msg['Subject'] = req.subject
+        msg.attach(MIMEText(req.body_html, 'html'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
         
-        rows.forEach(row => {
-            const id = row.id.split('-')[1];
-            const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-            const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
-            
-            if (결함_raw) {
-                defectList.push({ defect: 결함_raw, reason: 근거_raw });
-            }
-        });
-
-        if (defectList.length === 0) {
-            alert("전송할 결함 내용이 없습니다.");
-            return;
-        }
-
-        let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}`;
-        if (defectList.length > 1) {
-            subjectText += ` etc`;
-        }
-
-        let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
-        defectList.forEach((item, index) => {
-            bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
-        });
-
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
-        window.open(gmailUrl, '_blank');
-    }
-
-    async function sendWebhook(target) {
-        const url = WEBHOOK_URLS[target];
-        if (!url) { alert(target + " 용 웹훅 주소가 설정되지 않았습니다."); return; }
-
-        let 이름 = localStorage.getItem('logScanner_userName');
-        if (!이름) {
-            이름 = prompt("전송자 성함을 입력해주세요. (이후 우측 상단에서 변경 가능합니다)", "");
-            if (이름 && 이름.trim() !== "") {
-                localStorage.setItem('logScanner_userName', 이름.trim());
-                updateUserNameDisplay();
-            } else 이름 = "미상";
-        }
-
-        const 기번_raw = document.getElementById('regNo').value.trim();
-        const 기번 = 기번_raw || '미확인';
-        const acType = document.getElementById('acType').value.trim() || '기종미상';
-        const flightNo = document.getElementById('flightNo').value.trim() || '미상';
-        const legFrom = document.getElementById('legFrom').value.trim().toUpperCase() || '???';
-        const legTo = document.getElementById('legTo').value.trim().toUpperCase() || '???';
-        const 위탁체크박스상태 = document.getElementById('handover').checked;
-        const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-
-        const rows = document.querySelectorAll('.defect-row');
-        if (rows.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
-        
-        let defectCount = 0;
-        let payload;
-
-        const firstId = rows[0].id.split('-')[1];
-        const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
-        const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
-        const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
-
-        const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-
-        if (target === "DUTY") {
-            const 기번표시 = "HL" + 기번 + " (" + acType + ")";
-            const 위탁 = 위탁체크박스상태 ? 'Y 🔹' : 'N 🔸';
-            const 편명구간 = `OZ${flightNo} (${legFrom} ➔ ${legTo})`;
-
-            let html결함묶음 = "";
-            rows.forEach(row => {
-                const id = row.id.split('-')[1];
-                const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
-                const ata_raw = document.getElementById(`ata-${id}`).value.trim() || '미입력';
-
-                if (결함_raw) {
-                    defectCount++;
-                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
-
-                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
-                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br><br>`;
-                }
-            });
-
-            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
-
-            const htmlText = 
-                `🛠️ <b>정비 이월 사항 전달</b><br><br>` +
-                `• <b>기번 :</b> ${기번표시}<br>` +
-                `• <b>편명 :</b> ${편명구간}<br>` +
-                `• <b>작성자 :</b> ${공통작성자}<br>` +
-                `• <b>위탁 :</b> ${위탁}<br><br>` +
-                `<b>[ 결함내역 및 조치 ]</b><br>` +
-                html결함묶음 +
-                `<i>${이름} / ${현재시간}</i>`;
-
-            payload = {
-                cardsV2: [{
-                    cardId: "dutyCard",
-                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
-                }]
-            };
-
-        } else if (target === "OCC") {
-            const 기번표시 = "HL" + 기번;
-            const 편명구간 = `OZ${flightNo} (${legFrom}-${legTo})`;
-
-            const gpsCodesByAcType = {
-                "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
-                "A330": ["34-50-08D", "34-50-08F"],
-                "A350": ["34-50-01A", "34-50-01B", "34-50-01C", "34-50-06A", "34-52-06B", "34-50-06C"],
-                "A380": ["34-50-01A", "34-50-01B", "34-50-01C"],
-                "B777": ["34-58-01A", "34-58-01B"]
-            };
-
-            let searchAcType = acType.toUpperCase();
-            if (searchAcType.includes("A321") || searchAcType.includes("A32N")) {
-                searchAcType = "A321";
-            }
-
-            let targetGpsCodes = [];
-            for (const ac in gpsCodesByAcType) {
-                if (searchAcType.includes(ac)) { targetGpsCodes = gpsCodesByAcType[ac]; break; }
-            }
-
-            let html결함묶음 = ""; 
-            let hasGpsIssue = false;
-
-            rows.forEach(row => {
-                const id = row.id.split('-')[1];
-                const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
-
-                if (결함_raw) {
-                    defectCount++;
-                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
-                    
-                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
-                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br><br>`;
-
-                    const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
-                    if (!hasGpsIssue) {
-                        hasGpsIssue = targetGpsCodes.some(code => cleanBasisRaw.includes(code.toUpperCase().replace(/\s+/g, '')));
-                    }
-                }
-            });
-
-            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
-
-            const gpsTerm = searchAcType.includes("A350") ? "GNSS" : "GPS";
-            const gpsNotice = hasGpsIssue 
-                ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
-                : "";
-
-            const htmlText = 
-                "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
-                "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
-                "• <b>편명 :</b> " + 편명구간 + "<br><br>" +
-                "<b>[ 결함내역 및 조치 ]</b><br>" + html결함묶음 +
-                gpsNotice + 
-                "<i>" + 이름 + " / " + 현재시간 + "</i>";
-
-            payload = {
-                cardsV2: [{
-                    cardId: "dispatchApprovalCard",
-                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
-                }]
-            };
-        }
-
-        const btn = document.getElementById(`btn-${target.toLowerCase()}`);
-        const originText = btn.innerText; btn.innerText = "전송 중... ⏳"; btn.disabled = true;
-
-        try {
-            const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-            if (res.ok) alert(`✅ ${target} 채널로 메시지가 전송되었습니다!`); else alert(`⚠️ 전송 실패 (에러코드: ${res.status})`);
-        } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
-    }
-
-    // 🔥 [수정] 대용량 처리를 위해 버튼 텍스트 변경 후 IndexedDB에 저장하도록 비동기 처리
-    function handleCSVUpload(event) {
-        const file = event.target.files[0]; if (!file) return;
-        
-        const btn = document.getElementById('btn-db');
-        const originText = btn.innerText;
-        btn.innerText = "대용량 DB 처리 중... ⏳";
-        btn.disabled = true;
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const lines = e.target.result.split('\n');
-                let newAta = [], newAction = [], newFlights = [], newAc = {}, newEmails = {};
-                lines.forEach(line => {
-                    const parts = line.split(',').map(p => p.trim());
-                    if (parts.length >= 2) {
-                        const type = parts[0].toUpperCase();
-                        if (type === 'ATA') {
-                            const key = parts[2] ? parts[2].toUpperCase() : "";
-                            if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
-                        } else if (type === 'NEF' && parts.length >= 3) {
-                            newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase() });
-                        } else if (type === 'MEL' && parts.length >= 4) {
-                            newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase() });
-                        } else if (type === 'ACTION' && parts.length >= 3) {
-                            const key = parts[2] ? parts[2].toUpperCase() : "";
-                            if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key });
-                        } else if (type === 'FLIGHT' && parts.length >= 4) {
-                            newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
-                        } else if (type === 'AC' && parts.length >= 3) {
-                            newAc[parts[1]] = parts[2];
-                        } else if (type === 'EMAIL' && parts.length >= 3) {
-                            newEmails[parts[1].toUpperCase()] = parts.slice(2).join(',').trim();
-                        }
-                    }
-                });
-                
-                // 기존 localStorage에서 IndexedDB로 저장 방식 변경
-                const newDB = { ataDatabase: newAta, actionDatabase: newAction, flights: newFlights, ac: newAc, emails: newEmails };
-                await saveToIndexedDB(newDB);
-                
-                // 찌꺼기 로컬 스토리지 데이터 삭제 (최초 1회 정리용)
-                localStorage.removeItem('integratedDB'); 
-                
-                alert(`✅ 대용량 DB 세팅 완료!`); 
-                location.reload(); 
-            } catch (err) {
-                alert("⚠️ DB 저장 중 오류 발생: " + err.message);
-            } finally {
-                btn.innerText = originText;
-                btn.disabled = false;
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    // 🔥 [수정] IndexedDB에서 비동기적으로 DB를 불러오도록 변경
-    async function loadDB() {
-        try {
-            const saved = await loadFromIndexedDB();
-            if (saved) { DB = saved; }
-        } catch (e) {
-            console.error("DB 로드 실패:", e);
-        }
-    }
-
-    function fillAcType() {
-        const reg = document.getElementById('regNo').value.trim();
-        document.getElementById('acType').value = DB.ac[reg] || "";
-    }
-
-    function matchFlightFromLegs() {
-        const f = document.getElementById('legFrom').value.toUpperCase(); const t = document.getElementById('legTo').value.toUpperCase();
-        const input = document.getElementById('flightNo'); const optDiv = document.getElementById('flightOptions');
-        optDiv.innerHTML = ""; optDiv.style.display = "none";
-        
-        input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
-
-        if (f.length === 3 && t.length === 3 && DB.flights.length > 0) {
-            const matches = DB.flights.filter(item => item.from === f && item.to === t);
-            if (matches.length === 1) input.value = String(matches[0].no).replace(/^0+/, '');
-            else if (matches.length > 1) {
-                optDiv.style.display = "block";
-                matches.forEach(m => {
-                    const cleanNo = String(m.no).replace(/^0+/, '');
-                    const row = document.createElement('div'); row.className = 'dropdown-opt'; row.innerText = `OZ${cleanNo}`;
-                    row.onmousedown = () => { input.value = cleanNo; optDiv.style.display = "none"; };
-                    optDiv.appendChild(row);
-                });
-            }
-        }
-    }
-
-    function matchLegsFromFlight() {
-        const input = document.getElementById('flightNo');
-        input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
-        
-        const fNo = input.value.trim();
-        const optDiv = document.getElementById('legOptions');
-        optDiv.innerHTML = ""; optDiv.style.display = "none";
-        if (fNo && DB.flights.length > 0) {
-            const matches = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo);
-            if (matches.length === 1) { document.getElementById('legFrom').value = matches[0].from; document.getElementById('legTo').value = matches[0].to; } 
-            else if (matches.length > 1) {
-                optDiv.style.display = "block";
-                matches.forEach(m => {
-                    const row = document.createElement('div'); row.className = 'dropdown-opt'; row.innerText = `${m.from} ⇄ ${m.to}`;
-                    row.onmousedown = () => { document.getElementById('legFrom').value = m.from; document.getElementById('legTo').value = m.to; optDiv.style.display = "none"; };
-                    optDiv.appendChild(row);
-                });
-            }
-        }
-    }
-
-    function autoResize(el) {
-        if (!el) return; el.style.height = '38px'; 
-        const newHeight = el.scrollHeight; el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
-    }
-
-    function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
-
-    function removeDefectRow(btn) {
-        const container = document.getElementById('defectRowsContainer');
-        if (container.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); }
-    }
-
-    function addRow(data = {}) {
-        rowIdCounter++; const id = rowIdCounter;
-        const container = document.getElementById('defectRowsContainer');
-        const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
-        const isAp = data.asAp === 'AP';
-        row.innerHTML = `
-            <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
-            <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
-            <div class="search-wrap">
-                <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="MEL/CDL/NEF 등">
-                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="AI 문맥 검색">🔍</button>
-            </div>
-            <div class="ata-wrapper">
-                <div class="search-wrap">
-                    <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
-                    <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="AI 문맥 검색">🔍</button>
-                </div>
-            </div>
-            <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
-        `;
-        container.appendChild(row); updateNums();
-        if(data.defect) { setTimeout(() => { autoResize(document.getElementById(`defect-${id}`)); }, 100); }
-    }
-
-    function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
-    function setAsAp(id, type) {
-        const row = document.getElementById(`row-${id}`);
-        row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
-    }
-
-    // 🔥 9만 개 DB 검색을 프론트에서 1차로 필터링하여 페이로드 크기를 확 줄이는 핵심 로직
-    async function searchSmartDB(id, searchType) {
-        const text = document.getElementById(`defect-${id}`).value;
-        if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
-        
-        const isAta = (searchType === 'ATA');
-        const dbToSearch = isAta ? DB.ataDatabase : DB.actionDatabase;
-        const btnId = isAta ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
-        const inputId = isAta ? `ata-${id}` : `reason-${id}`;
-        
-        if (!dbToSearch || dbToSearch.length === 0) return alert(`⚠️ 해당 DB(${searchType})가 등록되어 있지 않습니다.`);
-        const btn = document.getElementById(btnId); btn.innerText = "⏳"; btn.disabled = true;
-
-        let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
-        
-        if (currentAcType.includes("A321") || currentAcType.includes("A32N")) {
-            currentAcType = "A321";
-        }
-
-        // 1차 필터링: 기종 조건 (ATA가 아닐 경우만)
-        let validActions = dbToSearch;
-        if (!isAta) {
-            validActions = dbToSearch.filter(d => {
-                if (d.type === 'MEL' && d.acType !== 'ALL') {
-                    return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
-                }
-                return true; 
-            });
-        }
-
-        // 🔥 프론트엔드 단어 매칭 1차 필터링 (상위 70개만 추려냄)
-        // 9만 줄 텍스트를 AI 서버로 다 보내면 용량 초과 에러가 발생하므로 여기서 줄입니다.
-        const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; // 2글자 이상 단어 추출
-
-        let scoredDB = validActions.map(d => {
-            let score = 0;
-            const targetStr = d.keyword.toLowerCase();
-            
-            defectTerms.forEach(term => {
-                if (targetStr.includes(term)) score += 10; // 단어가 포함되어 있으면 점수 부여
-            });
-            return { data: d, score: score };
-        });
-
-        // 점수 높은 순으로 내림차순 정렬
-        scoredDB.sort((a, b) => b.score - a.score);
-
-        // 상위 70개만 추출 (AI가 문맥을 파악하기엔 충분한 개수)
-        const topCandidates = scoredDB.slice(0, 70).map(item => item.data);
-
-        let compressedDB = topCandidates.map(d => {
-            const prefix = d.type ? d.type + ' ' : '';
-            return `${prefix}${d.code}::${d.keyword}`;
-        }).join('\n');
-
-        try {
-            const res = await fetch("/smart_search", {
-                method: "POST", headers: { "Content-Type": "application/json" }, 
-                body: JSON.stringify({ defect: text, search_type: searchType, db_text: compressedDB })
-            });
-            
-            // 서버 타임아웃 등으로 HTML 에러 페이지가 올 수 있으므로 text로 먼저 받음
-            const rawText = await res.text();
-            
-            try {
-                const data = JSON.parse(rawText);
-                if (data.error) { alert("⚠️ " + data.error); }
-                else if (data.matched_value) { 
-                    document.getElementById(inputId).value = data.matched_value; 
-                } else { 
-                    alert(`🔍 적절한 항목을 찾지 못했습니다.`); 
-                }
-            } catch (jsonError) {
-                console.error("서버 응답 오류 원문:", rawText);
-                alert("⚠️ 서버에서 올바르지 않은 응답이 반환되었습니다. (타임아웃 또는 서버 오류)");
-            }
-
-        } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
-    }
-
-    function swapLegs() {
-        const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
-        [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
-    }
-
-    function loadAndDisplayImage(file) {
-        try {
-            if (!file) throw new Error("파일이 존재하지 않습니다.");
-            
-            fileToUpload = file; 
-            const url = URL.createObjectURL(fileToUpload);
-            
-            currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
-            document.getElementById('mainTopSection').classList.remove('expanded'); 
-            document.getElementById('rightPanel').classList.remove('text-extract-mode');
-            document.getElementById('rawTextArea').style.display = 'none';
-
-            document.getElementById('pasteArea').innerHTML = `
-                <div class="img-tools">
-                    <button class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
-                    <button class="btn-tool" onclick="rotateImg(event)">↻</button>
-                    <button class="btn-tool btn-close" onclick="resetImage(event)">✖</button>
-                </div>
-                <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
-            `;
-            setTimeout(refreshAllHeights, 50);
-        } catch (e) {
-            alert("사진을 불러오지 못했습니다: " + e.message);
-        }
-    }
-
-    function resetImage(e) {
-        if(e) e.stopPropagation();
-        fileToUpload = null; 
-        document.getElementById('imageFileInput').value = "";
-        document.getElementById('mainTopSection').classList.remove('expanded');
-        document.getElementById('pasteArea').innerHTML = `
-            <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
-                <div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치(클릭)하여 사진 첨부<br>
-                <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
-            </div>
-        `;
-        setTimeout(refreshAllHeights, 50);
-    }
-
-    function handleImageFile(event) {
-        const file = event.target.files[0];
-        if (file) loadAndDisplayImage(file);
-        event.target.value = ""; 
-    }
-
-    // 🔥 [수정] 비동기로 DB가 로드될 때까지 기다리도록 개선
-    window.onload = async () => { 
-        await loadDB(); 
-        addRow(); 
-        setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
-        updateUserNameDisplay(); 
-
-        window.addEventListener('mousedown', (e) => { 
-            if (!e.target.closest('.input-group')) {
-                const opt1 = document.getElementById('flightOptions'); if(opt1) opt1.style.display = "none"; 
-                const opt2 = document.getElementById('legOptions'); if(opt2) opt2.style.display = "none"; 
-            }
-        });
-
-        const pasteArea = document.getElementById('pasteArea');
-        pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('drag-over'); });
-        pasteArea.addEventListener('dragleave', (e) => { e.preventDefault(); pasteArea.classList.remove('drag-over'); });
-        pasteArea.addEventListener('drop', (e) => {
-            e.preventDefault(); pasteArea.classList.remove('drag-over');
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                const file = e.dataTransfer.files[0];
-                if (file.type.startsWith('image/')) loadAndDisplayImage(file);
-            }
-        });
-
-        pasteArea.addEventListener('wheel', (e) => {
-            if (!document.getElementById('pastedImg')) return; e.preventDefault(); 
-            currentScale += e.deltaY < 0 ? 0.15 : -0.15; 
-            currentScale = Math.max(0.2, Math.min(currentScale, 6)); applyTransform();
-        });
-
-        pasteArea.addEventListener('mousedown', (e) => {
-            if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
-            e.preventDefault(); isDragging = true; clickStartX = e.clientX; clickStartY = e.clientY; 
-            startDragX = e.clientX - translateX; startDragY = e.clientY - translateY;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
-        });
-
-        window.addEventListener('mouseup', (e) => {
-            if (isDragging) {
-                let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5 && e.button === 0) { 
-                    if (e.target.id === 'pastedImg') toggleExpand(); 
-                }
-            }
-            isDragging = false;
-        });
-    };
-
-    window.addEventListener('paste', function(e) {
-        if (!e.clipboardData) return;
-        const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                e.preventDefault();
-                const file = items[i].getAsFile();
-                if (file) loadAndDisplayImage(file);
-                return; 
-            }
-        }
-    });
-
-    function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
-    function rotateImg(e) { e.stopPropagation(); currentRotation += 90; applyTransform(); }
-    
-    function toggleExpand() {
-        document.getElementById('mainTopSection').classList.toggle('expanded');
-        translateX = 0; translateY = 0; currentScale = 1; applyTransform();
-        
-        setTimeout(refreshAllHeights, 50);
-        setTimeout(refreshAllHeights, 150);
-        setTimeout(refreshAllHeights, 400); 
-    }
-
-    async function extractText() {
-        if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
-        const btn = document.getElementById('btnExtractMain'); btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
-        const formData = new FormData(); formData.append("file", fileToUpload);
-
-        try {
-            const res = await fetch("/ocr", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
-            
-            if (data.regNo) { document.getElementById('regNo').value = data.regNo.replace(/^HL/, ""); fillAcType(); }
-            if (data.flightNo) { 
-                let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/, '').replace(/^0+/, '');
-                document.getElementById('flightNo').value = cleanFno; 
-                matchLegsFromFlight(); 
-            } 
-            else if (data.legFrom || data.legTo) {
-                if (data.legFrom) document.getElementById('legFrom').value = data.legFrom; 
-                if (data.legTo) document.getElementById('legTo').value = data.legTo; 
-                matchFlightFromLegs(); 
-            }
-            
-            if (data.items && data.items.length > 0) {
-                document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
-                data.items.forEach(item => addRow(item));
-                setTimeout(refreshAllHeights, 150); 
-            } else {
-                alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
-            }
-        } catch (e) { alert("⚠️ 에러: " + e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
-    }
-
-    async function extractRawText() {
-        if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
-        const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
-        const formData = new FormData(); formData.append("file", fileToUpload);
-
-        try {
-            const res = await fetch("/extract_raw", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
-            document.getElementById('rightPanel').classList.add('text-extract-mode');
-            const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
-        } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; }
-    }
-</script>
-</body>
-</html>
+        return {"status": "success"}
+    except Exception as e:
+        return {"error": f"메일 전송 실패: {str(e)}"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
