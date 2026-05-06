@@ -24,7 +24,6 @@
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
-        /* text-transform 제거하여 수동 입력 시 대소문자 유지 */
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
         .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 150px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
@@ -56,7 +55,6 @@
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .search-wrap button:hover { background: #2c3e50; }
 
-        /* textarea text-transform 제거 및 초기 높이 제어 속성 최적화 */
         .defect-row textarea { 
             width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
             font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
@@ -187,9 +185,6 @@
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
 
-    // =========================================================================
-    // 🔥 [신규] 대용량 DB 처리를 위한 IndexedDB 래퍼(Wrapper) 함수
-    // =========================================================================
     const DB_NAME = "LogScannerDB";
     const STORE_NAME = "Storage";
 
@@ -206,7 +201,7 @@
                 const db = e.target.result;
                 const tx = db.transaction(STORE_NAME, "readwrite");
                 const store = tx.objectStore(STORE_NAME);
-                store.put(data, "integratedDB"); // DB 구조 전체를 "integratedDB" 키에 저장
+                store.put(data, "integratedDB"); 
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             };
@@ -452,7 +447,6 @@
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
 
-    // 🔥 [수정] 대용량 처리를 위해 버튼 텍스트 변경 후 IndexedDB에 저장하도록 비동기 처리
     function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
         
@@ -490,11 +484,8 @@
                     }
                 });
                 
-                // 기존 localStorage에서 IndexedDB로 저장 방식 변경
                 const newDB = { ataDatabase: newAta, actionDatabase: newAction, flights: newFlights, ac: newAc, emails: newEmails };
                 await saveToIndexedDB(newDB);
-                
-                // 찌꺼기 로컬 스토리지 데이터 삭제 (최초 1회 정리용)
                 localStorage.removeItem('integratedDB'); 
                 
                 alert(`✅ 대용량 DB 세팅 완료!`); 
@@ -509,7 +500,6 @@
         reader.readAsText(file);
     }
 
-    // 🔥 [수정] IndexedDB에서 비동기적으로 DB를 불러오도록 변경
     async function loadDB() {
         try {
             const saved = await loadFromIndexedDB();
@@ -610,28 +600,28 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 9만 개 DB 검색을 프론트에서 1차로 필터링하여 페이로드 크기를 확 줄이는 핵심 로직
+    // 🔥 초고속 최적화 적용: 무관한 항목을 쳐내고 핵심 항목 15개만 AI로 전송합니다.
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
+        const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
+        const inputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
+        const btn = document.getElementById(btnId); 
+
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
         
-        const isAta = (searchType === 'ATA');
-        const dbToSearch = isAta ? DB.ataDatabase : DB.actionDatabase;
-        const btnId = isAta ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
-        const inputId = isAta ? `ata-${id}` : `reason-${id}`;
-        
+        const dbToSearch = searchType === 'ATA' ? DB.ataDatabase : DB.actionDatabase;
         if (!dbToSearch || dbToSearch.length === 0) return alert(`⚠️ 해당 DB(${searchType})가 등록되어 있지 않습니다.`);
-        const btn = document.getElementById(btnId); btn.innerText = "⏳"; btn.disabled = true;
+        
+        btn.innerText = "⏳"; btn.disabled = true;
 
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
-        
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) {
             currentAcType = "A321";
         }
 
         // 1차 필터링: 기종 조건 (ATA가 아닐 경우만)
         let validActions = dbToSearch;
-        if (!isAta) {
+        if (searchType !== 'ATA') {
             validActions = dbToSearch.filter(d => {
                 if (d.type === 'MEL' && d.acType !== 'ALL') {
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
@@ -640,25 +630,39 @@
             });
         }
 
-        // 🔥 프론트엔드 단어 매칭 1차 필터링 (상위 70개만 추려냄)
-        // 9만 줄 텍스트를 AI 서버로 다 보내면 용량 초과 에러가 발생하므로 여기서 줄입니다.
-        const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; // 2글자 이상 단어 추출
+        // 검색에 쓰일 핵심 단어 추출 (2글자 이상)
+        const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
+        if (defectTerms.length === 0) {
+            alert("⚠️ 검색에 사용할 수 있는 핵심 단어(영문 2글자 이상)가 결함 내용에 부족합니다.");
+            btn.innerText = "🔍"; btn.disabled = false;
+            return;
+        }
 
-        let scoredDB = validActions.map(d => {
+        let scoredDB = [];
+        validActions.forEach(d => {
             let score = 0;
-            const targetStr = d.keyword.toLowerCase();
-            
+            const targetStr = (d.keyword + " " + d.code).toLowerCase();
             defectTerms.forEach(term => {
-                if (targetStr.includes(term)) score += 10; // 단어가 포함되어 있으면 점수 부여
+                if (targetStr.includes(term)) score += 10; 
             });
-            return { data: d, score: score };
+            // 🔥 점수가 0점(무관함)인 항목은 아예 리스트에 넣지 않습니다!
+            if (score > 0) {
+                scoredDB.push({ data: d, score: score });
+            }
         });
 
-        // 점수 높은 순으로 내림차순 정렬
+        // 🔥 연관된 후보가 단 하나도 없다면 서버 요청 자체를 차단 (타임아웃 방지)
+        if (scoredDB.length === 0) {
+            alert(`💡 [${searchType}] 연관된 키워드를 찾지 못했습니다.\n결함 내용에 영문 부품명(예: TIRE, SENSOR 등)을 추가한 뒤 다시 눌러주세요!`);
+            btn.innerText = "🔍"; btn.disabled = false;
+            return;
+        }
+
+        // 점수 높은 순으로 정렬
         scoredDB.sort((a, b) => b.score - a.score);
 
-        // 상위 70개만 추출 (AI가 문맥을 파악하기엔 충분한 개수)
-        const topCandidates = scoredDB.slice(0, 70).map(item => item.data);
+        // 상위 15개만 추출 (AI가 분석하기 최적의 양, 1초 컷 가능)
+        const topCandidates = scoredDB.slice(0, 15).map(item => item.data);
 
         let compressedDB = topCandidates.map(d => {
             const prefix = d.type ? d.type + ' ' : '';
@@ -671,7 +675,6 @@
                 body: JSON.stringify({ defect: text, search_type: searchType, db_text: compressedDB })
             });
             
-            // 서버 타임아웃 등으로 HTML 에러 페이지가 올 수 있으므로 text로 먼저 받음
             const rawText = await res.text();
             
             try {
@@ -741,7 +744,6 @@
         event.target.value = ""; 
     }
 
-    // 🔥 [수정] 비동기로 DB가 로드될 때까지 기다리도록 개선
     window.onload = async () => { 
         await loadDB(); 
         addRow(); 
