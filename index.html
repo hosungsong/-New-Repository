@@ -610,6 +610,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🔥 9만 개 DB 검색을 프론트에서 1차로 필터링하여 페이로드 크기를 확 줄이는 핵심 로직
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
@@ -628,35 +629,64 @@
             currentAcType = "A321";
         }
 
-        let compressedDB = "";
-
-        if (isAta) {
-            compressedDB = dbToSearch.map(d => `${d.code}::${d.keyword}`).join('\n');
-        } else {
-            const validActions = dbToSearch.filter(d => {
+        // 1차 필터링: 기종 조건 (ATA가 아닐 경우만)
+        let validActions = dbToSearch;
+        if (!isAta) {
+            validActions = dbToSearch.filter(d => {
                 if (d.type === 'MEL' && d.acType !== 'ALL') {
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
                 }
                 return true; 
             });
-            compressedDB = validActions.map(d => {
-                const prefix = d.type ? d.type + ' ' : '';
-                return `${prefix}${d.code}::${d.keyword}`;
-            }).join('\n');
         }
+
+        // 🔥 프론트엔드 단어 매칭 1차 필터링 (상위 70개만 추려냄)
+        // 9만 줄 텍스트를 AI 서버로 다 보내면 용량 초과 에러가 발생하므로 여기서 줄입니다.
+        const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; // 2글자 이상 단어 추출
+
+        let scoredDB = validActions.map(d => {
+            let score = 0;
+            const targetStr = d.keyword.toLowerCase();
+            
+            defectTerms.forEach(term => {
+                if (targetStr.includes(term)) score += 10; // 단어가 포함되어 있으면 점수 부여
+            });
+            return { data: d, score: score };
+        });
+
+        // 점수 높은 순으로 내림차순 정렬
+        scoredDB.sort((a, b) => b.score - a.score);
+
+        // 상위 70개만 추출 (AI가 문맥을 파악하기엔 충분한 개수)
+        const topCandidates = scoredDB.slice(0, 70).map(item => item.data);
+
+        let compressedDB = topCandidates.map(d => {
+            const prefix = d.type ? d.type + ' ' : '';
+            return `${prefix}${d.code}::${d.keyword}`;
+        }).join('\n');
 
         try {
             const res = await fetch("/smart_search", {
                 method: "POST", headers: { "Content-Type": "application/json" }, 
                 body: JSON.stringify({ defect: text, search_type: searchType, db_text: compressedDB })
             });
-            const data = await res.json();
-            if (data.error) { alert("⚠️ " + data.error); }
-            else if (data.matched_value) { 
-                document.getElementById(inputId).value = data.matched_value; 
-            } else { 
-                alert(`🔍 적절한 항목을 찾지 못했습니다.`); 
+            
+            // 서버 타임아웃 등으로 HTML 에러 페이지가 올 수 있으므로 text로 먼저 받음
+            const rawText = await res.text();
+            
+            try {
+                const data = JSON.parse(rawText);
+                if (data.error) { alert("⚠️ " + data.error); }
+                else if (data.matched_value) { 
+                    document.getElementById(inputId).value = data.matched_value; 
+                } else { 
+                    alert(`🔍 적절한 항목을 찾지 못했습니다.`); 
+                }
+            } catch (jsonError) {
+                console.error("서버 응답 오류 원문:", rawText);
+                alert("⚠️ 서버에서 올바르지 않은 응답이 반환되었습니다. (타임아웃 또는 서버 오류)");
             }
+
         } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
     }
 
