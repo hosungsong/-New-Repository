@@ -26,10 +26,10 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* 🔥 드롭다운 너비 및 줄바꿈 최적화 */
+        /* 🔥 드롭다운 너비 대폭 확장 및 줄바꿈 방지 */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); left: 0; 
-            min-width: 100%; width: max-content; max-width: 500px; 
+            min-width: 100%; width: max-content; max-width: 800px; 
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             max-height: 250px; overflow-y: auto; overflow-x: hidden; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
@@ -470,20 +470,23 @@
             try {
                 const lines = e.target.result.split('\n');
                 let newAta = [], newAction = [], newFlights = [], newAc = {}, newEmails = {};
-                lines.forEach(line => {
+                
+                // 🔥 CSV 파싱 시 몇 번째 행(row)인지 기록하도록 수정 (1번 줄부터 시작)
+                lines.forEach((line, index) => {
+                    const rowNum = index + 1; 
                     const parts = line.split(',').map(p => p.trim());
                     if (parts.length >= 2) {
                         const type = parts[0].toUpperCase();
                         if (type === 'ATA') {
                             const key = parts[2] ? parts[2].toUpperCase() : "";
-                            if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1] });
+                            if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1], row: rowNum });
                         } else if (type === 'NEF' && parts.length >= 3) {
-                            newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase() });
+                            newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase(), row: rowNum });
                         } else if (type === 'MEL' && parts.length >= 4) {
-                            newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase() });
+                            newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase(), row: rowNum });
                         } else if (type === 'ACTION' && parts.length >= 3) {
                             const key = parts[2] ? parts[2].toUpperCase() : "";
-                            if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key });
+                            if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key, row: rowNum });
                         } else if (type === 'FLIGHT' && parts.length >= 4) {
                             newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
                         } else if (type === 'AC' && parts.length >= 3) {
@@ -498,7 +501,7 @@
                 await saveToIndexedDB(newDB);
                 localStorage.removeItem('integratedDB'); 
                 
-                alert(`✅ 대용량 DB 세팅 완료!`); 
+                alert(`✅ 대용량 DB 세팅 완료!\n(※ 주의: 향후 CSV 파일 행 번호가 바뀌면 대표항목 매핑 위치도 수정이 필요할 수 있습니다.)`); 
                 location.reload(); 
             } catch (err) {
                 alert("⚠️ DB 저장 중 오류 발생: " + err.message);
@@ -612,7 +615,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 대표 키워드 매핑 완벽 수정
+    // 🔥 대표 키워드 매핑 시 엄격한 행(Row) 범위 지정 로직 적용
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -695,11 +698,24 @@
                     let uniqueCodes = [...new Set(data.matches)];
                     
                     uniqueCodes.forEach(code => {
-                        // AI가 반환한 'NEF 25-10-01' 같은 접두사를 제거하고 순수 코드('25-10-01')만 추출
                         const cleanCode = code.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').trim();
+                        const isNEF = code.toUpperCase().startsWith('NEF');
                         
-                        // DB에서 순수 코드와 일치하는 첫 번째 항목(대표 항목) 찾기
-                        const repItem = dbToSearch.find(d => d.code === cleanCode || d.code === code);
+                        // 🔥 지정된 행 범위 안에서 가장 먼저 발견되는 녀석을 무조건 '대표 항목'으로 간주합니다.
+                        let repItem = dbToSearch.find(d => {
+                            const matchCode = (d.code === cleanCode || d.code === code);
+                            if (matchCode) {
+                                if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
+                                if (searchType !== 'ATA' && isNEF && d.row >= 83095 && d.row <= 83231) return true;
+                            }
+                            return false;
+                        });
+
+                        // 혹시나 행 범위 안에 없으면 기존처럼 일반 매칭으로 띄움
+                        if (!repItem) {
+                            repItem = dbToSearch.find(d => d.code === cleanCode || d.code === code);
+                        }
+                        
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
                         
                         const row = document.createElement('div');
