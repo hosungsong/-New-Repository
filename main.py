@@ -16,11 +16,71 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 
+# 🔥 [신규] 서버 메모리에 저장되는 글로벌 DB
+APP_DB = {"flights": [], "ataDatabase": [], "actionDatabase": [], "ac": {}, "emails": {}}
+
+def reload_db_from_lines(lines):
+    APP_DB["flights"].clear()
+    APP_DB["ataDatabase"].clear()
+    APP_DB["actionDatabase"].clear()
+    APP_DB["ac"].clear()
+    APP_DB["emails"].clear()
+    
+    for idx, line in enumerate(lines):
+        rowNum = idx + 1
+        parts = [p.strip() for p in line.split(',')]
+        if len(parts) >= 2:
+            type_ = parts[0].upper()
+            if type_ == 'ATA':
+                key = parts[2].upper() if len(parts) > 2 else ""
+                if key and parts[1] and key != 'KEYWORD':
+                    APP_DB["ataDatabase"].append({"keyword": key, "code": parts[1], "row": rowNum})
+            elif type_ == 'NEF' and len(parts) >= 3:
+                APP_DB["actionDatabase"].append({"type": 'NEF', "code": parts[1].upper(), "acType": 'ALL', "keyword": parts[2].upper(), "row": rowNum})
+            elif type_ == 'MEL' and len(parts) >= 4:
+                APP_DB["actionDatabase"].append({"type": 'MEL', "code": parts[1].upper(), "acType": parts[2].upper(), "keyword": parts[3].upper(), "row": rowNum})
+            elif type_ == 'ACTION' and len(parts) >= 3:
+                key = parts[2].upper() if len(parts) > 2 else ""
+                if key and parts[1] and key != 'KEYWORD':
+                    APP_DB["actionDatabase"].append({"type": '', "code": parts[1].upper(), "acType": 'ALL', "keyword": key, "row": rowNum})
+            elif type_ == 'FLIGHT' and len(parts) >= 4:
+                APP_DB["flights"].append({"no": parts[1], "from": parts[2].upper(), "to": parts[3].upper()})
+            elif type_ == 'AC' and len(parts) >= 3:
+                APP_DB["ac"][parts[1]] = parts[2]
+            elif type_ == 'EMAIL' and len(parts) >= 3:
+                APP_DB["emails"][parts[1].upper()] = ",".join(parts[2:]).strip()
+
+# 서버 시작 시 database.csv 파일이 있으면 자동으로 로드 (깃허브에 database.csv를 올려두면 영구 적용됨)
+@app.on_event("startup")
+def startup_event():
+    if os.path.exists("database.csv"):
+        with open("database.csv", "r", encoding="utf-8-sig") as f:
+            reload_db_from_lines(f.readlines())
+
 @app.get("/")
 async def serve_frontend(): return FileResponse("index.html")
 
 @app.get("/ping")
 async def keep_alive_ping(): return {"status": "awake"}
+
+# 프론트엔드가 서버의 DB를 가져가도록 API 오픈
+@app.get("/api/db")
+async def get_db():
+    return APP_DB
+
+# CSV 업로드 시 서버 DB를 업데이트
+@app.post("/upload_db")
+async def upload_db(file: UploadFile = File(...)):
+    content = await file.read()
+    # 엑셀에서 뽑은 CSV의 인코딩 호환을 위해 utf-8 또는 euc-kr 처리
+    try: text = content.decode("utf-8-sig").splitlines()
+    except: text = content.decode("euc-kr").splitlines()
+    
+    reload_db_from_lines(text)
+    # Render 임시 스토리지에 저장 (서버 재시작 시 초기화되므로 깃허브 업로드 권장)
+    with open("database.csv", "w", encoding="utf-8-sig") as f:
+        f.write("\n".join(text))
+    return {"status": "success"}
 
 @app.post("/ocr")
 async def extract_text(file: UploadFile = File(...)):
@@ -30,45 +90,46 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        prompt = """
+        # 실제 존재하는 기번 목록 문자열 생성
+        valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
+
+        prompt = f"""
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 규칙을 0.1%의 오차도 없이 지키세요.
 
         [1. 문서 종류 판별]
         - FLIGHT LOG: 상단에 'FLIGHT & MAINT LOG' 혹은 'FLIGHT' 문구가 있거나 'LEG' 입력란이 있는 경우.
         - CABIN LOG: 상단에 'CABIN LOG'라고 명시된 경우.
 
-        [2. 작성자(asAp) 판별 절대 규칙 🚨🚨🚨]
-        문서 종류에 따라 아래 기준을 엄격히 적용하여 'AS' 또는 'AP'를 결정하세요.
-        - CAB인 경우: 무조건 'AS'로 고정합니다.
-        - FLT인 경우: 'ENTERED BY' 칸에 '도장(Stamp)'이 있으면 'AS', 없거나 수기 서명만 있으면 'AP'입니다.
+        [2. 작성자(asAp) 판별 절대 규칙 🚨]
+        - CABIN LOG인 경우: 무조건 'AS'로 고정합니다.
+        - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 '도장(Stamp)'이 있으면 'AS', 없거나 수기 서명만 있으면 'AP'입니다.
 
         [3. 결함 본문(defect) 및 ATA 추출 규칙]
         - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요. (아이템 번호 제외)
         - ATA CODE 규칙: 반드시 좌측 'ATA CODE' 칸 내부의 숫자만 추출하세요.
 
-        [4. 적용근거(reason) 체크박스 및 텍스트 판독 규칙 🚨🚨🚨]
+        [4. 적용근거(reason) 체크박스 및 텍스트 판독 규칙 🚨]
         ① [체크박스 위치 우선 판독]:
           - CABIN LOG (3개): 1=MEL, 2=NEF, 3=AMM
           - FLIGHT LOG (5개): 1=MEL, 2=CDL, 3=NEF, 4=SRM, 5=AMM
           - 체크된 박스의 위치(순서)를 최우선으로 믿고 해당 분류를 결정하세요.
-        ② 🚨 [손글씨 정제 3대 원칙] 🚨:
-          1. [취소선(Strikethrough) 완전 무시]: 가로선이 그어져 지워진 글자는 절대 읽지 마세요. 선이 없는 '최종 수정된' 글자만 가져옵니다.
-          2. [고정 양식 및 등급 무시]: 번호 뒤에 인쇄된 'CAT'이라는 글자와 그 옆에 정비사가 쓴 등급(A, B, C 등)은 결함 근거 번호가 아닙니다. 이는 관리용 정보이므로 절대로 추출하지 마세요. (예: '73-10-01B CAT C' -> '73-10-01B'만 추출)
-          3. [중복 분류 무시]: 수기로 'MEL' 등을 또 적었어도 무시하고, 체크박스에서 확인된 분류만 앞에 붙이세요.
-          👉 [최종 출력 형태]: "[체크박스분류] [정제된숫자코드]" (예: MEL 73-10-01B)
+        ② [손글씨 정제 3대 원칙]:
+          1. 취소선이 그어진 글자는 절대 읽지 마세요.
+          2. 번호 뒤에 인쇄된 'CAT'이라는 글자와 그 옆의 등급(A, B, C 등)은 절대 추출하지 마세요. (예: '73-10-01B CAT C' -> '73-10-01B'만 추출)
+          3. 중복 분류 무시: 수기로 'MEL' 등을 썼어도 무시하고, 위치 기반으로 찾은 체크박스 분류만 앞에 붙이세요.
 
         [5. 공통 정보]
-        - regNo: 'HL' 뒤의 숫자. (9를 q나 p처럼 쓰는 습관 주의하여 8과 구분 필수)
+        - regNo: 'HL' 뒤의 숫자. 
+          🚨 [기번 교차 검증 절대 규칙]: 실제 회사에 존재하는 기번 목록은 다음과 같습니다 -> [{valid_ac_list}]
+          작성자가 글씨를 흘려 써서 8과 9, 3과 5 등이 헷갈리더라도, 무조건 위 목록에 실제로 존재하는 번호로 매칭해서 출력하세요!
         - flightNo: 'OZ' 제외 순수 숫자.
         - legFrom, legTo: 구간 영문 3자리.
 
-        🚨 모든 텍스트 결과값은 대문자(UPPERCASE)로 변환하여 응답하세요.
-        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
-
-        {
+        🚨 응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
+        {{
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"} ]
-        }
+          "items": [ {{"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
+        }}
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
