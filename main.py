@@ -97,9 +97,11 @@ async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
+        
+        # 🔥 드롭다운을 위해 배열 형식으로 반환하도록 변경하고, 예외 케이스(좌석vs모니터) 규칙 추가
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
-        사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 1개의 항목을 찾으세요.
+        사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
 
         사용자 결함 내용: "{req.defect}"
 
@@ -109,11 +111,12 @@ async def smart_search(req: SmartSearchRequest):
         [DB 목록]
         {req.db_text}
         
-        🚨 출력 절대 규칙 🚨
-        1. 정답을 찾으면 '::' 앞부분인 [결함적용코드]만 정확히 추출하세요. (예: NEF 25-10-01)
-        2. '::' 기호나 그 뒤의 결함키워드는 절대 출력에 포함하지 마세요.
-        3. 응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
-        {{"matched_value": "코드만 출력"}}
+        🚨 🚨 [판독 주의사항] 🚨 🚨
+        1. 결함 내용에 '31K', '24A' 같은 좌석 번호가 있더라도, 실제 불량난 부품(예: Monitor, Screen, Light, Tray table 등)이 명시되어 있다면 좌석(Seat) 관련 코드보다 해당 부품 관련 코드를 최우선 1순위로 찾아야 합니다!
+        2. 정답을 찾으면 '::' 앞부분인 [결함적용코드]만 정확히 추출하세요. 
+        
+        응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요. (가장 정확한 순서대로 최대 5개 반환)
+        {{"matches": ["코드1", "코드2", "코드3"]}}
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
