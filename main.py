@@ -50,7 +50,7 @@ async def extract_text(file: UploadFile = File(...)):
           - 🚨 중요: 도장 없이 '수기 서명(Signature)'만 있거나, 칸이 비어 있는 경우에는 무조건 'AP'(Airline Pilot)로 분류하세요. 도장이 없으면 정비사가 아닌 운항승무원이 작성한 것입니다.
 
         [3. 결함 본문(defect) 및 ATA 추출 규칙]
-        - 'DEFECT and WORK 복사ORDER'란의 손글씨 본문만 추출하세요.
+        - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요.
         - 🚨 주의: 'ITEM' 칸에 적힌 '1', 'A' 같은 인덱스 번호는 결함 내용 앞에 붙이지 마세요.
         - 단, 결함 내용 중간에 있는 '24J', '27 L SIDE' 같은 위치 정보는 반드시 포함하세요.
         - 🚨 ATA CODE 규칙: 반드시 좌측의 'ATA CODE' 입력란 안에 적힌 숫자만 추출하세요. 만약 칸이 비어있다면 반드시 빈 문자열("")로 남겨두고, 절대 우측 ACTION TAKEN 란이나 PLACARD 등 다른 곳에 적힌 번호(예: 23-30-05 등)를 유추해서 채워 넣지 마세요!
