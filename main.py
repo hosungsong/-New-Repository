@@ -30,7 +30,6 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        # 🔥 AP/AS 판독 및 체크박스 로직이 극도로 강화된 프롬프트
         prompt = """
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 규칙을 0.1%의 오차도 없이 지키세요.
 
@@ -40,10 +39,7 @@ async def extract_text(file: UploadFile = File(...)):
 
         [2. 작성자(asAp) 판별 절대 규칙 🚨🚨🚨]
         문서 종류에 따라 아래 기준을 엄격히 적용하여 'AS' 또는 'AP'를 결정하세요.
-        
-        - CABIN LOG인 경우:
-          - 무조건 'AS'로 고정합니다.
-        
+        - CABIN LOG인 경우: 무조건 'AS'로 고정합니다.
         - FLIGHT LOG (FLIGHT & MAINT LOG)인 경우:
           - 각 ITEM의 'ENTERED BY (SIGNATURE & LICENSE No.)' 칸을 정밀 분석하세요.
           - 🚨 중요: '도장(Stamp, 원형 또는 사각형의 이름/번호가 새겨진 직인)'이 찍혀 있는 경우에만 'AS'로 분류합니다.
@@ -53,12 +49,15 @@ async def extract_text(file: UploadFile = File(...)):
         - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요.
         - 🚨 주의: 'ITEM' 칸에 적힌 '1', 'A' 같은 인덱스 번호는 결함 내용 앞에 붙이지 마세요.
         - 단, 결함 내용 중간에 있는 '24J', '27 L SIDE' 같은 위치 정보는 반드시 포함하세요.
-        - 🚨 ATA CODE 규칙: 반드시 좌측의 'ATA CODE' 입력란 안에 적힌 숫자만 추출하세요. 만약 칸이 비어있다면 반드시 빈 문자열("")로 남겨두고, 절대 우측 ACTION TAKEN 란이나 PLACARD 등 다른 곳에 적힌 번호(예: 23-30-05 등)를 유추해서 채워 넣지 마세요!
+        - 🚨 ATA CODE 규칙: 반드시 좌측의 'ATA CODE' 입력란 안에 적힌 숫자만 추출하세요. 만약 칸이 비어있다면 반드시 빈 문자열("")로 남겨두고, 절대 우측 ACTION TAKEN 란이나 PLACARD 등 다른 곳에 적힌 번호를 유추해서 채워 넣지 마세요!
 
-        [4. 적용근거(reason) 체크박스 판독 규칙]
-        - CABIN LOG: 박스 3개 (왼쪽 글자 기준). 1:MEL, 2:NEF, 3:AMM.
-        - FLIGHT LOG: 박스 5개 (위쪽 글자 기준). 1:MEL, 2:CDL, 3:NEF, 4:SRM, 5:AMM.
-        - 체크(V)나 엑스(X)가 표시된 칸의 순서를 정확히 세어 해당 글자와 옆의 숫자를 합치세요. (예: NEF 25-10-01)
+        [4. 적용근거(reason) 체크박스 판독 규칙 (교차 검증 필수) 🚨🚨🚨]
+        - CABIN LOG의 경우, 'DEFER No.' 옆의 3개 체크박스를 다음과 같이 **엄격하게 교차 검증**하여 판독하세요:
+          1. [위치 기준]: 3개의 네모 박스는 왼쪽부터 순서대로 1번째=MEL, 2번째=NEF, 3번째=AMM 위치에 있습니다.
+          2. [텍스트 기준]: 체크(V)나 엑스(X)가 쳐진 박스의 '바로 왼쪽'에 적힌 텍스트(MEL, NEF, AMM)를 읽으세요.
+          3. [교차 검증 수행]: 반드시 위 두 가지 기준(위치와 왼쪽 글자)을 함께 확인하여 일치하는 항목을 추출하세요. 예를 들어, 2번째(가운데) 박스에 표시되어 있다면 그것은 위치상으로도 텍스트상으로도 무조건 'NEF'입니다. 제발 가운데 박스를 MEL로 착각하지 마세요. 박스의 위치 순서를 절대적으로 신뢰하세요!
+        - FLIGHT LOG의 경우: 박스 5개 (위쪽 글자 기준). 1:MEL, 2:CDL, 3:NEF, 4:SRM, 5:AMM.
+        - 판독된 종류(예: NEF)와 그 옆에 손으로 적힌 숫자(예: 25-10-01)를 합쳐서 출력하세요. (예: NEF 25-10-01)
 
         [5. 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란에 적힌 'HL' 뒤의 숫자.
@@ -98,7 +97,6 @@ async def smart_search(req: SmartSearchRequest):
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
         
-        # 🔥 드롭다운을 위해 배열 형식으로 반환하도록 변경하고, 예외 케이스(좌석vs모니터) 규칙 추가
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
         사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
