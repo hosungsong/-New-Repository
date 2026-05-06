@@ -39,38 +39,30 @@ async def extract_text(file: UploadFile = File(...)):
 
         [2. 작성자(asAp) 판별 절대 규칙 🚨🚨🚨]
         문서 종류에 따라 아래 기준을 엄격히 적용하여 'AS' 또는 'AP'를 결정하세요.
-        - CABIN LOG인 경우: 무조건 'AS'로 고정합니다.
-        - FLIGHT LOG (FLIGHT & MAINT LOG)인 경우:
-          - 각 ITEM의 'ENTERED BY (SIGNATURE & LICENSE No.)' 칸을 정밀 분석하세요.
-          - 🚨 중요: '도장(Stamp, 원형 또는 사각형의 이름/번호가 새겨진 직인)'이 찍혀 있는 경우에만 'AS'로 분류합니다.
-          - 🚨 중요: 도장 없이 '수기 서명(Signature)'만 있거나, 칸이 비어 있는 경우에는 무조건 'AP'(Airline Pilot)로 분류하세요. 도장이 없으면 정비사가 아닌 운항승무원이 작성한 것입니다.
+        - CAB인 경우: 무조건 'AS'로 고정합니다.
+        - FLT인 경우: 'ENTERED BY' 칸에 '도장(Stamp)'이 있으면 'AS', 없거나 수기 서명만 있으면 'AP'입니다.
 
         [3. 결함 본문(defect) 및 ATA 추출 규칙]
-        - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요.
-        - 🚨 주의: 'ITEM' 칸에 적힌 '1', 'A' 같은 인덱스 번호는 결함 내용 앞에 붙이지 마세요.
-        - 단, 결함 내용 중간에 있는 '24J', '27 L SIDE' 같은 위치 정보는 반드시 포함하세요.
-        - 🚨 ATA CODE 규칙: 반드시 좌측의 'ATA CODE' 입력란 안에 적힌 숫자만 추출하세요. 만약 칸이 비어있다면 반드시 빈 문자열("")로 남겨두고, 절대 우측 ACTION TAKEN 란이나 PLACARD 등 다른 곳에 적힌 번호를 유추해서 채워 넣지 마세요!
+        - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요. (아이템 번호 제외)
+        - ATA CODE 규칙: 반드시 좌측 'ATA CODE' 칸 내부의 숫자만 추출하세요.
 
-        [4. 적용근거(reason) 체크박스 판독 규칙 (교차 검증 필수) 🚨🚨🚨]
-        - CABIN LOG의 경우, 'DEFER No.' 옆의 3개 체크박스를 다음과 같이 **엄격하게 교차 검증**하여 판독하세요:
-          1. [위치 기준]: 3개의 네모 박스는 왼쪽부터 순서대로 1번째=MEL, 2번째=NEF, 3번째=AMM 위치에 있습니다.
-          2. [텍스트 기준]: 체크(V)나 엑스(X)가 쳐진 박스의 '바로 왼쪽'에 적힌 텍스트(MEL, NEF, AMM)를 읽으세요.
-          3. [교차 검증 수행]: 반드시 위 두 가지 기준(위치와 왼쪽 글자)을 함께 확인하여 일치하는 항목을 추출하세요. 텍스트가 흐릿하다면 박스의 위치 순서를 절대적으로 신뢰하세요!
-        
-        - FLIGHT LOG (FLIGHT & MAINT LOG)의 경우, 'DEFER No.' 옆의 5개 체크박스를 다음과 같이 **엄격하게 교차 검증**하여 판독하세요:
-          1. [위치 기준]: 5개의 네모 박스는 왼쪽부터 순서대로 1번째=MEL, 2번째=CDL, 3번째=NEF, 4번째=SRM, 5번째=AMM 위치에 있습니다.
-          2. [텍스트 기준]: 체크(V)나 엑스(X)가 쳐진 박스의 '바로 위쪽'에 적힌 텍스트(MEL, CDL, NEF, SRM, AMM)를 읽으세요.
-          3. [교차 검증 수행]: 반드시 위 두 가지 기준(위치와 위쪽 글자)을 함께 확인하여 일치하는 항목을 추출하세요. 만약 글자가 명확하게 보이지 않는다면, 체크된 박스의 위치(순서)에 따른 종류를 무조건 우선하여 판독하세요!
-        
-        - 판독된 종류(예: NEF)와 그 옆에 손으로 적힌 숫자(예: 25-10-01)를 합쳐서 출력하세요. (예: NEF 25-10-01)
+        [4. 적용근거(reason) 체크박스 및 텍스트 판독 규칙 🚨🚨🚨]
+        ① [체크박스 위치 우선 판독]:
+          - CABIN LOG (3개): 1=MEL, 2=NEF, 3=AMM
+          - FLIGHT LOG (5개): 1=MEL, 2=CDL, 3=NEF, 4=SRM, 5=AMM
+          - 체크된 박스의 위치(순서)를 최우선으로 믿고 해당 분류를 결정하세요.
+        ② 🚨 [손글씨 정제 3대 원칙] 🚨:
+          1. [취소선(Strikethrough) 완전 무시]: 가로선이 그어져 지워진 글자는 절대 읽지 마세요. 선이 없는 '최종 수정된' 글자만 가져옵니다.
+          2. [고정 양식 및 등급 무시]: 번호 뒤에 인쇄된 'CAT'이라는 글자와 그 옆에 정비사가 쓴 등급(A, B, C 등)은 결함 근거 번호가 아닙니다. 이는 관리용 정보이므로 절대로 추출하지 마세요. (예: '73-10-01B CAT C' -> '73-10-01B'만 추출)
+          3. [중복 분류 무시]: 수기로 'MEL' 등을 또 적었어도 무시하고, 체크박스에서 확인된 분류만 앞에 붙이세요.
+          👉 [최종 출력 형태]: "[체크박스분류] [정제된숫자코드]" (예: MEL 73-10-01B)
 
         [5. 공통 정보]
-        - regNo: 'AIRCRAFT REG. NO.' 란에 적힌 'HL' 뒤의 숫자.
-          🚨 [손글씨 판독 절대 주의사항]: 작성자가 숫자 '9'를 쓸 때 마치 영어 소문자 'q'나 필기체 'p'처럼 아래 획을 길게 내려 쓰는 것은 매우 흔하고 일반적인 필기 습관입니다. 따라서 윗부분에 닫힌 동그라미(루프)가 있더라도, 오른쪽 아래로 길게 떨어지는 획이 보인다면 절대 '8'로 오인하지 말고 '9'로 판독하세요.
-        - flightNo: 'OZ'나 앞자리 '0'을 뺀 순수 숫자.
+        - regNo: 'HL' 뒤의 숫자. (9를 q나 p처럼 쓰는 습관 주의하여 8과 구분 필수)
+        - flightNo: 'OZ' 제외 순수 숫자.
         - legFrom, legTo: 구간 영문 3자리.
 
-        🚨 모든 텍스트 결과값은 반드시 대문자(UPPERCASE)로 변환하여 응답하세요.
+        🚨 모든 텍스트 결과값은 대문자(UPPERCASE)로 변환하여 응답하세요.
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
 
         {
@@ -101,7 +93,6 @@ async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
-        
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
         사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
@@ -111,14 +102,9 @@ async def smart_search(req: SmartSearchRequest):
         [DB 목록 형식]
         결함적용코드::결함키워드
 
-        [DB 목록]
-        {req.db_text}
+        🚨 [주의] 좌석 번호(31K 등)보다 실제 부품(Monitor 등) 키워드를 우선순위로 매칭하세요.
         
-        🚨 🚨 [판독 주의사항] 🚨 🚨
-        1. 결함 내용에 '31K', '24A' 같은 좌석 번호가 있더라도, 실제 불량난 부품(예: Monitor, Screen, Light, Tray table 등)이 명시되어 있다면 좌석(Seat) 관련 코드보다 해당 부품 관련 코드를 최우선 1순위로 찾아야 합니다!
-        2. 정답을 찾으면 '::' 앞부분인 [결함적용코드]만 정확히 추출하세요. 
-        
-        응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요. (가장 정확한 순서대로 최대 5개 반환)
+        응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요.
         {{"matches": ["코드1", "코드2", "코드3"]}}
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
@@ -141,7 +127,7 @@ async def send_email(req: EmailRequest):
     smtp_password = os.environ.get("SMTP_PASSWORD") 
 
     if not smtp_user or not smtp_password:
-        return {"error": "서버에 이메일 전송을 위한 SMTP 설정이 되어있지 않습니다."}
+        return {"error": "SMTP 설정 미비"}
 
     try:
         msg = MIMEMultipart()
@@ -155,10 +141,9 @@ async def send_email(req: EmailRequest):
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
         server.quit()
-        
         return {"status": "success"}
     except Exception as e:
-        return {"error": f"메일 전송 실패: {str(e)}"}
+        return {"error": f"실패: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
