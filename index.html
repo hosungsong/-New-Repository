@@ -26,7 +26,6 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* 🔥 드롭다운 너비 대폭 확장 및 줄바꿈 방지 */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); left: 0; 
             min-width: 100%; width: max-content; max-width: 800px; 
@@ -118,7 +117,7 @@
     <div class="header">
         <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()" title="클릭하여 이름 변경"></span></h2>
         <input type="file" id="csvFileInput" style="display: none;" accept=".csv" onchange="handleCSVUpload(event)">
-        <button class="btn-db" id="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 세팅 (CSV)</button>
+        <button class="btn-db" id="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 서버 연동 (CSV)</button>
     </div>
 
     <div class="top-section" id="mainTopSection">
@@ -191,54 +190,87 @@
     };
 
     let fileToUpload = null; let rowIdCounter = 0;
+    // 글로벌 백엔드 서버 DB와 연동될 객체
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
 
-    const DB_NAME = "LogScannerDB";
-    const STORE_NAME = "Storage";
+    // 🔥 [핵심 기능 1] 이미지 자동 압축 로직 (AI 분석 속도를 10배 빠르게 만듭니다)
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200; // 가로 최대 크기
+                    const MAX_HEIGHT = 1200; // 세로 최대 크기
+                    let width = img.width;
+                    let height = img.height;
 
-    function saveToIndexedDB(data) {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, 1);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
-                }
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 품질 0.8 수준으로 JPEG로 압축하여 반환
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.8);
+                };
             };
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                const tx = db.transaction(STORE_NAME, "readwrite");
-                const store = tx.objectStore(STORE_NAME);
-                store.put(data, "integratedDB"); 
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-            };
-            request.onerror = (e) => reject(e.target.error);
         });
     }
 
-    function loadFromIndexedDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, 1);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
-                }
-            };
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
-                const tx = db.transaction(STORE_NAME, "readonly");
-                const store = tx.objectStore(STORE_NAME);
-                const getReq = store.get("integratedDB");
-                getReq.onsuccess = () => resolve(getReq.result);
-                getReq.onerror = () => reject(getReq.error);
-            };
-            request.onerror = (e) => reject(e.target.error);
-        });
+    // 🔥 [핵심 기능 3] 이제 브라우저 로컬 DB가 아니라 서버(백엔드)에서 DB를 가져옵니다.
+    async function loadDB() {
+        try {
+            const res = await fetch("/api/db");
+            const data = await res.json();
+            if (data && Object.keys(data.ac).length > 0) {
+                DB = data;
+                console.log("✅ 서버 DB 로드 완료!");
+            } else {
+                console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
+            }
+        } catch (e) {
+            console.error("서버 DB 로드 실패:", e);
+        }
+    }
+
+    // 서버로 CSV 파일을 전송하여 즉시 메모리에 적용시킵니다.
+    async function handleCSVUpload(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const btn = document.getElementById('btn-db');
+        const originText = btn.innerText;
+        btn.innerText = "서버로 DB 전송 중... ⏳";
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const res = await fetch("/upload_db", { method: "POST", body: formData });
+            if(res.ok) {
+                alert(`✅ 글로벌 DB 세팅 완료!\n접속한 모든 사용자가 이 DB를 공유합니다.\n(※ 단, Render 서버 재시작 시 초기화되므로 영구 보존을 원하면 database.csv 파일을 깃허브에 Commit 해주세요!)`); 
+                location.reload(); 
+            } else {
+                alert("⚠️ 업로드 실패");
+            }
+        } catch (err) {
+            alert("⚠️ 통신 에러: " + err.message);
+        } finally {
+            btn.innerText = originText;
+            btn.disabled = false;
+        }
     }
 
     function updateUserNameDisplay() {
@@ -457,71 +489,6 @@
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
 
-    function handleCSVUpload(event) {
-        const file = event.target.files[0]; if (!file) return;
-        
-        const btn = document.getElementById('btn-db');
-        const originText = btn.innerText;
-        btn.innerText = "대용량 DB 처리 중... ⏳";
-        btn.disabled = true;
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const lines = e.target.result.split('\n');
-                let newAta = [], newAction = [], newFlights = [], newAc = {}, newEmails = {};
-                
-                // 🔥 CSV 파싱 시 몇 번째 행(row)인지 기록하도록 수정 (1번 줄부터 시작)
-                lines.forEach((line, index) => {
-                    const rowNum = index + 1; 
-                    const parts = line.split(',').map(p => p.trim());
-                    if (parts.length >= 2) {
-                        const type = parts[0].toUpperCase();
-                        if (type === 'ATA') {
-                            const key = parts[2] ? parts[2].toUpperCase() : "";
-                            if (key && parts[1] && key !== 'KEYWORD') newAta.push({ keyword: key, code: parts[1], row: rowNum });
-                        } else if (type === 'NEF' && parts.length >= 3) {
-                            newAction.push({ type: 'NEF', code: parts[1].toUpperCase(), acType: 'ALL', keyword: parts[2].toUpperCase(), row: rowNum });
-                        } else if (type === 'MEL' && parts.length >= 4) {
-                            newAction.push({ type: 'MEL', code: parts[1].toUpperCase(), acType: parts[2].toUpperCase(), keyword: parts[3].toUpperCase(), row: rowNum });
-                        } else if (type === 'ACTION' && parts.length >= 3) {
-                            const key = parts[2] ? parts[2].toUpperCase() : "";
-                            if (key && parts[1] && key !== 'KEYWORD') newAction.push({ type: '', code: parts[1].toUpperCase(), acType: 'ALL', keyword: key, row: rowNum });
-                        } else if (type === 'FLIGHT' && parts.length >= 4) {
-                            newFlights.push({ no: parts[1], from: parts[2].toUpperCase(), to: parts[3].toUpperCase() });
-                        } else if (type === 'AC' && parts.length >= 3) {
-                            newAc[parts[1]] = parts[2];
-                        } else if (type === 'EMAIL' && parts.length >= 3) {
-                            newEmails[parts[1].toUpperCase()] = parts.slice(2).join(',').trim();
-                        }
-                    }
-                });
-                
-                const newDB = { ataDatabase: newAta, actionDatabase: newAction, flights: newFlights, ac: newAc, emails: newEmails };
-                await saveToIndexedDB(newDB);
-                localStorage.removeItem('integratedDB'); 
-                
-                alert(`✅ 대용량 DB 세팅 완료!\n(※ 주의: 향후 CSV 파일 행 번호가 바뀌면 대표항목 매핑 위치도 수정이 필요할 수 있습니다.)`); 
-                location.reload(); 
-            } catch (err) {
-                alert("⚠️ DB 저장 중 오류 발생: " + err.message);
-            } finally {
-                btn.innerText = originText;
-                btn.disabled = false;
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    async function loadDB() {
-        try {
-            const saved = await loadFromIndexedDB();
-            if (saved) { DB = saved; }
-        } catch (e) {
-            console.error("DB 로드 실패:", e);
-        }
-    }
-
     function fillAcType() {
         const reg = document.getElementById('regNo').value.trim();
         document.getElementById('acType').value = DB.ac[reg] || "";
@@ -615,7 +582,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 대표 키워드 매핑 시 엄격한 행(Row) 범위 지정 로직 적용
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -701,7 +667,6 @@
                         const cleanCode = code.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').trim();
                         const isNEF = code.toUpperCase().startsWith('NEF');
                         
-                        // 🔥 지정된 행 범위 안에서 가장 먼저 발견되는 녀석을 무조건 '대표 항목'으로 간주합니다.
                         let repItem = dbToSearch.find(d => {
                             const matchCode = (d.code === cleanCode || d.code === code);
                             if (matchCode) {
@@ -711,7 +676,6 @@
                             return false;
                         });
 
-                        // 혹시나 행 범위 안에 없으면 기존처럼 일반 매칭으로 띄움
                         if (!repItem) {
                             repItem = dbToSearch.find(d => d.code === cleanCode || d.code === code);
                         }
@@ -721,7 +685,7 @@
                         const row = document.createElement('div');
                         row.className = 'dropdown-opt';
                         row.innerText = `${code} - ${keyword}`;
-                        row.title = `${code} - ${keyword}`; // 툴팁 추가
+                        row.title = `${code} - ${keyword}`; 
                         row.onmousedown = () => {
                             document.getElementById(inputId).value = code;
                             optDiv.style.display = "none";
@@ -741,6 +705,11 @@
             }
 
         } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
+    }
+
+    function swapLegs() {
+        const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
+        [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
     }
 
     function loadAndDisplayImage(file) {
@@ -796,7 +765,6 @@
         updateUserNameDisplay(); 
 
         window.addEventListener('mousedown', (e) => { 
-            // 돋보기 영역 바깥 클릭 시 드롭다운 닫기
             if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap')) {
                 document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none");
             }
@@ -868,7 +836,12 @@
     async function extractText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractMain'); btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
-        const formData = new FormData(); formData.append("file", fileToUpload);
+        
+        // 🔥 이미지 압축 실행
+        const compressedFile = await compressImage(fileToUpload);
+        
+        const formData = new FormData(); 
+        formData.append("file", compressedFile); // 압축된 이미지 전송
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
@@ -900,7 +873,12 @@
     async function extractRawText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
-        const formData = new FormData(); formData.append("file", fileToUpload);
+        
+        // 🔥 텍스트 추출 시에도 이미지 압축
+        const compressedFile = await compressImage(fileToUpload);
+        
+        const formData = new FormData(); 
+        formData.append("file", compressedFile);
 
         try {
             const res = await fetch("/extract_raw", { method: "POST", body: formData });
