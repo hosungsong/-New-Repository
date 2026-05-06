@@ -26,8 +26,19 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        .dropdown-list { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; background: white; border: 1px solid var(--primary); z-index: 9999; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
-        .dropdown-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; text-align: left; font-weight: bold; color: var(--primary); }
+        /* 🔥 드롭다운 너비 및 줄바꿈 최적화 */
+        .dropdown-list { 
+            position: absolute; top: calc(100% + 2px); left: 0; 
+            min-width: 100%; width: max-content; max-width: 500px; 
+            background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
+            max-height: 250px; overflow-y: auto; overflow-x: hidden; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
+        }
+        .dropdown-opt { 
+            padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
+            text-align: left; font-weight: bold; color: var(--primary); 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+        }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
 
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
@@ -50,7 +61,6 @@
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 🔥 드롭다운을 위해 overflow: visible 로 수정 */
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
@@ -569,7 +579,6 @@
         if (container.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); }
     }
 
-    // 🔥 드롭다운을 위한 div 위치 및 ID 추가 반영
     function addRow(data = {}) {
         rowIdCounter++; const id = rowIdCounter;
         const container = document.getElementById('defectRowsContainer');
@@ -603,7 +612,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 드롭다운 목록 생성 및 대표 키워드 매핑 반영
+    // 🔥 대표 키워드 매핑 완벽 수정
     async function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -612,7 +621,6 @@
         const btn = document.getElementById(btnId); 
         const optDiv = document.getElementById(dropdownId);
 
-        // 이전 드롭다운 닫기
         document.querySelectorAll('.dropdown-list').forEach(el => {
             if (el.id !== 'flightOptions' && el.id !== 'legOptions') el.style.display = 'none';
         });
@@ -687,13 +695,17 @@
                     let uniqueCodes = [...new Set(data.matches)];
                     
                     uniqueCodes.forEach(code => {
-                        // DB 배열에서 첫 번째로 발견되는 항목(주로 2~733행의 대표항목)을 추출합니다.
-                        const repItem = dbToSearch.find(d => d.code === code);
+                        // AI가 반환한 'NEF 25-10-01' 같은 접두사를 제거하고 순수 코드('25-10-01')만 추출
+                        const cleanCode = code.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').trim();
+                        
+                        // DB에서 순수 코드와 일치하는 첫 번째 항목(대표 항목) 찾기
+                        const repItem = dbToSearch.find(d => d.code === cleanCode || d.code === code);
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
                         
                         const row = document.createElement('div');
                         row.className = 'dropdown-opt';
                         row.innerText = `${code} - ${keyword}`;
+                        row.title = `${code} - ${keyword}`; // 툴팁 추가
                         row.onmousedown = () => {
                             document.getElementById(inputId).value = code;
                             optDiv.style.display = "none";
@@ -713,11 +725,6 @@
             }
 
         } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
-    }
-
-    function swapLegs() {
-        const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
-        [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
     }
 
     function loadAndDisplayImage(file) {
