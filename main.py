@@ -91,28 +91,29 @@ async def extract_text(file: UploadFile = File(...)):
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
         [1. 문서 상단 공통 정보 추출]
-        - regNo: 'AIRCRAFT REG. NO.' 란의 'HL' 뒤 숫자. (실제 존재하는 기번 [{valid_ac_list}] 중에서만 매칭할 것. 8과 9 흘림체 주의)
-        - flightNo: 'OZ' 제외 순수 숫자 (예: 222).
-        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란(예: ICN / JFK)을 반드시 읽어서 앞은 legFrom, 뒤는 legTo로 추출하세요.
+        - regNo: 'AIRCRAFT REG. NO.' 란의 'HL' 뒤 숫자. (실제 존재하는 기번 [{valid_ac_list}] 중에서만 매칭할 것)
+        - flightNo: 'OZ' 제외 순수 숫자.
+        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란을 반드시 읽어서 추출하세요.
 
         [2. 작성자(asAp)]
         - CABIN LOG: 무조건 'AS'.
         - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
 
         [3. 결함 본문(defect) - 우측 침범 금지!]
-        - 좌측의 'DEFECT DESCRIPTION' (또는 DEFECT) 칸에 있는 글자만 추출하세요.
-        - 🚨 절대 우측의 'ACTION TAKEN' 칸에 적힌 글자(조치내역, 시간 등)를 결함 내용에 섞지 마세요.
+        - 좌측의 'DEFECT DESCRIPTION' (또는 DEFECT) 칸에 있는 글자만 추출하세요. (아이템 번호 제외)
+        - 절대 우측의 'ACTION TAKEN' 칸을 결함 내용에 섞지 마세요.
 
         [4. ATA CODE - 유추 금지!]
         - 좌측 'ATA CODE' 칸에 적혀있는 내용만 추출하세요. 
-        - 🚨 칸이 비어있으면 무조건 빈 문자열("")을 출력하세요. 절대 우측의 DEFER No. 번호를 가져와서 채우지 마세요.
+        - 칸이 비어있으면 무조건 빈 문자열("")을 출력하세요.
 
-        [5. 적용근거(reason) - 위치 우선 및 꼬리표 절단]
-        - CABIN LOG: 글자 '오른쪽'에 체크박스가 있습니다. (예: MEL [X] NEF [ ] AMM [ ]) -> 첫 번째 박스에 체크되면 MEL, 두 번째 박스면 NEF입니다.
-        - FLIGHT LOG: 글자 '위쪽'에 박스가 있습니다. 1번째=MEL, 2번째=CDL, 3번째=NEF, 4번째=SRM, 5번째=AMM.
-        - 수기로 적은 분류(MEL, NEF 등)는 무시하고, '체크박스 위치'로 판단한 분류를 사용하세요.
+        [5. 적용근거(reason) - 🚨 AI 시각 착각(거리 왜곡) 방지 절대 규칙 🚨]
+        - 종이에 인쇄된 체크박스 구조상, 체크 표시(X, V)가 앞 단어보다 뒷 단어에 물리적으로 더 가깝게 인쇄되어 있습니다. (예: MEL [X] NEF [ ] 구조에서 [X]가 NEF 글자와 가깝게 보임)
+        - 🚨 절대 체크 표시와 가까운 우측 글자를 읽는 우를 범하지 마세요! 오직 왼쪽부터 '몇 번째 칸'에 체크되었는지만(순서만) 세어서 판독하세요.
+        - CABIN LOG (박스 3개): [1번째 칸 체크 = 100% MEL], [2번째 칸 체크 = 100% NEF], [3번째 칸 = AMM].
+        - FLIGHT LOG (박스 5개): [1번째=MEL], [2번째=CDL], [3번째=NEF], [4번째=SRM], [5번째=AMM].
         - 취소선(줄이 그어진 글자)은 무시하세요.
-        - 번호 뒤의 'CAT C', 'CAT B' 등은 완전히 잘라버리세요. (출력 예: NEF 25-10-01)
+        - 번호 뒤의 'CAT C', 'CAT B' 등은 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
 
         [6. 빈 행 추출 금지]
         - 결함 내용이 적혀있지 않은 빈 줄(Row)은 절대 추출하지 마세요.
@@ -123,13 +124,10 @@ async def extract_text(file: UploadFile = File(...)):
           "items": [ {{"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
         }}
         """
-        # temperature를 0.0으로 낮추어 AI의 창의성(오지랖)을 완전히 끕니다.
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.0})
         
-        # --- 🚨 파이썬 서버단 강제 후처리 (AI가 뱉은 데이터를 강제로 교정합니다) 🚨 ---
         data = json.loads(response.text.strip())
         
-        # 1. 100% 무조건 대문자 변환
         if "regNo" in data and data["regNo"]: data["regNo"] = str(data["regNo"]).upper()
         if "legFrom" in data and data["legFrom"]: data["legFrom"] = str(data["legFrom"]).upper()
         if "legTo" in data and data["legTo"]: data["legTo"] = str(data["legTo"]).upper()
@@ -138,8 +136,6 @@ async def extract_text(file: UploadFile = File(...)):
         cleaned_items = []
         for item in data.get("items", []):
             defect = str(item.get("defect", "")).upper()
-            
-            # 5. 빈 공란 행 무시 (아무 내용이 없거나 null이면 배열에서 삭제)
             if not defect.strip() or defect == "NULL" or defect == "NONE":
                 continue
                 
@@ -147,8 +143,6 @@ async def extract_text(file: UploadFile = File(...)):
             ata = str(item.get("ata", "")).upper()
             asAp = str(item.get("asAp", "")).upper()
             
-            # 4. ATA CODE 강제 비우기: 만약 길이가 4자리를 초과하거나 하이픈(-)이 있으면 
-            # AI가 우측의 적용근거(DEFER No.)를 훔쳐온 것이므로 강제로 빈칸("")으로 만듭니다.
             if len(ata) > 4 or "-" in ata:
                 ata = ""
                 
