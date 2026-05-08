@@ -114,7 +114,7 @@
 <div class="main-container">
     <div class="header">
         <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()" title="클릭하여 이름 변경"></span></h2>
-        </div>
+    </div>
 
     <div class="top-section" id="mainTopSection">
         <div class="left-panel">
@@ -190,7 +190,6 @@
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
     
-    // 🔥 [신규] 통신 강제 중단을 위한 컨트롤러
     let currentAbortController = null;
 
     function compressImage(file) {
@@ -527,7 +526,7 @@
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
             <div class="search-wrap">
                 <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="MEL/CDL/NEF 등">
-                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="AI 문맥 검색">🔍</button>
+                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="AI 문 문맥 검색">🔍</button>
                 <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
             </div>
             <div class="ata-wrapper">
@@ -672,8 +671,8 @@
                         
                         const row = document.createElement('div');
                         row.className = 'dropdown-opt';
-                        row.innerText = `${displayCode} - ${keyword}`;
-                        row.title = `${displayCode} - ${keyword}`; 
+                        row.innerText = `${displayCode} :: ${keyword}`;
+                        row.title = `${displayCode} :: ${keyword}`; 
                         row.onmousedown = () => {
                             document.getElementById(inputId).value = displayCode;
                             optDiv.style.display = "none";
@@ -724,7 +723,6 @@
     function resetImage(e) {
         if(e) e.stopPropagation();
         
-        // 🔥 X 버튼 클릭 시 진행 중인 통신(분석)이 있다면 즉시 강제 취소
         if (currentAbortController) {
             currentAbortController.abort();
             currentAbortController = null;
@@ -740,7 +738,11 @@
             </div>
         `;
         
-        // 버튼 텍스트 강제 초기화
+        // 🔥 빈칸 날아가지 않게 무조건 1줄 복구!
+        document.getElementById('defectRowsContainer').innerHTML = ""; 
+        rowIdCounter = 0;
+        addRow();
+        
         const btnMain = document.getElementById('btnExtractMain');
         if (btnMain) { btnMain.innerText = "✨ AI 분석 및 자동 매칭"; btnMain.disabled = false; }
         
@@ -756,9 +758,13 @@
         event.target.value = ""; 
     }
 
+    // 🔥 페이지 켜지자마자 무조건 1줄 생성하도록 보장!
     window.onload = async () => { 
-        await loadDB(); 
-        addRow(); 
+        addRow(); // DB 연동 전이라도 일단 줄부터 생성!
+        try {
+            await loadDB(); 
+        } catch(e) { console.error(e); }
+        
         setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
         updateUserNameDisplay(); 
 
@@ -837,7 +843,6 @@
         btn.innerText = "분석 중... ⏳"; 
         btn.disabled = true; 
         
-        // 🔥 기존 통신이 있다면 끊고 새로운 컨트롤러 시작
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();
 
@@ -846,7 +851,6 @@
         formData.append("file", compressedFile); 
 
         try {
-            // 🔥 통신 취소 기능을 위한 signal 연결
             const res = await fetch("/ocr", { 
                 method: "POST", 
                 body: formData,
@@ -873,6 +877,10 @@
                 setTimeout(refreshAllHeights, 150); 
             } else {
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
+                // 🔥 결함 못 찾았을 때도 빈칸 남지 않도록 1줄 강제 복구
+                if (document.querySelectorAll('.defect-row').length === 0) {
+                    addRow();
+                }
             }
         } catch (e) { 
             if (e.name === 'AbortError') {
