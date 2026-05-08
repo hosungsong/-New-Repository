@@ -88,45 +88,80 @@ async def extract_text(file: UploadFile = File(...)):
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
         prompt = f"""
-        당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 규칙을 0.1%의 오차도 없이 지키세요.
+        당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
-        [1. 문서 종류 판별]
-        - FLIGHT LOG: 상단에 'FLIGHT & MAINT LOG' 혹은 'FLIGHT' 문구가 있거나 'LEG' 입력란이 있는 경우.
-        - CABIN LOG: 상단에 'CABIN LOG'라고 명시된 경우.
+        [1. 문서 상단 공통 정보 추출]
+        - regNo: 'AIRCRAFT REG. NO.' 란의 'HL' 뒤 숫자. (실제 존재하는 기번 [{valid_ac_list}] 중에서만 매칭할 것. 8과 9 흘림체 주의)
+        - flightNo: 'OZ' 제외 순수 숫자 (예: 222).
+        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란(예: ICN / JFK)을 반드시 읽어서 앞은 legFrom, 뒤는 legTo로 추출하세요.
 
-        [2. 작성자(asAp) 판별 절대 규칙 🚨]
-        - CABIN LOG인 경우: 무조건 'AS'로 고정합니다.
-        - FLIGHT LOG인 경우: 'ENTERED BY' 칸에 '도장(Stamp)'이 있으면 'AS', 없거나 수기 서명만 있으면 'AP'입니다.
+        [2. 작성자(asAp)]
+        - CABIN LOG: 무조건 'AS'.
+        - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
 
-        [3. 결함 본문(defect) 및 ATA 추출 규칙]
-        - 'DEFECT and WORK ORDER'란의 손글씨 본문만 추출하세요. (아이템 번호 제외)
-        - ATA CODE 규칙: 반드시 좌측 'ATA CODE' 칸 내부의 숫자만 추출하세요.
+        [3. 결함 본문(defect) - 우측 침범 금지!]
+        - 좌측의 'DEFECT DESCRIPTION' (또는 DEFECT) 칸에 있는 글자만 추출하세요.
+        - 🚨 절대 우측의 'ACTION TAKEN' 칸에 적힌 글자(조치내역, 시간 등)를 결함 내용에 섞지 마세요.
 
-        [4. 적용근거(reason) 체크박스 및 텍스트 판독 규칙 🚨]
-        ① [체크박스 위치 우선 판독]:
-          - CABIN LOG (3개): 1=MEL, 2=NEF, 3=AMM
-          - FLIGHT LOG (5개): 1=MEL, 2=CDL, 3=NEF, 4=SRM, 5=AMM
-          - 체크된 박스의 위치(순서)를 최우선으로 믿고 해당 분류를 결정하세요.
-        ② [손글씨 정제 3대 원칙]:
-          1. 취소선이 그어진 글자는 절대 읽지 마세요.
-          2. 번호 뒤에 인쇄된 'CAT'이라는 글자와 그 옆의 등급(A, B, C 등)은 절대 추출하지 마세요. (예: '73-10-01B CAT C' -> '73-10-01B'만 추출)
-          3. 중복 분류 무시: 수기로 'MEL' 등을 썼어도 무시하고, 위치 기반으로 찾은 체크박스 분류만 앞에 붙이세요.
+        [4. ATA CODE - 유추 금지!]
+        - 좌측 'ATA CODE' 칸에 적혀있는 내용만 추출하세요. 
+        - 🚨 칸이 비어있으면 무조건 빈 문자열("")을 출력하세요. 절대 우측의 DEFER No. 번호를 가져와서 채우지 마세요.
 
-        [5. 공통 정보]
-        - regNo: 'HL' 뒤의 숫자. 
-          🚨 [기번 교차 검증 절대 규칙]: 실제 회사에 존재하는 기번 목록은 다음과 같습니다 -> [{valid_ac_list}]
-          작성자가 글씨를 흘려 써서 8과 9, 3과 5 등이 헷갈리더라도, 무조건 위 목록에 실제로 존재하는 번호로 매칭해서 출력하세요!
-        - flightNo: 'OZ' 제외 순수 숫자.
-        - legFrom, legTo: 구간 영문 3자리.
+        [5. 적용근거(reason) - 위치 우선 및 꼬리표 절단]
+        - CABIN LOG: 글자 '오른쪽'에 체크박스가 있습니다. (예: MEL [X] NEF [ ] AMM [ ]) -> 첫 번째 박스에 체크되면 MEL, 두 번째 박스면 NEF입니다.
+        - FLIGHT LOG: 글자 '위쪽'에 박스가 있습니다. 1번째=MEL, 2번째=CDL, 3번째=NEF, 4번째=SRM, 5번째=AMM.
+        - 수기로 적은 분류(MEL, NEF 등)는 무시하고, '체크박스 위치'로 판단한 분류를 사용하세요.
+        - 취소선(줄이 그어진 글자)은 무시하세요.
+        - 번호 뒤의 'CAT C', 'CAT B' 등은 완전히 잘라버리세요. (출력 예: NEF 25-10-01)
 
-        🚨 응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
+        [6. 빈 행 추출 금지]
+        - 결함 내용이 적혀있지 않은 빈 줄(Row)은 절대 추출하지 마세요.
+
+        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
           "items": [ {{"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
         }}
         """
-        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.1})
-        return json.loads(response.text.strip())
+        # temperature를 0.0으로 낮추어 AI의 창의성(오지랖)을 완전히 끕니다.
+        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.0})
+        
+        # --- 🚨 파이썬 서버단 강제 후처리 (AI가 뱉은 데이터를 강제로 교정합니다) 🚨 ---
+        data = json.loads(response.text.strip())
+        
+        # 1. 100% 무조건 대문자 변환
+        if "regNo" in data and data["regNo"]: data["regNo"] = str(data["regNo"]).upper()
+        if "legFrom" in data and data["legFrom"]: data["legFrom"] = str(data["legFrom"]).upper()
+        if "legTo" in data and data["legTo"]: data["legTo"] = str(data["legTo"]).upper()
+        if "flightNo" in data and data["flightNo"]: data["flightNo"] = str(data["flightNo"]).upper()
+        
+        cleaned_items = []
+        for item in data.get("items", []):
+            defect = str(item.get("defect", "")).upper()
+            
+            # 5. 빈 공란 행 무시 (아무 내용이 없거나 null이면 배열에서 삭제)
+            if not defect.strip() or defect == "NULL" or defect == "NONE":
+                continue
+                
+            reason = str(item.get("reason", "")).upper()
+            ata = str(item.get("ata", "")).upper()
+            asAp = str(item.get("asAp", "")).upper()
+            
+            # 4. ATA CODE 강제 비우기: 만약 길이가 4자리를 초과하거나 하이픈(-)이 있으면 
+            # AI가 우측의 적용근거(DEFER No.)를 훔쳐온 것이므로 강제로 빈칸("")으로 만듭니다.
+            if len(ata) > 4 or "-" in ata:
+                ata = ""
+                
+            cleaned_items.append({
+                "asAp": asAp,
+                "defect": defect,
+                "reason": reason,
+                "ata": ata
+            })
+            
+        data["items"] = cleaned_items
+        return data
+
     except Exception as e: return {"error": f"AI 분석 오류: {str(e)}"}
 
 @app.post("/extract_raw")
@@ -149,7 +184,6 @@ async def smart_search(req: SmartSearchRequest):
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
         
-        # 🔥 ATA 코드를 하이픈 없는 4자리(예: 7310)로 완벽 고정하는 프롬프트
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
         사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
