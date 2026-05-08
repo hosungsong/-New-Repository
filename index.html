@@ -15,8 +15,6 @@
         .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
         .user-display:hover { color: var(--secondary); text-decoration: underline; }
 
-        .btn-db { background: #34495e; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
-
         .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; align-items: stretch; }
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; transition: 0.3s; }
         
@@ -116,9 +114,7 @@
 <div class="main-container">
     <div class="header">
         <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()" title="클릭하여 이름 변경"></span></h2>
-        <input type="file" id="csvFileInput" style="display: none;" accept=".csv" onchange="handleCSVUpload(event)">
-        <button class="btn-db" id="btn-db" onclick="document.getElementById('csvFileInput').click()">⚙️ 통합 DB 서버 연동 (CSV)</button>
-    </div>
+        </div>
 
     <div class="top-section" id="mainTopSection">
         <div class="left-panel">
@@ -171,7 +167,7 @@
             <textarea id="rawTextArea" placeholder="추출된 텍스트가 이곳에 표시됩니다..."></textarea>
             <div class="action-buttons">
                 <button class="btn-extract main" id="btnExtractMain" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
-                <button class="btn-extract sub" onclick="extractRawText()">📝 TEXT 추출</button>
+                <button class="btn-extract sub" id="btnExtractRaw" onclick="extractRawText()">📝 TEXT 추출</button>
             </div>
         </div>
     </div>
@@ -193,6 +189,9 @@
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
+    
+    // 🔥 [신규] 통신 강제 중단을 위한 컨트롤러
+    let currentAbortController = null;
 
     function compressImage(file) {
         return new Promise((resolve) => {
@@ -239,32 +238,6 @@
             }
         } catch (e) {
             console.error("서버 DB 로드 실패:", e);
-        }
-    }
-
-    async function handleCSVUpload(event) {
-        const file = event.target.files[0]; if (!file) return;
-        const btn = document.getElementById('btn-db');
-        const originText = btn.innerText;
-        btn.innerText = "서버로 DB 전송 중... ⏳";
-        btn.disabled = true;
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const res = await fetch("/upload_db", { method: "POST", body: formData });
-            if(res.ok) {
-                alert(`✅ 글로벌 DB 세팅 완료!\n접속한 모든 사용자가 이 DB를 공유합니다.\n(※ 단, Render 서버 재시작 시 초기화되므로 영구 보존을 원하면 database.csv 파일을 깃허브에 Commit 해주세요!)`); 
-                location.reload(); 
-            } else {
-                alert("⚠️ 업로드 실패");
-            }
-        } catch (err) {
-            alert("⚠️ 통신 에러: " + err.message);
-        } finally {
-            btn.innerText = originText;
-            btn.disabled = false;
         }
     }
 
@@ -665,7 +638,6 @@
                         let repItem = dbToSearch.find(d => {
                             let matchCode = (d.code === cleanCode || d.code === code);
                             
-                            // 🔥 AI가 하이픈을 넣거나 6자리로 말했을 때를 대비한 4자리 유연한 매칭
                             if (!matchCode && searchType === 'ATA') {
                                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                                 const aiBase = cleanCode.replace(/[^0-9A-Z]/gi, '');
@@ -696,7 +668,6 @@
                         }
                         
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
-                        // DB에 있는 진짜 코드(4자리)를 가져와서 화면에 뿌려줌
                         const displayCode = repItem ? repItem.code : code;
                         
                         const row = document.createElement('div');
@@ -752,6 +723,13 @@
 
     function resetImage(e) {
         if(e) e.stopPropagation();
+        
+        // 🔥 X 버튼 클릭 시 진행 중인 통신(분석)이 있다면 즉시 강제 취소
+        if (currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
+        }
+
         fileToUpload = null; 
         document.getElementById('imageFileInput').value = "";
         document.getElementById('mainTopSection').classList.remove('expanded');
@@ -761,6 +739,14 @@
                 <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
             </div>
         `;
+        
+        // 버튼 텍스트 강제 초기화
+        const btnMain = document.getElementById('btnExtractMain');
+        if (btnMain) { btnMain.innerText = "✨ AI 분석 및 자동 매칭"; btnMain.disabled = false; }
+        
+        const btnRaw = document.getElementById('btnExtractRaw');
+        if (btnRaw) { btnRaw.innerText = "📝 TEXT 추출"; btnRaw.disabled = false; }
+        
         setTimeout(refreshAllHeights, 50);
     }
 
@@ -847,15 +833,25 @@
 
     async function extractText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
-        const btn = document.getElementById('btnExtractMain'); btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
+        const btn = document.getElementById('btnExtractMain'); 
+        btn.innerText = "분석 중... ⏳"; 
+        btn.disabled = true; 
         
+        // 🔥 기존 통신이 있다면 끊고 새로운 컨트롤러 시작
+        if (currentAbortController) currentAbortController.abort();
+        currentAbortController = new AbortController();
+
         const compressedFile = await compressImage(fileToUpload);
-        
         const formData = new FormData(); 
         formData.append("file", compressedFile); 
 
         try {
-            const res = await fetch("/ocr", { method: "POST", body: formData });
+            // 🔥 통신 취소 기능을 위한 signal 연결
+            const res = await fetch("/ocr", { 
+                method: "POST", 
+                body: formData,
+                signal: currentAbortController.signal 
+            });
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
@@ -878,25 +874,53 @@
             } else {
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
             }
-        } catch (e) { alert("⚠️ 에러: " + e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; }
+        } catch (e) { 
+            if (e.name === 'AbortError') {
+                console.log("분석이 사용자에 의해 취소되었습니다.");
+            } else {
+                alert("⚠️ 에러: " + e.message); 
+            }
+        } finally { 
+            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
+            btn.disabled = false; 
+            currentAbortController = null;
+        }
     }
 
     async function extractRawText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
-        const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
+        const btn = document.getElementById('btnExtractRaw'); 
+        btn.innerText = "추출 중... ⏳"; 
+        btn.disabled = true;
         
+        if (currentAbortController) currentAbortController.abort();
+        currentAbortController = new AbortController();
+
         const compressedFile = await compressImage(fileToUpload);
-        
         const formData = new FormData(); 
         formData.append("file", compressedFile);
 
         try {
-            const res = await fetch("/extract_raw", { method: "POST", body: formData });
+            const res = await fetch("/extract_raw", { 
+                method: "POST", 
+                body: formData,
+                signal: currentAbortController.signal
+            });
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             document.getElementById('rightPanel').classList.add('text-extract-mode');
             const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
-        } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; }
+        } catch (e) { 
+            if (e.name === 'AbortError') {
+                console.log("추출이 취소되었습니다.");
+            } else {
+                alert("⚠️ 통신 에러: " + e.message); 
+            }
+        } finally { 
+            btn.innerText = "📝 TEXT 추출"; 
+            btn.disabled = false; 
+            currentAbortController = null;
+        }
     }
 </script>
 </body>
