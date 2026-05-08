@@ -87,40 +87,42 @@ async def extract_text(file: UploadFile = File(...)):
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
-        # 🔥 공간 분할(Zone) 및 스티커 내용 매칭을 완벽히 강제하는 프롬프트
         prompt = f"""
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
-        [1. 문서 상단 공통 정보]
-        - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭하세요. 8과 9 흘림체 주의!)
-        - flightNo: 'OZ' 제외 순수 숫자.
-        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란을 읽어서 추출하세요.
+        [1. 🚨 선유추(Guessing) 완벽 금지 (가장 중요) 🚨]
+        - 문서에 펜으로 명시적으로 적혀있지 않은 정보는 절대 유추하거나 지어내지 마세요.
+        - 특히 'ATA CODE'나 '적용근거(DEFER No.)' 란에 글씨가 없다면 **무조건 빈 문자열("")**을 출력하세요.
 
-        [2. 작성자(asAp)]
+        [2. 문서 상단 공통 정보]
+        - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
+        - flightNo: 'OZ' 제외 순수 숫자.
+        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
+
+        [3. 작성자(asAp)]
         - CABIN LOG: 무조건 'AS'.
         - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
 
-        [3. 🚨 이월(DEFER) 항목만 필터링 추출 (가장 중요) 🚨]
-        - 각 ITEM 행의 'DEFER No.' 칸 주변에 펜으로 체크(X 또는 V) 표시가 명확히 있는 항목만 추출하세요.
+        [4. 이월(DEFER) 항목만 필터링 추출]
+        - 우측의 'DEFER No.' 칸 주변에 펜으로 체크(X 또는 V) 표시가 명확히 있는 항목만 추출하세요.
         - 체크 표시가 비어있는 항목은 절대 추출하지 말고 가차 없이 버리세요.
 
-        [4. 결함 본문(defect) - 우측 침범 금지!]
+        [5. 결함 본문(defect) - 우측 침범 금지!]
         - 좌측 'DEFECT DESCRIPTION' 칸에 쓰인 글자만 추출하세요. (아이템 번호 제외)
         - 절대 우측 'ACTION TAKEN' 칸을 섞지 마세요.
 
-        [5. 적용근거(reason) 분류 🚨 시각 착각 원천 차단 규칙 🚨]
-        - 펜 자국(X)이 우측 글자에 치우쳐 있더라도 절대 속지 마세요. 당신의 시야를 네모 박스 위치(Zone)로 강제 분할합니다.
-        - 'DEFER No.' 글자 바로 우측부터 시작하여:
-          * [Zone 1] 첫 번째 네모 칸 = 무조건 MEL
-          * [Zone 2] 두 번째 네모 칸 = 무조건 NEF (또는 CDL)
-          * [Zone 3] 세 번째 네모 칸 = 무조건 AMM (또는 NEF)
-        - 💡 펜 자국(X, V)의 **중심이나 시작점**이 [Zone 1]에 있다면, 마크가 NEF 글자에 닿아있더라도 무조건 **MEL**로 판독해야 합니다!
-        - 💡 [스티커 교차 검증의 진실]: 스티커(PLACARD)가 붙은 상하 위치는 100% 무시하세요! 대신 스티커 안의 'REMARK(결함 내용)'와 본문의 'DEFECT DESCRIPTION' 글자가 일치하는지 내용으로 짝을 찾으세요. 짝을 찾은 후 해당 스티커의 체크박스를 최종 교차 검증에 사용하세요.
+        [6. 적용근거(reason) 분류 🚨 시각 착시(OCR 토큰 오류) 원천 차단 규칙 🚨]
+        - 작성자가 체크 표시(X, V)를 크게 써서 우측 단어에 닿는 바람에, 당신의 시각 엔진이 이를 하나의 텍스트 토큰으로 뭉개서 읽어들이는 심각한 버그가 있습니다. 이 착시를 다음 공식을 통해 강제로 교정하세요!
+        - 💡 공식 1: 만약 텍스트가 'MEL NEFX' 또는 'MEL X NEF' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로, 절대 NEF가 아니라 100% **MEL** 입니다!
+        - 💡 공식 2: 만약 텍스트가 'NEF AMMX' 또는 'NEF X AMM' 처럼 인식된다면 ➡️ 무조건 **NEF** 입니다!
+        - 💡 공식 3: 만약 텍스트가 'CDL NEFX' 처럼 인식된다면 ➡️ 무조건 **CDL** 입니다!
+        - 이 공식은 표 안의 'DEFER No.' 칸과 왼쪽의 'DEFER PLACARD' 스티커 모두에 동일하게 적용됩니다.
+        - 스티커는 상하 위치가 아니라, 스티커 안의 'REMARK' 내용과 본문 결함 내용을 텍스트로 비교하여 일치할 때만 짝으로 삼으세요.
         - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
 
-        [6. 🚨 ATA CODE 절대 유추 금지 🚨]
-        - 제일 좌측 'ATA CODE' 칸 안에 실제로 펜 글씨가 적혀있을 때만 추출하세요.
-        - 칸이 비어있으면 무조건 "" (빈 문자열)을 출력하세요. 절대 당신의 지식으로 지어내거나 우측 번호를 훔쳐 오지 마세요.
+        [7. ATA CODE 추출 규칙]
+        - 제일 좌측 'ATA CODE' 칸 안에 실제로 글씨가 적혀있을 때만 추출하세요.
+        - 칸이 비어있으면 무조건 "" (빈 문자열)을 출력하세요.
 
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
@@ -142,7 +144,6 @@ async def extract_text(file: UploadFile = File(...)):
             defect = str(item.get("defect", "")).upper()
             reason = str(item.get("reason", "")).upper()
             
-            # 빈 줄 및 종결 결함 2차 방어선
             if not defect.strip() or defect == "NULL" or defect == "NONE":
                 continue
             if not reason.strip() or reason == "NULL" or reason == "NONE":
@@ -151,7 +152,6 @@ async def extract_text(file: UploadFile = File(...)):
             ata = str(item.get("ata", "")).upper()
             asAp = str(item.get("asAp", "")).upper()
             
-            # ATA 할루시네이션(지어내기) 원천 차단
             import re
             reason_digits_only = re.sub(r'[^0-9]', '', reason)
             ata_digits_only = re.sub(r'[^0-9]', '', ata)
