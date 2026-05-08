@@ -87,44 +87,40 @@ async def extract_text(file: UploadFile = File(...)):
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
-        # 🔥 AI의 '선유추(Hallucination)'를 완벽하게 금지하는 규칙 추가
+        # 🔥 공간 분할(Zone) 및 스티커 내용 매칭을 완벽히 강제하는 프롬프트
         prompt = f"""
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
-        [1. 🚨 선유추(Guessing) 완벽 금지 (가장 중요) 🚨]
-        - 문서에 펜으로 명시적으로 적혀있지 않은 정보는 절대 당신의 항공 정비 지식을 동원하여 유추하거나 지어내지 마세요.
-        - 특히 'ATA CODE'나 '적용근거(DEFER No.)' 란에 작성자가 글씨를 쓰지 않았다면, 결함 내용을 바탕으로 코드를 임의로 생성하지 말고 **무조건 빈 문자열("")을 출력**하세요. 
-        - 없는 내용은 비워두는 것이 당신의 임무입니다. 사용자가 나중에 시스템에서 직접 수동으로 검색할 것입니다.
-
-        [2. 문서 상단 공통 정보]
+        [1. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭하세요. 8과 9 흘림체 주의!)
         - flightNo: 'OZ' 제외 순수 숫자.
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란을 읽어서 추출하세요.
 
-        [3. 작성자(asAp)]
+        [2. 작성자(asAp)]
         - CABIN LOG: 무조건 'AS'.
         - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
 
-        [4. 이월(DEFER) 항목만 필터링 추출]
-        - 우측의 'DEFER No.' 칸 주변에 펜으로 체크(X 또는 V) 표시가 되어 있는 항목만 추출하세요.
-        - 체크 표시가 없고 조치만 된 항목은 가차 없이 버리세요.
+        [3. 🚨 이월(DEFER) 항목만 필터링 추출 (가장 중요) 🚨]
+        - 각 ITEM 행의 'DEFER No.' 칸 주변에 펜으로 체크(X 또는 V) 표시가 명확히 있는 항목만 추출하세요.
+        - 체크 표시가 비어있는 항목은 절대 추출하지 말고 가차 없이 버리세요.
 
-        [5. 결함 본문(defect) - 우측 침범 금지!]
+        [4. 결함 본문(defect) - 우측 침범 금지!]
         - 좌측 'DEFECT DESCRIPTION' 칸에 쓰인 글자만 추출하세요. (아이템 번호 제외)
         - 절대 우측 'ACTION TAKEN' 칸을 섞지 마세요.
 
-        [6. 적용근거(reason) 분류 및 공간(Zone) 분할 규칙]
+        [5. 적용근거(reason) 분류 🚨 시각 착각 원천 차단 규칙 🚨]
+        - 펜 자국(X)이 우측 글자에 치우쳐 있더라도 절대 속지 마세요. 당신의 시야를 네모 박스 위치(Zone)로 강제 분할합니다.
         - 'DEFER No.' 글자 바로 우측부터 시작하여:
-          * [Zone 1] 첫 번째 네모 칸 영역 (MEL)
-          * [Zone 2] 두 번째 네모 칸 영역 (NEF/CDL)
-          * [Zone 3] 세 번째 네모 칸 영역 (AMM/NEF)
-        - 💡 펜 자국(X, V)의 **시작점이나 중심**이 어느 Zone에 있는지 판독하여 분류하세요.
-        - 보조 검증: 사진 왼쪽에 'DEFER PLACARD' 스티커가 붙어 있다면, 스티커의 체크 항목을 우선적으로 교차 검증하세요.
+          * [Zone 1] 첫 번째 네모 칸 = 무조건 MEL
+          * [Zone 2] 두 번째 네모 칸 = 무조건 NEF (또는 CDL)
+          * [Zone 3] 세 번째 네모 칸 = 무조건 AMM (또는 NEF)
+        - 💡 펜 자국(X, V)의 **중심이나 시작점**이 [Zone 1]에 있다면, 마크가 NEF 글자에 닿아있더라도 무조건 **MEL**로 판독해야 합니다!
+        - 💡 [스티커 교차 검증의 진실]: 스티커(PLACARD)가 붙은 상하 위치는 100% 무시하세요! 대신 스티커 안의 'REMARK(결함 내용)'와 본문의 'DEFECT DESCRIPTION' 글자가 일치하는지 내용으로 짝을 찾으세요. 짝을 찾은 후 해당 스티커의 체크박스를 최종 교차 검증에 사용하세요.
         - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
 
-        [7. ATA CODE 추출 규칙]
-        - 제일 좌측 'ATA CODE' 칸 안에 실제로 글씨가 적혀있을 때만 추출하세요.
-        - 칸이 비어있으면 무조건 "" (빈 문자열)을 출력하세요.
+        [6. 🚨 ATA CODE 절대 유추 금지 🚨]
+        - 제일 좌측 'ATA CODE' 칸 안에 실제로 펜 글씨가 적혀있을 때만 추출하세요.
+        - 칸이 비어있으면 무조건 "" (빈 문자열)을 출력하세요. 절대 당신의 지식으로 지어내거나 우측 번호를 훔쳐 오지 마세요.
 
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
@@ -134,7 +130,6 @@ async def extract_text(file: UploadFile = File(...)):
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.0})
         
-        # --- 🚨 파이썬 서버단 2차 강제 방어선 🚨 ---
         data = json.loads(response.text.strip())
         
         if "regNo" in data and data["regNo"]: data["regNo"] = str(data["regNo"]).upper()
@@ -147,6 +142,7 @@ async def extract_text(file: UploadFile = File(...)):
             defect = str(item.get("defect", "")).upper()
             reason = str(item.get("reason", "")).upper()
             
+            # 빈 줄 및 종결 결함 2차 방어선
             if not defect.strip() or defect == "NULL" or defect == "NONE":
                 continue
             if not reason.strip() or reason == "NULL" or reason == "NONE":
@@ -155,7 +151,7 @@ async def extract_text(file: UploadFile = File(...)):
             ata = str(item.get("ata", "")).upper()
             asAp = str(item.get("asAp", "")).upper()
             
-            # ATA 할루시네이션 원천 차단
+            # ATA 할루시네이션(지어내기) 원천 차단
             import re
             reason_digits_only = re.sub(r'[^0-9]', '', reason)
             ata_digits_only = re.sub(r'[^0-9]', '', ata)
