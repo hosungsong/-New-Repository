@@ -190,12 +190,10 @@
     };
 
     let fileToUpload = null; let rowIdCounter = 0;
-    // 글로벌 백엔드 서버 DB와 연동될 객체
     let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
     let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
 
-    // 🔥 [핵심 기능 1] 이미지 자동 압축 로직 (AI 분석 속도를 10배 빠르게 만듭니다)
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -205,8 +203,8 @@
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200; // 가로 최대 크기
-                    const MAX_HEIGHT = 1200; // 세로 최대 크기
+                    const MAX_WIDTH = 1200; 
+                    const MAX_HEIGHT = 1200; 
                     let width = img.width;
                     let height = img.height;
 
@@ -221,7 +219,6 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // 품질 0.8 수준으로 JPEG로 압축하여 반환
                     canvas.toBlob((blob) => {
                         resolve(new File([blob], file.name, { type: 'image/jpeg' }));
                     }, 'image/jpeg', 0.8);
@@ -230,7 +227,6 @@
         });
     }
 
-    // 🔥 [핵심 기능 3] 이제 브라우저 로컬 DB가 아니라 서버(백엔드)에서 DB를 가져옵니다.
     async function loadDB() {
         try {
             const res = await fetch("/api/db");
@@ -246,7 +242,6 @@
         }
     }
 
-    // 서버로 CSV 파일을 전송하여 즉시 메모리에 적용시킵니다.
     async function handleCSVUpload(event) {
         const file = event.target.files[0]; if (!file) return;
         const btn = document.getElementById('btn-db');
@@ -668,7 +663,17 @@
                         const isNEF = code.toUpperCase().startsWith('NEF');
                         
                         let repItem = dbToSearch.find(d => {
-                            const matchCode = (d.code === cleanCode || d.code === code);
+                            let matchCode = (d.code === cleanCode || d.code === code);
+                            
+                            // 🔥 AI가 하이픈을 넣거나 6자리로 말했을 때를 대비한 4자리 유연한 매칭
+                            if (!matchCode && searchType === 'ATA') {
+                                const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
+                                const aiBase = cleanCode.replace(/[^0-9A-Z]/gi, '');
+                                if (dbBase.length >= 4 && aiBase.length >= 4 && aiBase.startsWith(dbBase.substring(0,4))) {
+                                    matchCode = true;
+                                }
+                            }
+
                             if (matchCode) {
                                 if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
                                 if (searchType !== 'ATA' && isNEF && d.row >= 83095 && d.row <= 83231) return true;
@@ -677,17 +682,29 @@
                         });
 
                         if (!repItem) {
-                            repItem = dbToSearch.find(d => d.code === cleanCode || d.code === code);
+                            repItem = dbToSearch.find(d => {
+                                let matchCode = (d.code === cleanCode || d.code === code);
+                                if (!matchCode && searchType === 'ATA') {
+                                    const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
+                                    const aiBase = cleanCode.replace(/[^0-9A-Z]/gi, '');
+                                    if (dbBase.length >= 4 && aiBase.length >= 4 && aiBase.startsWith(dbBase.substring(0,4))) {
+                                        matchCode = true;
+                                    }
+                                }
+                                return matchCode;
+                            });
                         }
                         
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
+                        // DB에 있는 진짜 코드(4자리)를 가져와서 화면에 뿌려줌
+                        const displayCode = repItem ? repItem.code : code;
                         
                         const row = document.createElement('div');
                         row.className = 'dropdown-opt';
-                        row.innerText = `${code} - ${keyword}`;
-                        row.title = `${code} - ${keyword}`; 
+                        row.innerText = `${displayCode} - ${keyword}`;
+                        row.title = `${displayCode} - ${keyword}`; 
                         row.onmousedown = () => {
-                            document.getElementById(inputId).value = code;
+                            document.getElementById(inputId).value = displayCode;
                             optDiv.style.display = "none";
                         };
                         optDiv.appendChild(row);
@@ -705,11 +722,6 @@
             }
 
         } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
-    }
-
-    function swapLegs() {
-        const f = document.getElementById('legFrom'), t = document.getElementById('legTo');
-        [f.value, t.value] = [t.value, f.value]; matchFlightFromLegs(); 
     }
 
     function loadAndDisplayImage(file) {
@@ -837,11 +849,10 @@
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractMain'); btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
         
-        // 🔥 이미지 압축 실행
         const compressedFile = await compressImage(fileToUpload);
         
         const formData = new FormData(); 
-        formData.append("file", compressedFile); // 압축된 이미지 전송
+        formData.append("file", compressedFile); 
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData });
@@ -874,7 +885,6 @@
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
         
-        // 🔥 텍스트 추출 시에도 이미지 압축
         const compressedFile = await compressImage(fileToUpload);
         
         const formData = new FormData(); 
