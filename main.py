@@ -87,36 +87,36 @@ async def extract_text(file: UploadFile = File(...)):
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
+        # 🔥 AI의 자율성을 0%로 만드는 극강의 통제 프롬프트
         prompt = f"""
-        당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 'DEFER(이월)'가 적용된 항목을 추출하되, 아래 🚨절대 규칙🚨을 무조건 따르세요.
+        당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
-        [1. 문서 상단 공통 정보 추출]
-        - regNo: 'AIRCRAFT REG. NO.' 란의 'HL' 뒤 숫자. (실제 존재하는 기번 [{valid_ac_list}] 중에서만 매칭할 것)
+        [1. 문서 상단 공통 정보]
+        - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭하세요. 8과 9 흘림체 절대 주의!)
         - flightNo: 'OZ' 제외 순수 숫자.
-        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란을 반드시 읽어서 추출하세요.
+        - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란을 읽어서 추출하세요.
 
         [2. 작성자(asAp)]
         - CABIN LOG: 무조건 'AS'.
         - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
 
-        [3. 결함 본문(defect) - 우측 침범 금지!]
-        - 좌측의 'DEFECT DESCRIPTION' (또는 DEFECT) 칸에 있는 글자만 추출하세요. (아이템 번호 제외)
-        - 절대 우측의 'ACTION TAKEN' 칸을 결함 내용에 섞지 마세요.
+        [3. 🚨 이월(DEFER) 항목만 필터링 추출 (가장 중요!) 🚨]
+        - 각 ITEM 행을 볼 때, 우측의 'DEFER No.' 칸 아래에 있는 체크박스(MEL, NEF, AMM 등)에 **체크(X 또는 V) 표시가 되어 있는 항목만 추출**하세요.
+        - 체크박스에 표시가 없고, 단순히 결함이 조치/수정되어 종결된 항목(예: ITEM 3처럼 DEFER 체크박스가 텅 빈 경우)은 **가차 없이 버리세요. 절대 배열에 포함시키지 마세요.**
 
-        [4. ATA CODE - 유추 금지!]
-        - 좌측 'ATA CODE' 칸에 적혀있는 내용만 추출하세요. 
-        - 칸이 비어있으면 무조건 빈 문자열("")을 출력하세요.
+        [4. 결함 본문(defect) - 우측 침범 금지!]
+        - 좌측 'DEFECT DESCRIPTION' 칸에 쓰인 글자만 추출하세요. (아이템 번호 1, 2 등 제외)
+        - 절대 우측 'ACTION TAKEN' 칸을 섞지 마세요.
 
-        [5. 적용근거(reason) - 🚨 AI 시각 착각(거리 왜곡) 방지 절대 규칙 🚨]
-        - 종이에 인쇄된 체크박스 구조상, 체크 표시(X, V)가 앞 단어보다 뒷 단어에 물리적으로 더 가깝게 인쇄되어 있습니다. (예: MEL [X] NEF [ ] 구조에서 [X]가 NEF 글자와 가깝게 보임)
-        - 🚨 절대 체크 표시와 가까운 우측 글자를 읽는 우를 범하지 마세요! 오직 왼쪽부터 '몇 번째 칸'에 체크되었는지만(순서만) 세어서 판독하세요.
-        - CABIN LOG (박스 3개): [1번째 칸 체크 = 100% MEL], [2번째 칸 체크 = 100% NEF], [3번째 칸 = AMM].
-        - FLIGHT LOG (박스 5개): [1번째=MEL], [2번째=CDL], [3번째=NEF], [4번째=SRM], [5번째=AMM].
-        - 취소선(줄이 그어진 글자)은 무시하세요.
-        - 번호 뒤의 'CAT C', 'CAT B' 등은 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
+        [5. 적용근거(reason) 체크박스 판독 규칙]
+        - DEFER No. 옆의 체크박스 위치를 정확히 세어 판독하세요.
+        - CABIN LOG (박스 3개): 1번째 칸 체크 = MEL, 2번째 칸 체크 = NEF, 3번째 칸 체크 = AMM.
+        - FLIGHT LOG (박스 5개): 1번째 = MEL, 2번째 = CDL, 3번째 = NEF, 4번째 = SRM, 5번째 = AMM.
+        - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: NEF 23-30-12)
 
-        [6. 빈 행 추출 금지]
-        - 결함 내용이 적혀있지 않은 빈 줄(Row)은 절대 추출하지 마세요.
+        [6. 🚨 ATA CODE 절대 유추 금지 🚨]
+        - 제일 좌측 'ATA CODE' 칸 안에 실제로 글씨가 적혀있을 때만 추출하세요.
+        - 칸이 비어있으면 무조건 "" (빈 문자열)을 출력하세요. 절대 우측의 적용근거 번호를 가져와서 지어내지 마세요.
 
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
@@ -126,8 +126,10 @@ async def extract_text(file: UploadFile = File(...)):
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.0})
         
+        # --- 🚨 파이썬 서버단 2차 강제 방어선 🚨 ---
         data = json.loads(response.text.strip())
         
+        # 공통 정보 대문자 변환
         if "regNo" in data and data["regNo"]: data["regNo"] = str(data["regNo"]).upper()
         if "legFrom" in data and data["legFrom"]: data["legFrom"] = str(data["legFrom"]).upper()
         if "legTo" in data and data["legTo"]: data["legTo"] = str(data["legTo"]).upper()
@@ -136,14 +138,25 @@ async def extract_text(file: UploadFile = File(...)):
         cleaned_items = []
         for item in data.get("items", []):
             defect = str(item.get("defect", "")).upper()
+            reason = str(item.get("reason", "")).upper()
+            
+            # 1. 방어선: DEFER(reason) 정보가 없거나 defect가 비어있으면 이월 항목이 아니므로 과감히 삭제 (빈 줄 및 조치완료 건 제거)
             if not defect.strip() or defect == "NULL" or defect == "NONE":
                 continue
+            if not reason.strip() or reason == "NULL" or reason == "NONE":
+                continue
                 
-            reason = str(item.get("reason", "")).upper()
             ata = str(item.get("ata", "")).upper()
             asAp = str(item.get("asAp", "")).upper()
             
-            if len(ata) > 4 or "-" in ata:
+            # 2. 방어선: ATA 할루시네이션(지어내기) 원천 차단
+            # 길이가 4를 초과하거나, 하이픈이 있거나, ATA가 REASON 코드의 앞 숫자 4자리와 일치하면
+            # 이건 AI가 우측 번호를 훔쳐온 것이 100% 확실하므로 빈칸으로 날려버립니다.
+            import re
+            reason_digits_only = re.sub(r'[^0-9]', '', reason)
+            ata_digits_only = re.sub(r'[^0-9]', '', ata)
+            
+            if len(ata) > 4 or "-" in ata or (len(ata_digits_only) >= 4 and ata_digits_only in reason_digits_only):
                 ata = ""
                 
             cleaned_items.append({
