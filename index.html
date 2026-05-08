@@ -37,6 +37,8 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
+        .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
+        .dropdown-opt.pinned:hover { background: #d0e7f9; color: var(--primary); }
 
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
@@ -526,7 +528,7 @@
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
             <div class="search-wrap">
                 <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="MEL/CDL/NEF 등">
-                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="AI 문 문맥 검색">🔍</button>
+                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="AI 문맥 검색">🔍</button>
                 <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
             </div>
             <div class="ata-wrapper">
@@ -624,15 +626,50 @@
             
             try {
                 const data = JSON.parse(rawText);
-                if (data.error) { alert("⚠️ " + data.error); }
-                else if (data.matches && data.matches.length > 0) { 
+                
+                optDiv.innerHTML = "";
+                let hasOptions = false;
+                
+                // 🔥 [신규 기능] 현재 입력된 값을 1순위로 스캔하여 상단 고정
+                const currentValue = document.getElementById(inputId).value.trim();
+                let currentItemMatched = null;
+                
+                if (currentValue) {
+                    const cleanCurrent = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
+                    currentItemMatched = dbToSearch.find(d => {
+                        const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
+                        if (searchType === 'ATA') {
+                            // ATA는 앞 4자리가 일치하면 매칭
+                            return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
+                        } else {
+                            // 적용근거는 정확한 코드를 우선적으로 매칭
+                            return d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue;
+                        }
+                    });
                     
-                    optDiv.innerHTML = "";
+                    if (currentItemMatched) {
+                        const displayCode = searchType === 'ATA' ? currentItemMatched.code : currentValue;
+                        const row = document.createElement('div');
+                        row.className = 'dropdown-opt pinned'; // 강조 효과를 위한 클래스
+                        row.innerHTML = `📌 <b>[입력값]</b> ${displayCode} :: ${currentItemMatched.keyword}`;
+                        row.title = `${displayCode} :: ${currentItemMatched.keyword}`; 
+                        row.onmousedown = () => {
+                            document.getElementById(inputId).value = displayCode;
+                            optDiv.style.display = "none";
+                        };
+                        optDiv.appendChild(row);
+                        hasOptions = true;
+                    }
+                }
+
+                if (data.error) { 
+                    alert("⚠️ " + data.error); 
+                }
+                else if (data.matches && data.matches.length > 0) { 
                     let uniqueCodes = [...new Set(data.matches)];
                     
                     uniqueCodes.forEach(code => {
                         const cleanCode = code.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').trim();
-                        const isNEF = code.toUpperCase().startsWith('NEF');
                         
                         let repItem = dbToSearch.find(d => {
                             let matchCode = (d.code === cleanCode || d.code === code);
@@ -647,7 +684,7 @@
 
                             if (matchCode) {
                                 if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
-                                if (searchType !== 'ATA' && isNEF && d.row >= 83095 && d.row <= 83231) return true;
+                                if (searchType !== 'ATA') return true; 
                             }
                             return false;
                         });
@@ -669,6 +706,11 @@
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
                         const displayCode = repItem ? repItem.code : code;
                         
+                        // 🔥 중복 방지: 이미 위에 고정된 현재 입력값과 일치하면 리스트에 추가하지 않음
+                        if (currentItemMatched && (currentItemMatched.code === displayCode || currentItemMatched.code === cleanCode)) {
+                            return; 
+                        }
+                        
                         const row = document.createElement('div');
                         row.className = 'dropdown-opt';
                         row.innerText = `${displayCode} :: ${keyword}`;
@@ -678,14 +720,16 @@
                             optDiv.style.display = "none";
                         };
                         optDiv.appendChild(row);
+                        hasOptions = true;
                     });
+                }
+                
+                if (hasOptions) {
                     optDiv.style.display = "block";
-
-                } else if (data.matched_value) { 
-                    document.getElementById(inputId).value = data.matched_value; 
-                } else { 
+                } else {
                     alert(`🔍 적절한 항목을 찾지 못했습니다.`); 
                 }
+
             } catch (jsonError) {
                 console.error("서버 응답 오류 원문:", rawText);
                 alert("⚠️ 서버에서 올바르지 않은 응답이 반환되었습니다. (타임아웃 또는 서버 오류)");
@@ -738,7 +782,6 @@
             </div>
         `;
         
-        // 🔥 빈칸 날아가지 않게 무조건 1줄 복구!
         document.getElementById('defectRowsContainer').innerHTML = ""; 
         rowIdCounter = 0;
         addRow();
@@ -758,9 +801,8 @@
         event.target.value = ""; 
     }
 
-    // 🔥 페이지 켜지자마자 무조건 1줄 생성하도록 보장!
     window.onload = async () => { 
-        addRow(); // DB 연동 전이라도 일단 줄부터 생성!
+        addRow(); 
         try {
             await loadDB(); 
         } catch(e) { console.error(e); }
@@ -877,7 +919,6 @@
                 setTimeout(refreshAllHeights, 150); 
             } else {
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
-                // 🔥 결함 못 찾았을 때도 빈칸 남지 않도록 1줄 강제 복구
                 if (document.querySelectorAll('.defect-row').length === 0) {
                     addRow();
                 }
