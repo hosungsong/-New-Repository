@@ -630,7 +630,7 @@
                 optDiv.innerHTML = "";
                 let hasOptions = false;
                 
-                // 🔥 [신규 기능] 현재 입력된 값을 1순위로 스캔하여 상단 고정
+                // 🔥 [신규] 입력된 값을 DB에서 찾아 최상단에 고정
                 const currentValue = document.getElementById(inputId).value.trim();
                 let currentItemMatched = null;
                 
@@ -639,18 +639,24 @@
                     currentItemMatched = dbToSearch.find(d => {
                         const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                         if (searchType === 'ATA') {
-                            // ATA는 앞 4자리가 일치하면 매칭
-                            return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
+                            return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4)) && d.row >= 2 && d.row <= 733;
                         } else {
-                            // 적용근거는 정확한 코드를 우선적으로 매칭
-                            return d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue;
+                            // 🔥 MEL/NEF/CDL은 83095행 이후에서만 대표 문구 찾기!
+                            return (d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue) && d.row >= 83095;
                         }
                     });
+                    
+                    // 만약 83095행 이후(대표문구)에서 못 찾았다면, Raw Data라도 띄워주기 위한 안전장치
+                    if (!currentItemMatched && searchType !== 'ATA') {
+                        currentItemMatched = dbToSearch.find(d => {
+                            return d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue;
+                        });
+                    }
                     
                     if (currentItemMatched) {
                         const displayCode = searchType === 'ATA' ? currentItemMatched.code : currentValue;
                         const row = document.createElement('div');
-                        row.className = 'dropdown-opt pinned'; // 강조 효과를 위한 클래스
+                        row.className = 'dropdown-opt pinned';
                         row.innerHTML = `📌 <b>[입력값]</b> ${displayCode} :: ${currentItemMatched.keyword}`;
                         row.title = `${displayCode} :: ${currentItemMatched.keyword}`; 
                         row.onmousedown = () => {
@@ -684,7 +690,13 @@
 
                             if (matchCode) {
                                 if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
-                                if (searchType !== 'ATA') return true; 
+                                // 🔥 MEL/NEF/CDL은 83095행 이후에서만 대표 문구 찾기!
+                                if (searchType !== 'ATA' && d.row >= 83095) {
+                                    if (d.type === 'MEL' && d.acType !== 'ALL') {
+                                        return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
+                                    }
+                                    return true; 
+                                }
                             }
                             return false;
                         });
@@ -706,7 +718,7 @@
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
                         const displayCode = repItem ? repItem.code : code;
                         
-                        // 🔥 중복 방지: 이미 위에 고정된 현재 입력값과 일치하면 리스트에 추가하지 않음
+                        // 현재 상단에 고정된 📌입력값과 똑같은 항목이면 건너뜀(중복 방지)
                         if (currentItemMatched && (currentItemMatched.code === displayCode || currentItemMatched.code === cleanCode)) {
                             return; 
                         }
