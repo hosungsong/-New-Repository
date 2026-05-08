@@ -16,7 +16,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 
-# 🔥 [신규] 서버 메모리에 저장되는 글로벌 DB
+# 🔥 서버 메모리에 저장되는 글로벌 DB
 APP_DB = {"flights": [], "ataDatabase": [], "actionDatabase": [], "ac": {}, "emails": {}}
 
 def reload_db_from_lines(lines):
@@ -50,7 +50,6 @@ def reload_db_from_lines(lines):
             elif type_ == 'EMAIL' and len(parts) >= 3:
                 APP_DB["emails"][parts[1].upper()] = ",".join(parts[2:]).strip()
 
-# 서버 시작 시 database.csv 파일이 있으면 자동으로 로드 (깃허브에 database.csv를 올려두면 영구 적용됨)
 @app.on_event("startup")
 def startup_event():
     if os.path.exists("database.csv"):
@@ -63,21 +62,17 @@ async def serve_frontend(): return FileResponse("index.html")
 @app.get("/ping")
 async def keep_alive_ping(): return {"status": "awake"}
 
-# 프론트엔드가 서버의 DB를 가져가도록 API 오픈
 @app.get("/api/db")
 async def get_db():
     return APP_DB
 
-# CSV 업로드 시 서버 DB를 업데이트
 @app.post("/upload_db")
 async def upload_db(file: UploadFile = File(...)):
     content = await file.read()
-    # 엑셀에서 뽑은 CSV의 인코딩 호환을 위해 utf-8 또는 euc-kr 처리
     try: text = content.decode("utf-8-sig").splitlines()
     except: text = content.decode("euc-kr").splitlines()
     
     reload_db_from_lines(text)
-    # Render 임시 스토리지에 저장 (서버 재시작 시 초기화되므로 깃허브 업로드 권장)
     with open("database.csv", "w", encoding="utf-8-sig") as f:
         f.write("\n".join(text))
     return {"status": "success"}
@@ -90,7 +85,6 @@ async def extract_text(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(content))
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
-        # 실제 존재하는 기번 목록 문자열 생성
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
         prompt = f"""
@@ -154,6 +148,8 @@ async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview') 
+        
+        # 🔥 ATA 코드를 하이픈 없는 4자리(예: 7310)로 완벽 고정하는 프롬프트
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
         사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
@@ -163,7 +159,13 @@ async def smart_search(req: SmartSearchRequest):
         [DB 목록 형식]
         결함적용코드::결함키워드
 
-        🚨 [주의] 좌석 번호(31K 등)보다 실제 부품(Monitor 등) 키워드를 우선순위로 매칭하세요.
+        [DB 목록]
+        {req.db_text}
+
+        🚨 🚨 [판독 주의사항 및 절대 규칙] 🚨 🚨
+        1. [가장 중요] 반드시 위에 제공된 [DB 목록] 안에 존재하는 '결함적용코드'만 정확히 그대로 추출해야 합니다!
+        2. 만약 DB에 ATA 코드가 중간 대시(-) 없는 4자리 숫자(예: 7310)로 등록되어 있다면, 절대 AI 임의로 중간에 대시를 넣거나 6자리(예: 73-10-01)로 변형하지 마세요. DB에 있는 글자(예: 7310) 100% 그대로 출력하세요.
+        3. 결함 내용에 '31K', '24A' 같은 좌석 번호가 있더라도, 실제 불량난 부품(예: Monitor, Screen, Light, Tray table 등)이 명시되어 있다면 좌석(Seat) 관련 코드보다 해당 부품 관련 코드를 최우선 1순위로 찾아야 합니다.
         
         응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요.
         {{"matches": ["코드1", "코드2", "코드3"]}}
