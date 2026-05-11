@@ -242,6 +242,14 @@
         }
     }
 
+    // 🔥 수기 입력된 기번을 더 완벽하게 찾아오도록 로직 수정
+    function fillAcType() {
+        let reg = document.getElementById('regNo').value.trim().toUpperCase();
+        reg = reg.replace(/^HL/, ""); // 사용자가 HL을 붙였든 안 붙였든 떼고 시작
+        // DB에 7747 또는 HL7747 둘 다 가능하도록 매칭 검사
+        document.getElementById('acType').value = DB.ac[reg] || DB.ac["HL" + reg] || "";
+    }
+
     function updateUserNameDisplay() {
         let name = localStorage.getItem('logScanner_userName');
         const displayEl = document.getElementById('userNameDisplay');
@@ -304,6 +312,7 @@
         window.open(gmailUrl, '_blank');
     }
 
+    // 🔥 편명/구간 공란 시 줄 째로 삭제하는 로직 추가
     async function sendWebhook(target) {
         const url = WEBHOOK_URLS[target];
         if (!url) { alert(target + " 용 웹훅 주소가 설정되지 않았습니다."); return; }
@@ -320,9 +329,10 @@
         const 기번_raw = document.getElementById('regNo').value.trim();
         const 기번 = 기번_raw || '미확인';
         const acType = document.getElementById('acType').value.trim() || '기종미상';
-        const flightNo = document.getElementById('flightNo').value.trim() || '미상';
-        const legFrom = document.getElementById('legFrom').value.trim().toUpperCase() || '???';
-        const legTo = document.getElementById('legTo').value.trim().toUpperCase() || '???';
+        
+        const flightNoRaw = document.getElementById('flightNo').value.trim();
+        const legFromRaw = document.getElementById('legFrom').value.trim().toUpperCase();
+        const legToRaw = document.getElementById('legTo').value.trim().toUpperCase();
         const 위탁체크박스상태 = document.getElementById('handover').checked;
         const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 
@@ -339,10 +349,20 @@
 
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
+        // 편명 정보 유무 확인
+        let hasFlightInfo = flightNoRaw !== "" || legFromRaw !== "" || legToRaw !== "";
+        let 편명구간 = "";
+
         if (target === "DUTY") {
             const 기번표시 = "HL" + 기번 + " (" + acType + ")";
             const 위탁 = 위탁체크박스상태 ? 'Y 🔹' : 'N 🔸';
-            const 편명구간 = `OZ${flightNo} (${legFrom} ➔ ${legTo})`;
+            
+            if (hasFlightInfo) {
+                const fNo = flightNoRaw || '미상';
+                const lFrom = legFromRaw || '???';
+                const lTo = legToRaw || '???';
+                편명구간 = `OZ${fNo} (${lFrom} ➔ ${lTo})`;
+            }
 
             let html결함묶음 = "";
             rows.forEach(row => {
@@ -364,10 +384,13 @@
 
             if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
 
+            // 편명 정보가 있으면 한 줄을 온전히 추가하고, 없으면 아예 비워버림
+            let flightHtml = hasFlightInfo ? `• <b>편명 :</b> ${편명구간}<br>` : "";
+
             const htmlText = 
                 `🛠️ <b>정비 이월 사항 전달</b><br><br>` +
                 `• <b>기번 :</b> ${기번표시}<br>` +
-                `• <b>편명 :</b> ${편명구간}<br>` +
+                flightHtml +
                 `• <b>작성자 :</b> ${공통작성자}<br>` +
                 `• <b>위탁 :</b> ${위탁}<br><br>` +
                 `<b>[ 결함내역 및 조치 ]</b><br>` +
@@ -383,7 +406,13 @@
 
         } else if (target === "OCC") {
             const 기번표시 = "HL" + 기번;
-            const 편명구간 = `OZ${flightNo} (${legFrom}-${legTo})`;
+            
+            if (hasFlightInfo) {
+                const fNo = flightNoRaw || '미상';
+                const lFrom = legFromRaw || '???';
+                const lTo = legToRaw || '???';
+                편명구간 = `OZ${fNo} (${lFrom}-${lTo})`;
+            }
 
             const gpsCodesByAcType = {
                 "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
@@ -433,10 +462,13 @@
                 ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
                 : "";
 
+            // 편명 정보가 있으면 한 줄 띄우고, 없으면 <br> 하나만 남김
+            let flightHtml = hasFlightInfo ? `• <b>편명 :</b> ${편명구간}<br><br>` : "<br>";
+
             const htmlText = 
                 "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
                 "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
-                "• <b>편명 :</b> " + 편명구간 + "<br><br>" +
+                flightHtml +
                 "<b>[ 결함내역 및 조치 ]</b><br>" + html결함묶음 +
                 gpsNotice + 
                 "<i>" + 이름 + " / " + 현재시간 + "</i>";
@@ -456,11 +488,6 @@
             const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             if (res.ok) alert(`✅ ${target} 채널로 메시지가 전송되었습니다!`); else alert(`⚠️ 전송 실패 (에러코드: ${res.status})`);
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
-    }
-
-    function fillAcType() {
-        const reg = document.getElementById('regNo').value.trim();
-        document.getElementById('acType').value = DB.ac[reg] || "";
     }
 
     function matchFlightFromLegs() {
@@ -630,7 +657,6 @@
                 optDiv.innerHTML = "";
                 let hasOptions = false;
                 
-                // 🔥 [신규] 입력된 값을 DB에서 찾아 최상단에 고정
                 const currentValue = document.getElementById(inputId).value.trim();
                 let currentItemMatched = null;
                 
@@ -641,12 +667,10 @@
                         if (searchType === 'ATA') {
                             return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4)) && d.row >= 2 && d.row <= 733;
                         } else {
-                            // 🔥 MEL/NEF/CDL은 83095행 이후에서만 대표 문구 찾기!
                             return (d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue) && d.row >= 83095;
                         }
                     });
                     
-                    // 만약 83095행 이후(대표문구)에서 못 찾았다면, Raw Data라도 띄워주기 위한 안전장치
                     if (!currentItemMatched && searchType !== 'ATA') {
                         currentItemMatched = dbToSearch.find(d => {
                             return d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue;
@@ -690,7 +714,6 @@
 
                             if (matchCode) {
                                 if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
-                                // 🔥 MEL/NEF/CDL은 83095행 이후에서만 대표 문구 찾기!
                                 if (searchType !== 'ATA' && d.row >= 83095) {
                                     if (d.type === 'MEL' && d.acType !== 'ALL') {
                                         return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
@@ -718,7 +741,6 @@
                         const keyword = repItem ? repItem.keyword : "상세 설명 없음";
                         const displayCode = repItem ? repItem.code : code;
                         
-                        // 현재 상단에 고정된 📌입력값과 똑같은 항목이면 건너뜀(중복 방지)
                         if (currentItemMatched && (currentItemMatched.code === displayCode || currentItemMatched.code === cleanCode)) {
                             return; 
                         }
