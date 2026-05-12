@@ -156,9 +156,7 @@
             </div>
         </div>
         <div class="right-panel" id="rightPanel">
-            
             <input type="file" id="imageFileInput" style="position: absolute; width: 1px; height: 1px; opacity: 0; z-index: -1;" accept="image/*" onchange="handleImageFile(event)">
-            
             <div id="pasteArea">
                 <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
                     <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
@@ -203,8 +201,8 @@
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200; 
-                    const MAX_HEIGHT = 1200; 
+                    const MAX_WIDTH = 900; 
+                    const MAX_HEIGHT = 900; 
                     let width = img.width;
                     let height = img.height;
 
@@ -558,7 +556,6 @@
         const container = document.getElementById('defectRowsContainer');
         const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         
-        // 🔥 빈칸이면 둘 다 선택되지 않도록 로직 수정
         const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
         const isAs = asApVal === 'AS';
         const isAp = asApVal === 'AP';
@@ -598,6 +595,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🔥 MEL과 완벽하게 분리 독립된 검색 로직
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -615,8 +613,13 @@
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
-        let validActions = dbToSearch;
-        if (searchType !== 'ATA') {
+        let validActions = [];
+        
+        // 🚨 핵심 포인트: ATA는 1줄~733줄(대표문구)만 검색 대상으로 잡습니다!
+        if (searchType === 'ATA') {
+            validActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
+        } else {
+            // 적용근거(MEL)는 기종 조건에 맞는 것들 전체 대상
             validActions = dbToSearch.filter(d => {
                 if (d.acType !== 'ALL' && d.acType !== undefined) {
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
@@ -630,7 +633,9 @@
         
         optDiv.innerHTML = "";
         let hasOptions = false;
+        let seenCodes = new Set(); // 🚨 중복 방지용 메모장
 
+        // [현재 입력된 값 (Pinned) 처리 로직]
         if (currentValue) {
             let matchedItems = validActions.filter(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -651,16 +656,19 @@
                 row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
                 optDiv.appendChild(row);
                 hasOptions = true;
+                
+                seenCodes.add(currentItemMatched.code.replace(/[^0-9A-Z]/gi, '')); // 표시한 코드 기억해두기
             } else {
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
-                row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표문구 없음 (DB 누락 또는 기종 불일치)`;
+                row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표문구 없음`;
                 row.onmousedown = () => { document.getElementById(inputId).value = currentValue; optDiv.style.display = "none"; };
                 optDiv.appendChild(row);
                 hasOptions = true;
             }
         }
 
+        // [결함 텍스트를 분석하여 추천 리스트업 로직]
         if (text.trim()) {
             const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
             if (defectTerms.length > 0) {
@@ -676,13 +684,21 @@
                 });
 
                 scoredDB.sort((a, b) => b.score - a.score);
-                const topCandidates = scoredDB.slice(0, 10).map(item => item.data);
+                const topCandidates = scoredDB.map(item => item.data); 
 
-                topCandidates.forEach(repItem => {
+                // 🚨 여기서 중복을 완벽하게 걸러냅니다!
+                let addedCount = 0;
+                for (let i = 0; i < topCandidates.length; i++) {
+                    if (addedCount >= 10) break; // 최대 10개까지만 표시
+                    
+                    let repItem = topCandidates[i];
+                    const pureCode = repItem.code.replace(/[^0-9A-Z]/gi, '');
+                    
+                    if (seenCodes.has(pureCode)) continue; // 이미 표시된 코드면 건너뛰기!
+                    seenCodes.add(pureCode); // 처음 보는 코드면 기억하기
+                    
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
                     const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
-                    
-                    if (cleanCurrent && repItem.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent) return;
 
                     const row = document.createElement('div');
                     row.className = 'dropdown-opt';
@@ -691,7 +707,8 @@
                     row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
                     hasOptions = true;
-                });
+                    addedCount++;
+                }
             }
         }
         
