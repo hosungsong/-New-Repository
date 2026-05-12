@@ -38,7 +38,7 @@ def reload_db_from_lines(lines):
             elif type_ == 'NEF' and len(parts) >= 3:
                 APP_DB["actionDatabase"].append({"type": 'NEF', "code": parts[1].upper(), "acType": 'ALL', "keyword": parts[2].upper(), "row": rowNum})
             elif type_ == 'MEL' and len(parts) >= 4:
-                APP_DB["actionDatabase"].append({"type": 'MEL', "code": parts[1].upper(), "acType": parts[2].upper(), "keyword": parts[3].upper(), "row": rowNum})
+                APP_DB["actionDatabase"].append({"type": 'MEL', "acType": parts[1].upper(), "code": parts[2].upper(), "keyword": parts[3].upper(), "row": rowNum})
             elif type_ == 'ACTION' and len(parts) >= 3:
                 key = parts[2].upper() if len(parts) > 2 else ""
                 if key and parts[1] and key != 'KEYWORD':
