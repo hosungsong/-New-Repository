@@ -549,13 +549,13 @@
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
             <div class="search-wrap">
                 <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="MEL/CDL/NEF 등">
-                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="AI 문맥 검색">🔍</button>
+                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="실시간 로컬 검색">🔍</button>
                 <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
             </div>
             <div class="ata-wrapper">
                 <div class="search-wrap">
                     <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
-                    <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="AI 문맥 검색">🔍</button>
+                    <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="실시간 로컬 검색">🔍</button>
                     <div id="dropdown-ATA-${id}" class="dropdown-list"></div>
                 </div>
             </div>
@@ -572,31 +572,25 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    async function searchSmartDB(id, searchType) {
+    // 🚀 완전히 개편된 초고속 로컬 검색 (AI 통신 제거)
+    function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
         const inputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
         const dropdownId = `dropdown-${searchType}-${id}`;
-        const btn = document.getElementById(btnId); 
         const optDiv = document.getElementById(dropdownId);
 
         document.querySelectorAll('.dropdown-list').forEach(el => {
             if (el.id !== 'flightOptions' && el.id !== 'legOptions') el.style.display = 'none';
         });
 
-        if (!text.trim()) return alert("⚠️ 결함 내용을 먼저 입력해주세요.");
-        
         const dbToSearch = searchType === 'ATA' ? DB.ataDatabase : DB.actionDatabase;
         if (!dbToSearch || dbToSearch.length === 0) return alert(`⚠️ 해당 DB(${searchType})가 등록되어 있지 않습니다.`);
         
-        btn.innerText = "⏳"; btn.disabled = true;
-
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
-        if (currentAcType.includes("A321") || currentAcType.includes("A32N")) {
-            currentAcType = "A321";
-        }
+        if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
-        // 🔥 1. 기종 필터링 완벽 적용 (Raw Data & 대표문구 모두 해당 기종만)
+        // 1. 기종 필터링
         let validActions = dbToSearch;
         if (searchType !== 'ATA') {
             validActions = dbToSearch.filter(d => {
@@ -607,187 +601,86 @@
             });
         }
 
-        const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
-        if (defectTerms.length === 0) {
-            alert("⚠️ 검색에 사용할 수 있는 핵심 단어(영문 2글자 이상)가 결함 내용에 부족합니다.");
-            btn.innerText = "🔍"; btn.disabled = false;
-            return;
+        const currentValue = document.getElementById(inputId).value.trim();
+        const cleanCurrent = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
+        
+        optDiv.innerHTML = "";
+        let hasOptions = false;
+
+        // 2. 이미 입력된 값이 있다면 가장 최신(행 번호가 높은) 대표문구 찾기
+        if (currentValue) {
+            let matchedItems = validActions.filter(d => {
+                const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
+                if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
+                return dbBase === cleanCurrent || d.code === currentValue;
+            });
+
+            if (matchedItems.length > 0) {
+                // 핵심! 줄 번호를 하드코딩하지 않고, 같은 코드 중 행 번호가 가장 큰(가장 최신/맨 밑) 값을 선택!
+                matchedItems.sort((a, b) => b.row - a.row);
+                let currentItemMatched = matchedItems[0];
+
+                const prefix = searchType !== 'ATA' && currentItemMatched.type ? currentItemMatched.type + ' ' : '';
+                const fullDisplay = searchType !== 'ATA' ? `${prefix}${currentItemMatched.code}`.trim() : currentItemMatched.code;
+
+                const row = document.createElement('div');
+                row.className = 'dropdown-opt pinned';
+                row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${currentItemMatched.keyword}`;
+                row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
+                optDiv.appendChild(row);
+                hasOptions = true;
+            } else {
+                const row = document.createElement('div');
+                row.className = 'dropdown-opt pinned';
+                row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표문구 없음 (DB 누락 또는 기종 불일치)`;
+                row.onmousedown = () => { document.getElementById(inputId).value = currentValue; optDiv.style.display = "none"; };
+                optDiv.appendChild(row);
+                hasOptions = true;
+            }
         }
 
-        let scoredDB = [];
-        validActions.forEach(d => {
-            let score = 0;
-            const targetStr = (d.keyword + " " + d.code).toLowerCase();
-            defectTerms.forEach(term => {
-                if (targetStr.includes(term)) score += 10; 
-            });
-            if (score > 0) {
-                // 🔥 2. 검색 우선순위: 대표문구(83264행 이상)에 엄청난 가산점 부여
-                if (searchType !== 'ATA' && d.row >= 83264) score += 50; 
-                scoredDB.push({ data: d, score: score });
-            }
-        });
+        // 3. 결함 텍스트 기반 로컬 스코어링 (0.01초 소요)
+        if (text.trim()) {
+            const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
+            if (defectTerms.length > 0) {
+                let scoredDB = [];
+                validActions.forEach(d => {
+                    let score = 0;
+                    const targetStr = (d.keyword + " " + d.code).toLowerCase();
+                    defectTerms.forEach(term => { if (targetStr.includes(term)) score += 10; });
+                    if (score > 0) {
+                        // 행 번호가 클수록 가산점을 주어 최신 대표문구가 상단에 오도록 유도
+                        score += (d.row / 100000); 
+                        scoredDB.push({ data: d, score: score });
+                    }
+                });
 
-        if (scoredDB.length === 0) {
-            alert(`💡 [${searchType}] 연관된 키워드를 찾지 못했습니다.\n결함 내용에 영문 부품명(예: TIRE, SENSOR 등)을 추가한 뒤 다시 눌러주세요!`);
-            btn.innerText = "🔍"; btn.disabled = false;
-            return;
+                scoredDB.sort((a, b) => b.score - a.score);
+                const topCandidates = scoredDB.slice(0, 10).map(item => item.data);
+
+                topCandidates.forEach(repItem => {
+                    const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
+                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
+                    
+                    // Pinned 항목과 중복 방지
+                    if (cleanCurrent && repItem.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent) return;
+
+                    const row = document.createElement('div');
+                    row.className = 'dropdown-opt';
+                    row.innerText = `${fullDisplay} :: ${repItem.keyword}`;
+                    row.title = `${fullDisplay} :: ${repItem.keyword}`; 
+                    row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
+                    optDiv.appendChild(row);
+                    hasOptions = true;
+                });
+            }
         }
-
-        scoredDB.sort((a, b) => b.score - a.score);
-        const topCandidates = scoredDB.slice(0, 15).map(item => item.data);
-
-        let compressedDB = topCandidates.map(d => {
-            const prefix = d.type ? d.type + ' ' : '';
-            return `${prefix}${d.code}::${d.keyword}`;
-        }).join('\n');
-
-        try {
-            const res = await fetch("/smart_search", {
-                method: "POST", headers: { "Content-Type": "application/json" }, 
-                body: JSON.stringify({ defect: text, search_type: searchType, db_text: compressedDB })
-            });
-            
-            const rawText = await res.text();
-            
-            try {
-                const data = JSON.parse(rawText);
-                
-                optDiv.innerHTML = "";
-                let hasOptions = false;
-                
-                const currentValue = document.getElementById(inputId).value.trim();
-                let currentItemMatched = null;
-                
-                if (currentValue) {
-                    const cleanCurrent = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
-                    currentItemMatched = validActions.find(d => {
-                        const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
-                        if (searchType === 'ATA') {
-                            return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4)) && d.row >= 2 && d.row <= 733;
-                        } else {
-                            // 🔥 3. 대표문구(83264행 이상) 중에서 찾기
-                            return (dbBase === cleanCurrent || d.code === currentValue) && d.row >= 83264;
-                        }
-                    });
-                    
-                    if (!currentItemMatched && searchType !== 'ATA') {
-                        currentItemMatched = validActions.find(d => {
-                            return d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue;
-                        });
-                    }
-                    
-                    if (currentItemMatched) {
-                        const prefix = searchType !== 'ATA' && currentItemMatched.type ? currentItemMatched.type + ' ' : '';
-                        const displayCode = searchType === 'ATA' ? currentItemMatched.code : currentItemMatched.code;
-                        const row = document.createElement('div');
-                        row.className = 'dropdown-opt pinned';
-                        
-                        // 🔥 4. MEL 30-21-02A :: 대표문구 형태로 깔끔하게 표시
-                        const fullDisplay = searchType !== 'ATA' ? `${prefix}${displayCode}`.trim() : displayCode;
-                        row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${currentItemMatched.keyword}`;
-                        row.title = `${fullDisplay} :: ${currentItemMatched.keyword}`; 
-                        
-                        row.onmousedown = () => {
-                            document.getElementById(inputId).value = fullDisplay;
-                            optDiv.style.display = "none";
-                        };
-                        optDiv.appendChild(row);
-                        hasOptions = true;
-                    } else if (currentValue) {
-                        const row = document.createElement('div');
-                        row.className = 'dropdown-opt pinned';
-                        row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표문구 없음 (DB 누락)`;
-                        row.onmousedown = () => {
-                            document.getElementById(inputId).value = currentValue;
-                            optDiv.style.display = "none";
-                        };
-                        optDiv.appendChild(row);
-                        hasOptions = true;
-                    }
-                }
-
-                if (data.error) { 
-                    alert("⚠️ " + data.error); 
-                }
-                else if (data.matches && data.matches.length > 0) { 
-                    let uniqueCodes = [...new Set(data.matches)];
-                    
-                    uniqueCodes.forEach(code => {
-                        const cleanCode = code.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').trim();
-                        
-                        let repItem = validActions.find(d => {
-                            let matchCode = (d.code === cleanCode || d.code === code);
-                            
-                            if (!matchCode && searchType === 'ATA') {
-                                const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
-                                const aiBase = cleanCode.replace(/[^0-9A-Z]/gi, '');
-                                if (dbBase.length >= 4 && aiBase.length >= 4 && aiBase.startsWith(dbBase.substring(0,4))) {
-                                    matchCode = true;
-                                }
-                            }
-
-                            if (matchCode) {
-                                if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
-                                // 🔥 대표문구(83264행 이상)만 매칭 통과!
-                                if (searchType !== 'ATA' && d.row >= 83264) return true; 
-                            }
-                            return false;
-                        });
-
-                        // 83264행에 없으면 Raw Data라도 긁어오기 (최후의 보루)
-                        if (!repItem) {
-                            repItem = validActions.find(d => {
-                                let matchCode = (d.code === cleanCode || d.code === code);
-                                if (!matchCode && searchType === 'ATA') {
-                                    const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
-                                    const aiBase = cleanCode.replace(/[^0-9A-Z]/gi, '');
-                                    if (dbBase.length >= 4 && aiBase.length >= 4 && aiBase.startsWith(dbBase.substring(0,4))) {
-                                        matchCode = true;
-                                    }
-                                }
-                                return matchCode;
-                            });
-                        }
-                        
-                        if (repItem) {
-                            const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
-                            const keyword = repItem.keyword;
-                            const displayCode = repItem.code;
-                            
-                            // 🔥 문서 종류(MEL/NEF) + 코드만 합침. 기종은 화면에서 제외.
-                            const fullDisplay = searchType !== 'ATA' ? `${prefix}${displayCode}`.trim() : displayCode;
-                            
-                            if (currentItemMatched && (currentItemMatched.code === displayCode || currentItemMatched.code === cleanCode)) {
-                                return; // 중복
-                            }
-                            
-                            const row = document.createElement('div');
-                            row.className = 'dropdown-opt';
-                            row.innerText = `${fullDisplay} :: ${keyword}`;
-                            row.title = `${fullDisplay} :: ${keyword}`; 
-                            row.onmousedown = () => {
-                                document.getElementById(inputId).value = fullDisplay;
-                                optDiv.style.display = "none";
-                            };
-                            optDiv.appendChild(row);
-                            hasOptions = true;
-                        }
-                    });
-                }
-                
-                if (hasOptions) {
-                    optDiv.style.display = "block";
-                } else {
-                    alert(`🔍 적절한 항목을 찾지 못했습니다.`); 
-                }
-
-            } catch (jsonError) {
-                console.error("서버 응답 오류 원문:", rawText);
-                alert("⚠️ 서버에서 올바르지 않은 응답이 반환되었습니다.");
-            }
-
-        } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
+        
+        if (hasOptions) {
+            optDiv.style.display = "block";
+        } else {
+            alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
+        }
     }
 
     function loadAndDisplayImage(file) {
