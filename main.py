@@ -159,7 +159,11 @@ async def extract_text(file: UploadFile = File(...)):
                 continue
                 
             ata = str(item.get("ata", "")).upper()
+            
+            # 🔥 추가된 부분: 확실하게 AS, AP가 아니면 빈칸으로 처리
             asAp = str(item.get("asAp", "")).upper()
+            if asAp not in ["AS", "AP"]:
+                asAp = ""
             
             import re
             reason_digits_only = re.sub(r'[^0-9]', '', reason)
