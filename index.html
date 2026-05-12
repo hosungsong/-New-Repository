@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>정비 이월 전송 시스템</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
@@ -597,7 +598,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 ATA와 MEL(ACTION)을 완전히 분리시킨 완벽한 로컬 검색 함수
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -616,12 +616,11 @@
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
         let validActions = [];
-        let repActions = []; // 대표 문구 전용 공간
+        let repActions = [];
 
-        // 🚨 ATA와 ACTION(MEL/NEF)의 구역(행 번호)을 철저히 분리
         if (searchType === 'ATA') {
             validActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
-            repActions = validActions; // ATA는 1~733 구역 전체가 대표 문구
+            repActions = validActions; 
         } else {
             validActions = dbToSearch.filter(d => {
                 if (d.acType !== 'ALL' && d.acType !== undefined) {
@@ -629,7 +628,7 @@
                 }
                 return true; 
             });
-            repActions = validActions.filter(d => d.row >= 83264); // ACTION은 83264행 이상만 대표 문구!
+            repActions = validActions.filter(d => d.row >= 83264); 
         }
 
         const currentValue = document.getElementById(inputId).value.trim();
@@ -637,17 +636,15 @@
         
         optDiv.innerHTML = "";
         let hasOptions = false;
-        let seenCodes = new Set(); // 중복 방지용 메모장
+        let seenCodes = new Set(); 
 
         if (currentValue) {
-            // 1순위: 무조건 대표 문구 공간(repActions)에서 먼저 찾음
             let matchedItems = repActions.filter(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                 if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
                 return dbBase === cleanCurrent || d.code === currentValue;
             });
 
-            // 2순위: 대표 문구에 없으면, 일반 Raw 데이터에서 찾음
             if (matchedItems.length === 0 && searchType !== 'ATA') {
                 matchedItems = validActions.filter(d => {
                     const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -689,7 +686,6 @@
                     const targetStr = (d.keyword + " " + d.code).toLowerCase();
                     defectTerms.forEach(term => { if (targetStr.includes(term)) score += 10; });
                     if (score > 0) {
-                        // 🔥 대표 문구 구역(83264 이상)에 속한 경우 압도적인 가산점을 주어 무조건 위로 올림!
                         if (searchType !== 'ATA' && d.row >= 83264) score += 500;
                         score += (d.row / 100000); 
                         scoredDB.push({ data: d, score: score });
