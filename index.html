@@ -240,8 +240,9 @@
         }
     }
 
+    // 🔥 정규식을 통해 공백 및 찌꺼기 문자열 완벽 제거
     function fillAcType() {
-        let reg = document.getElementById('regNo').value.trim().toUpperCase();
+        let reg = document.getElementById('regNo').value.replace(/[^0-9A-Z]/gi, '').toUpperCase();
         reg = reg.replace(/^HL/, ""); 
         document.getElementById('acType').value = DB.ac[reg] || DB.ac["HL" + reg] || "";
     }
@@ -497,8 +498,10 @@
     }
 
     function matchFlightFromLegs() {
-        const f = document.getElementById('legFrom').value.toUpperCase(); const t = document.getElementById('legTo').value.toUpperCase();
-        const input = document.getElementById('flightNo'); const optDiv = document.getElementById('flightOptions');
+        const f = document.getElementById('legFrom').value.replace(/[^A-Z]/gi, '').toUpperCase();
+        const t = document.getElementById('legTo').value.replace(/[^A-Z]/gi, '').toUpperCase();
+        const input = document.getElementById('flightNo');
+        const optDiv = document.getElementById('flightOptions');
         optDiv.innerHTML = ""; optDiv.style.display = "none";
         
         input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
@@ -595,7 +598,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 MEL과 완벽하게 분리 독립된 검색 로직
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -615,11 +617,9 @@
 
         let validActions = [];
         
-        // 🚨 핵심 포인트: ATA는 1줄~733줄(대표문구)만 검색 대상으로 잡습니다!
         if (searchType === 'ATA') {
             validActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
         } else {
-            // 적용근거(MEL)는 기종 조건에 맞는 것들 전체 대상
             validActions = dbToSearch.filter(d => {
                 if (d.acType !== 'ALL' && d.acType !== undefined) {
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
@@ -633,9 +633,8 @@
         
         optDiv.innerHTML = "";
         let hasOptions = false;
-        let seenCodes = new Set(); // 🚨 중복 방지용 메모장
+        let seenCodes = new Set(); 
 
-        // [현재 입력된 값 (Pinned) 처리 로직]
         if (currentValue) {
             let matchedItems = validActions.filter(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -657,7 +656,7 @@
                 optDiv.appendChild(row);
                 hasOptions = true;
                 
-                seenCodes.add(currentItemMatched.code.replace(/[^0-9A-Z]/gi, '')); // 표시한 코드 기억해두기
+                seenCodes.add(currentItemMatched.code.replace(/[^0-9A-Z]/gi, '')); 
             } else {
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
@@ -668,7 +667,6 @@
             }
         }
 
-        // [결함 텍스트를 분석하여 추천 리스트업 로직]
         if (text.trim()) {
             const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
             if (defectTerms.length > 0) {
@@ -686,16 +684,15 @@
                 scoredDB.sort((a, b) => b.score - a.score);
                 const topCandidates = scoredDB.map(item => item.data); 
 
-                // 🚨 여기서 중복을 완벽하게 걸러냅니다!
                 let addedCount = 0;
                 for (let i = 0; i < topCandidates.length; i++) {
-                    if (addedCount >= 10) break; // 최대 10개까지만 표시
+                    if (addedCount >= 10) break; 
                     
                     let repItem = topCandidates[i];
                     const pureCode = repItem.code.replace(/[^0-9A-Z]/gi, '');
                     
-                    if (seenCodes.has(pureCode)) continue; // 이미 표시된 코드면 건너뛰기!
-                    seenCodes.add(pureCode); // 처음 보는 코드면 기억하기
+                    if (seenCodes.has(pureCode)) continue; 
+                    seenCodes.add(pureCode); 
                     
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
                     const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
@@ -860,6 +857,7 @@
         setTimeout(refreshAllHeights, 400); 
     }
 
+    // 🔥 여기서 편명/구간 누락 문제 완벽 해결 (else if 제거)
     async function extractText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractMain'); 
@@ -882,16 +880,30 @@
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
-            if (data.regNo) { document.getElementById('regNo').value = data.regNo.replace(/^HL/, ""); fillAcType(); }
+            // 찌꺼기 문자열 원천 차단 및 독립적 입력 실행
+            if (data.regNo) { 
+                let cleanReg = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, "");
+                document.getElementById('regNo').value = cleanReg; 
+                fillAcType(); 
+            }
+            
             if (data.flightNo) { 
-                let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/, '').replace(/^0+/, '');
+                let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '');
                 document.getElementById('flightNo').value = cleanFno; 
-                matchLegsFromFlight(); 
             } 
-            else if (data.legFrom || data.legTo) {
-                if (data.legFrom) document.getElementById('legFrom').value = data.legFrom; 
-                if (data.legTo) document.getElementById('legTo').value = data.legTo; 
-                matchFlightFromLegs(); 
+            
+            if (data.legFrom) {
+                document.getElementById('legFrom').value = String(data.legFrom).replace(/[^A-Z]/gi, '').toUpperCase();
+            }
+            if (data.legTo) {
+                document.getElementById('legTo').value = String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase();
+            }
+
+            // 입력된 항목을 바탕으로 똑똑하게 보완 검색
+            if (data.flightNo && (!data.legFrom || !data.legTo)) {
+                matchLegsFromFlight();
+            } else if (!data.flightNo && (data.legFrom && data.legTo)) {
+                matchFlightFromLegs();
             }
             
             if (data.items && data.items.length > 0) {
