@@ -109,6 +109,7 @@ async def extract_text(file: UploadFile = File(...)):
 
         [5. 결함 본문(defect) - 우측 침범 금지!]
         - 좌측 'DEFECT DESCRIPTION' 칸에 쓰인 글자만 추출하세요. (아이템 번호 제외)
+        - 아이템 번호 제외라고 했더니, A.ICE 를 A. 없이 ICE 만 출력하는 경우가 있음. DEFECT 칸 안의 모든 글자를 출력해 주길 바람. ITEM 은 위에 'ITEM' 이라고 써있는데 우측에 수기로 쓰는게 아이템임. DEFECT 칸에 써있는 글자를 잘 출럭해주길 바람.
         - 절대 우측 'ACTION TAKEN' 칸을 섞지 마세요.
 
         [6. 적용근거(reason) 분류 🚨 시각 착시(OCR 토큰 오류) 원천 차단 규칙 🚨]
