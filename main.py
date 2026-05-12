@@ -99,44 +99,39 @@ async def extract_text(file: UploadFile = File(...)):
         - flightNo: 'OZ' 제외 순수 숫자.
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
-        [3. 작성자(asAp)]
-        - CABIN LOG: 무조건 'AS'.
-        - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
-        - 가끔 화면이 잘려서 오는 경우가 있는데, 여러가지 방법으로 FLIGHT & MAINTENANCE LOG 를 유추할 수 있음. (오른쪽 DEFER NO. 란에 네모가 다섯개) 이런식으로 FLIGHT & MAINTENANCE LOG 를 구별하여, AS, AP 잘 체크해주길 바람. 지금 사인이 없는 FLIGHT & MAINTENANCE LOG 도 AS 로 표시되는데 사인 도장 다 없으면 그냥 AS,AP 아무것도 표시 안되게 해줘.
+        [3. 작성자(asAp) 🚨 엄격한 빈칸 규칙 적용 🚨]
+        - 로그의 종류를 먼저 파악하세요 (오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG).
+        - CABIN LOG: 무조건 "AS" 출력.
+        - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력.
+        - 🚨 [가장 중요] FLIGHT & MAINTENANCE LOG인데 해당 칸에 도장도 없고 서명도 완전히 비어있다면, 무조건 빈 문자열("")을 출력하세요. 절대 임의로 "AS"를 적지 마세요!
 
         [4. 이월(DEFER) 항목만 필터링 추출]
         - 우측의 'DEFER No.' 칸 주변에 펜으로 체크(X 또는 V) 표시가 명확히 있는 항목만 추출하세요.
         - 체크 표시가 비어있는 항목은 절대 추출하지 말고 가차 없이 버리세요.
 
         [5. 결함 본문(defect) - 우측 침범 금지!]
-        - 좌측 'DEFECT DESCRIPTION' 칸에 쓰인 글자만 추출하세요. (아이템 번호 제외)
-        - 아이템 번호 제외라고 했더니, A.ICE 를 A. 없이 ICE 만 출력하는 경우가 있음. DEFECT 칸 안의 모든 글자를 출력해 주길 바람. ITEM 은 위에 'ITEM' 이라고 써있는데 우측에 수기로 쓰는게 아이템임. DEFECT 칸에 써있는 글자를 잘 출럭해주길 바람.
+        - 좌측 'DEFECT DESCRIPTION' 칸에 쓰인 글자만 추출하세요. 글자(ITEM 포함)가 적혀 있다면 하나도 빠짐없이 100% 모두 추출하세요.
         - 절대 우측 'ACTION TAKEN' 칸을 섞지 마세요.
 
         [6. 적용근거(reason) 분류 🚨 시각 착시(OCR 토큰 오류) 원천 차단 규칙 🚨]
-        - 작성자가 체크 표시(X, V)를 크게 써서 우측 단어에 닿는 바람에, 당신의 시각 엔진이 이를 하나의 텍스트 토큰으로 뭉개서 읽어들이는 심각한 버그가 있습니다. 이 착시를 다음 공식을 통해 강제로 교정하세요!
-        
-        - 다음은 CABIN LOG 의 경우에 해당합니다. (기본 베이스는 MEL □ NEF □ AMM □ 이렇게야. 네모에 체크 또는 엑스표시를 수기로 하면 그 왼쪽에 있는 값을 읽어야해. 체크한게 오른쪽 글씨에 가깝다고 오른쪽 글씨를 읽으면 안되고, 꼭 왼쪽의 글씨를 읽어줘.)
-        - 💡 공식 1: 만약 텍스트가 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로, 절대 NEF가 아니라 100% **MEL** 입니다!
-        - 💡 공식 2: 만약 텍스트가 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ 무조건 **NEF** 입니다!
-        - 💡 공식 3: 만약 텍스트가 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ 무조건 **AMM** 입니다!
-        - 다시한번 말하지만, 체크 (또는 X) 의 왼쪽 글씨를 읽습니다. 여기서 읽는 글씨는 LOG에 프린트 되어 있는 글씨 입니다.
-        - 여전히 X표시가 오른쪽에 있는 글씨와 가깝다고 오른쪽 글씨를 출력하는 경우가 많습니다. 눈에 보이는 것 말고 내가 제시한 규칙을 최우선적으로 판단합니다. MEL 과 NEF 사이에 체크를 했으면 그건 MEL 이 100%입니다.
-        - 이 공식은 표 안의 'DEFER No.' 칸과 왼쪽의 'DEFER PLACARD' 스티커 모두에 동일하게 적용됩니다.
-        - 스티커는 상하 위치가 아니라, 스티커 안의 'REMARK' 내용과 본문 결함 내용을 텍스트로 비교하여 일치할 때만 짝으로 삼으세요.
+        - 다음은 CABIN LOG 의 경우에 해당합니다. (기본 베이스는 MEL □ NEF □ AMM □) 네모에 체크 또는 엑스표시를 수기로 하면 그 왼쪽에 있는 값을 읽어야해. 체크한게 오른쪽 글씨에 가깝다고 오른쪽 글씨를 읽으면 안되고, 꼭 왼쪽의 글씨를 읽어줘.
+        - 💡 공식 1: 만약 텍스트가 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 NEF가 아니라 100% MEL!
+        - 💡 공식 2: 만약 텍스트가 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ 무조건 NEF!
+        - 💡 공식 3: 만약 텍스트가 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ 무조건 AMM!
+        - 눈에 보이는 것 말고 내가 제시한 규칙을 최우선적으로 판단합니다.
+        - 스티커는 스티커 안의 'REMARK' 내용과 본문 결함 내용을 텍스트로 비교하여 일치할 때만 짝으로 삼으세요.
         - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
         
-        - FLIGHT & MAINTENANCE LOG 는 다른 규칙이 적용됩니다. CABIN LOG 처럼 좌,우가 아니라 체크박스 위에 해당 TEXT 가 있습니다.
-        - FLIGHT & MAINTENANCE LOG는 MEL, CDL, NEF, SRM, AMM 순서로 되어 있습니다. 해당되는 칸에 X또는 체크가 되어 있으면 가장 가까운 (위에 있는) TEXT를 출력하세요.
+        - FLIGHT & MAINTENANCE LOG 는 다른 규칙이 적용됩니다. 해당되는 칸(MEL, CDL, NEF, SRM, AMM) 박스 위에 체크(X)가 되어 있으면 바로 그 글자를 선택하세요.
 
-        [7. ATA CODE 추출 규칙]
-        - 제일 좌측 'ATA CODE' 칸 안에 실제로 글씨가 적혀있을 때만 추출하세요.
-        - 칸이 비어있으면 무조건 "" (빈 문자열)을 출력하세요.
+        [7. ATA CODE 추출 규칙 🚨 절대 유추 금지 🚨]
+        - 제일 좌측 'ATA CODE' 칸 우측에 사람이 펜으로 직접 적은 4자리 숫자(또는 문자)가 있을 때만 그대로 추출하세요.
+        - 만약 그 'ATA CODE' 칸이 비어있다면, '적용근거(MEL)' 등 문서의 다른 곳에 있는 숫자를 절대 끌어와서 유추해 적지 마세요! 빈칸이면 무조건 "" (빈 문자열)을 출력하세요.
 
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
           "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {{"asAp": "AP", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
+          "items": [ {{"asAp": "", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
         }}
         """
         response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.0})
@@ -159,18 +154,13 @@ async def extract_text(file: UploadFile = File(...)):
                 continue
                 
             ata = str(item.get("ata", "")).upper()
-            
-            # 🔥 추가된 부분: 확실하게 AS, AP가 아니면 빈칸으로 처리
             asAp = str(item.get("asAp", "")).upper()
-            if asAp not in ["AS", "AP"]:
-                asAp = ""
             
             import re
-            reason_digits_only = re.sub(r'[^0-9]', '', reason)
-            ata_digits_only = re.sub(r'[^0-9]', '', ata)
+            ata = re.sub(r'[^0-9A-Z-]', '', ata) 
             
-            if len(ata) > 4 or "-" in ata or (len(ata_digits_only) >= 4 and ata_digits_only in reason_digits_only):
-                ata = ""
+            if asAp not in ["AS", "AP"]:
+                asAp = ""
                 
             cleaned_items.append({
                 "asAp": asAp,
