@@ -101,7 +101,8 @@ async def extract_text(file: UploadFile = File(...)):
 
         [3. 작성자(asAp)]
         - CABIN LOG: 무조건 'AS'.
-        - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
+        - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 'AS', 수기 서명만 있으면 'AP'.
+        - 가끔 화면이 잘려서 오는 경우가 있는데, 여러가지 방법으로 FLIGHT & MAINTENANCE LOG 를 유추할 수 있음. (오른쪽 DEFER NO. 란에 네모가 다섯개) 이런식으로 FLIGHT & MAINTENANCE LOG 를 구별하여, AS, AP 잘 체크해주길 바람. 지금 사인이 없는 FLIGHT & MAINTENANCE LOG 도 AS 로 표시되는데 사인 도장 다 없으면 그냥 AS,AP 아무것도 표시 안되게 해줘.
 
         [4. 이월(DEFER) 항목만 필터링 추출]
         - 우측의 'DEFER No.' 칸 주변에 펜으로 체크(X 또는 V) 표시가 명확히 있는 항목만 추출하세요.
