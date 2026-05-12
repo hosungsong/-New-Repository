@@ -596,10 +596,11 @@
             currentAcType = "A321";
         }
 
+        // 🔥 1. 기종 필터링 완벽 적용 (Raw Data & 대표문구 모두 해당 기종만)
         let validActions = dbToSearch;
         if (searchType !== 'ATA') {
             validActions = dbToSearch.filter(d => {
-                if (d.type === 'MEL' && d.acType !== 'ALL') {
+                if (d.acType !== 'ALL' && d.acType !== undefined) {
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
                 }
                 return true; 
@@ -621,8 +622,8 @@
                 if (targetStr.includes(term)) score += 10; 
             });
             if (score > 0) {
-                // 🔥 검색 우선순위 튜닝: 대표 문구(타입이 있는 것)면 엄청난 가산점을 줌
-                if (searchType !== 'ATA' && d.type) score += 50; 
+                // 🔥 2. 검색 우선순위: 대표문구(83264행 이상)에 엄청난 가산점 부여
+                if (searchType !== 'ATA' && d.row >= 83264) score += 50; 
                 scoredDB.push({ data: d, score: score });
             }
         });
@@ -660,18 +661,18 @@
                 
                 if (currentValue) {
                     const cleanCurrent = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
-                    currentItemMatched = dbToSearch.find(d => {
+                    currentItemMatched = validActions.find(d => {
                         const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                         if (searchType === 'ATA') {
                             return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4)) && d.row >= 2 && d.row <= 733;
                         } else {
-                            // 🔥 83095행 제한 해제: 타입(MEL, NEF)이 명확히 있는 대표 문구면 매칭
-                            return (d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue) && d.type;
+                            // 🔥 3. 대표문구(83264행 이상) 중에서 찾기
+                            return (dbBase === cleanCurrent || d.code === currentValue) && d.row >= 83264;
                         }
                     });
                     
                     if (!currentItemMatched && searchType !== 'ATA') {
-                        currentItemMatched = dbToSearch.find(d => {
+                        currentItemMatched = validActions.find(d => {
                             return d.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent || d.code === currentValue;
                         });
                     }
@@ -681,11 +682,24 @@
                         const displayCode = searchType === 'ATA' ? currentItemMatched.code : currentItemMatched.code;
                         const row = document.createElement('div');
                         row.className = 'dropdown-opt pinned';
-                        // 화면 출력 시 접두어(MEL 등) 강제 표출
-                        row.innerHTML = `📌 <b>[입력값]</b> ${prefix}${displayCode} :: ${currentItemMatched.keyword}`;
-                        row.title = `${prefix}${displayCode} :: ${currentItemMatched.keyword}`; 
+                        
+                        // 🔥 4. MEL 30-21-02A :: 대표문구 형태로 깔끔하게 표시
+                        const fullDisplay = searchType !== 'ATA' ? `${prefix}${displayCode}`.trim() : displayCode;
+                        row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${currentItemMatched.keyword}`;
+                        row.title = `${fullDisplay} :: ${currentItemMatched.keyword}`; 
+                        
                         row.onmousedown = () => {
-                            document.getElementById(inputId).value = prefix + displayCode;
+                            document.getElementById(inputId).value = fullDisplay;
+                            optDiv.style.display = "none";
+                        };
+                        optDiv.appendChild(row);
+                        hasOptions = true;
+                    } else if (currentValue) {
+                        const row = document.createElement('div');
+                        row.className = 'dropdown-opt pinned';
+                        row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표문구 없음 (DB 누락)`;
+                        row.onmousedown = () => {
+                            document.getElementById(inputId).value = currentValue;
                             optDiv.style.display = "none";
                         };
                         optDiv.appendChild(row);
@@ -702,7 +716,7 @@
                     uniqueCodes.forEach(code => {
                         const cleanCode = code.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').trim();
                         
-                        let repItem = dbToSearch.find(d => {
+                        let repItem = validActions.find(d => {
                             let matchCode = (d.code === cleanCode || d.code === code);
                             
                             if (!matchCode && searchType === 'ATA') {
@@ -715,19 +729,15 @@
 
                             if (matchCode) {
                                 if (searchType === 'ATA' && d.row >= 2 && d.row <= 733) return true;
-                                // 🔥 83095행 제한 해제: 타입이 명확히 있는 대표 문구면 매칭 통과
-                                if (searchType !== 'ATA' && d.type) {
-                                    if (d.type === 'MEL' && d.acType !== 'ALL') {
-                                        return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
-                                    }
-                                    return true; 
-                                }
+                                // 🔥 대표문구(83264행 이상)만 매칭 통과!
+                                if (searchType !== 'ATA' && d.row >= 83264) return true; 
                             }
                             return false;
                         });
 
+                        // 83264행에 없으면 Raw Data라도 긁어오기 (최후의 보루)
                         if (!repItem) {
-                            repItem = dbToSearch.find(d => {
+                            repItem = validActions.find(d => {
                                 let matchCode = (d.code === cleanCode || d.code === code);
                                 if (!matchCode && searchType === 'ATA') {
                                     const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -740,26 +750,29 @@
                             });
                         }
                         
-                        const prefix = searchType !== 'ATA' && repItem && repItem.type ? repItem.type + ' ' : '';
-                        const keyword = repItem ? repItem.keyword : "상세 설명 없음";
-                        const displayCode = repItem ? repItem.code : cleanCode;
-                        const fullDisplay = `${prefix}${displayCode}`;
-                        
-                        if (currentItemMatched && (currentItemMatched.code === displayCode || currentItemMatched.code === cleanCode)) {
-                            return; 
+                        if (repItem) {
+                            const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
+                            const keyword = repItem.keyword;
+                            const displayCode = repItem.code;
+                            
+                            // 🔥 문서 종류(MEL/NEF) + 코드만 합침. 기종은 화면에서 제외.
+                            const fullDisplay = searchType !== 'ATA' ? `${prefix}${displayCode}`.trim() : displayCode;
+                            
+                            if (currentItemMatched && (currentItemMatched.code === displayCode || currentItemMatched.code === cleanCode)) {
+                                return; // 중복
+                            }
+                            
+                            const row = document.createElement('div');
+                            row.className = 'dropdown-opt';
+                            row.innerText = `${fullDisplay} :: ${keyword}`;
+                            row.title = `${fullDisplay} :: ${keyword}`; 
+                            row.onmousedown = () => {
+                                document.getElementById(inputId).value = fullDisplay;
+                                optDiv.style.display = "none";
+                            };
+                            optDiv.appendChild(row);
+                            hasOptions = true;
                         }
-                        
-                        const row = document.createElement('div');
-                        row.className = 'dropdown-opt';
-                        // 화면 출력 시 접두어(MEL 등) 강제 표출
-                        row.innerText = `${fullDisplay} :: ${keyword}`;
-                        row.title = `${fullDisplay} :: ${keyword}`; 
-                        row.onmousedown = () => {
-                            document.getElementById(inputId).value = fullDisplay;
-                            optDiv.style.display = "none";
-                        };
-                        optDiv.appendChild(row);
-                        hasOptions = true;
                     });
                 }
                 
@@ -771,7 +784,7 @@
 
             } catch (jsonError) {
                 console.error("서버 응답 오류 원문:", rawText);
-                alert("⚠️ 서버에서 올바르지 않은 응답이 반환되었습니다. (타임아웃 또는 서버 오류)");
+                alert("⚠️ 서버에서 올바르지 않은 응답이 반환되었습니다.");
             }
 
         } catch (e) { alert("⚠️ 통신 에러: " + e.message); } finally { btn.innerText = "🔍"; btn.disabled = false; }
