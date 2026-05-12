@@ -280,19 +280,27 @@
 
         const rows = document.querySelectorAll('.defect-row');
         let defectList = [];
+        let missingAsAp = false;
         
         rows.forEach(row => {
             const id = row.id.split('-')[1];
+            const asApVal = document.getElementById(`asAp-${id}`).value;
             const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
             const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
             
             if (결함_raw) {
+                if (!asApVal) missingAsAp = true;
                 defectList.push({ defect: 결함_raw, reason: 근거_raw });
             }
         });
 
         if (defectList.length === 0) {
             alert("전송할 결함 내용이 없습니다.");
+            return;
+        }
+
+        if (missingAsAp) {
+            alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않은 결함이 있습니다!\n스위치를 눌러 올바르게 선택해주세요.");
             return;
         }
 
@@ -314,6 +322,17 @@
         const url = WEBHOOK_URLS[target];
         if (!url) { alert(target + " 용 웹훅 주소가 설정되지 않았습니다."); return; }
 
+        const rows = document.querySelectorAll('.defect-row');
+        if (rows.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+
+        const firstId = rows[0].id.split('-')[1];
+        const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
+        
+        if (!첫번째구분_raw) {
+            alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않았습니다!\n스위치를 클릭하여 올바른 작성자를 지정해주세요.");
+            return;
+        }
+
         let 이름 = localStorage.getItem('logScanner_userName');
         if (!이름) {
             이름 = prompt("전송자 성함을 입력해주세요. (이후 우측 상단에서 변경 가능합니다)", "");
@@ -333,14 +352,9 @@
         const 위탁체크박스상태 = document.getElementById('handover').checked;
         const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 
-        const rows = document.querySelectorAll('.defect-row');
-        if (rows.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
-        
         let defectCount = 0;
         let payload;
 
-        const firstId = rows[0].id.split('-')[1];
-        const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
         const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
         const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
 
@@ -543,9 +557,21 @@
         rowIdCounter++; const id = rowIdCounter;
         const container = document.getElementById('defectRowsContainer');
         const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
-        const isAp = data.asAp === 'AP';
+        
+        // 🔥 빈칸이면 둘 다 선택되지 않도록 로직 수정
+        const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
+        const isAs = asApVal === 'AS';
+        const isAp = asApVal === 'AP';
+
         row.innerHTML = `
-            <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${!isAp?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${isAp?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${isAp?'AP':'AS'}"></div>
+            <div class="as-ap-wrapper">
+                <span class="idx-num"></span>
+                <div class="toggle-box">
+                    <button type="button" class="toggle-btn ${isAs ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
+                    <button type="button" class="toggle-btn ${isAp ? 'active' : ''}" onclick="setAsAp(${id},'AP')">AP</button>
+                </div>
+                <input type="hidden" id="asAp-${id}" value="${asApVal}">
+            </div>
             <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
             <div class="search-wrap">
                 <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="MEL/CDL/NEF 등">
@@ -572,7 +598,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🚀 완전히 개편된 초고속 로컬 검색 (AI 통신 제거)
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -590,7 +615,6 @@
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
-        // 1. 기종 필터링
         let validActions = dbToSearch;
         if (searchType !== 'ATA') {
             validActions = dbToSearch.filter(d => {
@@ -607,7 +631,6 @@
         optDiv.innerHTML = "";
         let hasOptions = false;
 
-        // 2. 이미 입력된 값이 있다면 가장 최신(행 번호가 높은) 대표문구 찾기
         if (currentValue) {
             let matchedItems = validActions.filter(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -616,7 +639,6 @@
             });
 
             if (matchedItems.length > 0) {
-                // 핵심! 줄 번호를 하드코딩하지 않고, 같은 코드 중 행 번호가 가장 큰(가장 최신/맨 밑) 값을 선택!
                 matchedItems.sort((a, b) => b.row - a.row);
                 let currentItemMatched = matchedItems[0];
 
@@ -639,7 +661,6 @@
             }
         }
 
-        // 3. 결함 텍스트 기반 로컬 스코어링 (0.01초 소요)
         if (text.trim()) {
             const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
             if (defectTerms.length > 0) {
@@ -649,7 +670,6 @@
                     const targetStr = (d.keyword + " " + d.code).toLowerCase();
                     defectTerms.forEach(term => { if (targetStr.includes(term)) score += 10; });
                     if (score > 0) {
-                        // 행 번호가 클수록 가산점을 주어 최신 대표문구가 상단에 오도록 유도
                         score += (d.row / 100000); 
                         scoredDB.push({ data: d, score: score });
                     }
@@ -662,7 +682,6 @@
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
                     const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
                     
-                    // Pinned 항목과 중복 방지
                     if (cleanCurrent && repItem.code.replace(/[^0-9A-Z]/gi, '') === cleanCurrent) return;
 
                     const row = document.createElement('div');
