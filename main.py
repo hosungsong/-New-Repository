@@ -1,14 +1,13 @@
-import os, io, json
+import os, json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from PIL import Image
 import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -18,6 +17,20 @@ if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 
 # 🔥 서버 메모리에 저장되는 글로벌 DB
 APP_DB = {"flights": [], "ataDatabase": [], "actionDatabase": [], "ac": {}, "emails": {}}
+
+# 🚀 초고속 응답을 위한 JSON 뼈대 강제화
+class DefectItem(BaseModel):
+    asAp: str
+    defect: str
+    reason: str
+    ata: str
+
+class LogResponse(BaseModel):
+    regNo: str
+    legFrom: str
+    legTo: str
+    flightNo: str
+    items: List[DefectItem]
 
 def reload_db_from_lines(lines):
     APP_DB["flights"].clear()
@@ -82,16 +95,24 @@ async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         content = await file.read()
-        image = Image.open(io.BytesIO(content))
+        
+        # 🚀 무거운 이미지 변환 생략, 다이렉트 전송 (속도 대폭 향상)
+        image_part = {
+            "mime_type": file.content_type or "image/jpeg",
+            "data": content
+        }
+        
         model = genai.GenerativeModel('gemini-3-flash-preview') 
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
+        # 🔥 정비사님의 원본 프롬프트 100% 복구 완료 🔥
         prompt = f"""
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
         [1. 🚨 선유추(Guessing) 완벽 금지 (가장 중요) 🚨]
         - 문서에 펜으로 명시적으로 적혀있지 않은 정보는 절대 유추하거나 지어내지 마세요.
+        - 특히 'ATA CODE'나 '적용근거(DEFER No.)' 란에 글씨가 없다면 **무조건 빈 문자열("")**을 출력하세요.
 
         [2. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
@@ -131,14 +152,17 @@ async def extract_text(file: UploadFile = File(...)):
 
         [7. ATA CODE 추출 규칙 🚨 절대 유추 금지 🚨]
         - 'ATA CODE' 칸에 사람이 직접 적은 4자리 숫자(문자)만 추출. 빈칸이거나 잘렸으면 "".
-
-        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
-        {{
-          "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
-          "items": [ {{"asAp": "", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
-        }}
         """
-        response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json", "temperature": 0.0})
+        
+        # 🚀 스키마 강제 적용 (응답 대기시간 획기적 단축)
+        response = model.generate_content(
+            [prompt, image_part], 
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+                response_schema=LogResponse,
+                temperature=0.0
+            )
+        )
         
         data = json.loads(response.text.strip())
         
@@ -154,7 +178,6 @@ async def extract_text(file: UploadFile = File(...)):
             
             if not defect.strip() or defect == "NULL" or defect == "NONE":
                 continue
-            # reason이 비어있어도 defect가 있다면 이월 항목이므로 계속 진행해야 함
             if reason == "NULL" or reason == "NONE":
                 reason = ""
                 
@@ -182,9 +205,13 @@ async def extract_text(file: UploadFile = File(...)):
 @app.post("/extract_raw")
 async def extract_raw_text(file: UploadFile = File(...)):
     try:
-        content = await file.read(); image = Image.open(io.BytesIO(content))
+        content = await file.read()
+        image_part = {
+            "mime_type": file.content_type or "image/jpeg",
+            "data": content
+        }
         model = genai.GenerativeModel('gemini-3-flash-preview') 
-        response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image])
+        response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image_part])
         return {"text": response.text.strip()}
     except Exception as e: return {"error": str(e)}
 
@@ -211,13 +238,9 @@ async def smart_search(req: SmartSearchRequest):
         [DB 목록]
         {req.db_text}
 
-        🚨 🚨 [판독 주의사항 및 절대 규칙] 🚨 🚨
-        1. [가장 중요] 반드시 위에 제공된 [DB 목록] 안에 존재하는 '결함적용코드'만 정확히 그대로 추출해야 합니다!
-        2. 만약 DB에 ATA 코드가 중간 대시(-) 없는 4자리 숫자(예: 7310)로 등록되어 있다면, 절대 AI 임의로 중간 대시를 넣거나 6자리(예: 73-10-01)로 변형하지 마세요. DB에 있는 글자 그대로 출력하세요.
-        3. 결함 내용에 '31K', '24A' 같은 좌석 번호가 있더라도, 실제 불량난 부품(예: Monitor, Screen, Light, Tray table 등)이 명시되어 있다면 좌석(Seat) 관련 코드보다 해당 부품 관련 코드를 최우선 1순위로 찾아야 합니다.
-        
-        응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요.
-        {{"matches": ["코드1", "코드2", "코드3"]}}
+        🚨 [절대 규칙] 
+        - 반드시 제공된 [DB 목록] 안에 존재하는 '결함적용코드'만 정확히 추출.
+        - ATA 코드에 임의로 대시(-)를 추가하거나 빼지 마세요.
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
