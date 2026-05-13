@@ -193,6 +193,7 @@
     
     let currentAbortController = null;
 
+    // 🔥 최적화: 압축 사이즈를 800으로 약간 줄여서 AI 분석 속도 향상
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -202,8 +203,8 @@
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 900; 
-                    const MAX_HEIGHT = 900; 
+                    const MAX_WIDTH = 800; 
+                    const MAX_HEIGHT = 800; 
                     let width = img.width;
                     let height = img.height;
 
@@ -218,9 +219,10 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
+                    // 품질을 0.8 -> 0.7로 낮춰서 업로드 속도 최적화
                     canvas.toBlob((blob) => {
                         resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-                    }, 'image/jpeg', 0.8);
+                    }, 'image/jpeg', 0.7);
                 };
             };
         });
@@ -232,6 +234,19 @@
             const data = await res.json();
             if (data && Object.keys(data.ac).length > 0) {
                 DB = data;
+
+                // 🔥 최적화 1: 로딩 시 검색 대상을 미리 소문자로 세팅하여 돋보기 클릭 시 화면 멈춤 원천 차단!
+                if(DB.ataDatabase) {
+                    DB.ataDatabase.forEach(d => {
+                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
+                    });
+                }
+                if(DB.actionDatabase) {
+                    DB.actionDatabase.forEach(d => {
+                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
+                    });
+                }
+
                 console.log("✅ 서버 DB 로드 완료!");
             } else {
                 console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
@@ -598,7 +613,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 NEF와 MEL 대표 문구 검색을 모두 통합한 완벽한 로컬 검색 함수
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -623,15 +637,13 @@
             validActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
             repActions = validActions; 
         } else {
-            // 적용근거 검색 시 기종에 맞는 MEL과 모든 기종에 맞는 NEF를 필터링
             validActions = dbToSearch.filter(d => {
-                if (d.type === 'NEF') return true; // NEF는 기종 무관하게 포함
+                if (d.type === 'NEF') return true; 
                 if (d.acType !== 'ALL' && d.acType !== undefined) {
                     return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
                 }
                 return true; 
             });
-            // 🚨 핵심 수정: 83266행 이상이면 NEF 대표문구든 MEL 대표문구든 모두 포함!
             repActions = validActions.filter(d => d.row >= 83266); 
         }
 
@@ -685,12 +697,14 @@
             const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
             if (defectTerms.length > 0) {
                 let scoredDB = [];
+                
+                // 🔥 최적화 2: 매번 lowerCase()를 만들지 않고 loadDB에서 만들어둔 searchTarget을 사용! (CPU 속도 대폭 향상)
                 validActions.forEach(d => {
                     let score = 0;
-                    const targetStr = (d.keyword + " " + d.code).toLowerCase();
-                    defectTerms.forEach(term => { if (targetStr.includes(term)) score += 10; });
+                    if (d.searchTarget) {
+                        defectTerms.forEach(term => { if (d.searchTarget.includes(term)) score += 10; });
+                    }
                     if (score > 0) {
-                        // 🚨 83266행 이상(NEF 및 MEL 대표문구 모두 해당)인 경우 무조건 위로 띄움
                         if (searchType !== 'ATA' && d.row >= 83266) score += 500;
                         score += (d.row / 100000); 
                         scoredDB.push({ data: d, score: score });
