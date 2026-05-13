@@ -193,7 +193,6 @@
     
     let currentAbortController = null;
 
-    // 🔥 최적화: 압축 사이즈를 800으로 약간 줄여서 AI 분석 속도 향상
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -219,7 +218,6 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // 품질을 0.8 -> 0.7로 낮춰서 업로드 속도 최적화
                     canvas.toBlob((blob) => {
                         resolve(new File([blob], file.name, { type: 'image/jpeg' }));
                     }, 'image/jpeg', 0.7);
@@ -235,7 +233,6 @@
             if (data && Object.keys(data.ac).length > 0) {
                 DB = data;
 
-                // 🔥 최적화 1: 로딩 시 검색 대상을 미리 소문자로 세팅하여 돋보기 클릭 시 화면 멈춤 원천 차단!
                 if(DB.ataDatabase) {
                     DB.ataDatabase.forEach(d => {
                         d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
@@ -393,16 +390,21 @@
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
                 const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
-                const ata_raw = document.getElementById(`ata-${id}`).value.trim() || '미입력';
+                
+                // 🔥 수정: ATA 미입력 시 '미입력'을 넣지 않고 그냥 빈칸 처리
+                const ata_raw = document.getElementById(`ata-${id}`).value.trim();
 
                 if (결함_raw) {
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
 
+                    // 🔥 ATA가 있을 때만 한 줄을 추가하도록 수정!
+                    let ataHtml = ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "";
+
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
                                     `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br><br>`;
+                                    ataHtml + `<br>`;
                 }
             });
 
@@ -462,14 +464,20 @@
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
                 const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
+                
+                // 🔥 OCC에도 ATA가 입력되어 있다면 출력, 없으면 숨김 처리
+                const ata_raw = document.getElementById(`ata-${id}`).value.trim();
 
                 if (결함_raw) {
                     defectCount++;
                     let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
                     
+                    let ataHtml = ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "";
+
                     html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
                                     `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br><br>`;
+                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` + 
+                                    ataHtml + `<br>`;
 
                     const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
                     if (!hasGpsIssue) {
@@ -698,7 +706,6 @@
             if (defectTerms.length > 0) {
                 let scoredDB = [];
                 
-                // 🔥 최적화 2: 매번 lowerCase()를 만들지 않고 loadDB에서 만들어둔 searchTarget을 사용! (CPU 속도 대폭 향상)
                 validActions.forEach(d => {
                     let score = 0;
                     if (d.searchTarget) {
