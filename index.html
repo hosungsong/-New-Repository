@@ -256,7 +256,6 @@
     function fillAcType() {
         let regInput = document.getElementById('regNo').value.toUpperCase().trim();
         let reg = regInput.replace(/^HL/, "").replace(/[^0-9A-Z]/g, '');
-        // HL 포함 유무 상관없이 완벽하게 기종 검색
         let type = DB.ac[reg] || DB.ac["HL" + reg] || DB.ac[regInput] || "";
         document.getElementById('acType').value = type;
     }
@@ -618,7 +617,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 정비사님의 '빅데이터 검색 후 사전 치환 알고리즘' 완벽 구현!
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -639,7 +637,6 @@
         let validActions = [];
         let repActions = [];
 
-        // 🚨 ATA: 1~51074행 전체 뒤지기! (validActions) / 대표문구는 1~733행 (repActions)
         if (searchType === 'ATA') {
             validActions = dbToSearch; 
             repActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
@@ -661,7 +658,6 @@
         let hasOptions = false;
         let seenCodes = new Set(); 
 
-        // [현재 입력된 값 우선 처리]
         if (currentValue) {
             let matchedItems = repActions.filter(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -669,7 +665,7 @@
                 return dbBase === cleanCurrent || d.code === currentValue;
             });
 
-            if (matchedItems.length === 0) {
+            if (matchedItems.length === 0 && searchType !== 'ATA') {
                 matchedItems = validActions.filter(d => {
                     const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                     if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
@@ -691,7 +687,6 @@
                 optDiv.appendChild(row);
                 hasOptions = true;
                 
-                // 검색된 4자리 퓨어 코드 기록 (중복 방지)
                 seenCodes.add(searchType === 'ATA' ? currentItemMatched.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : currentItemMatched.code.replace(/[^0-9A-Z]/gi, '')); 
             } else {
                 const row = document.createElement('div');
@@ -703,7 +698,6 @@
             }
         }
 
-        // [결함 텍스트 분석 및 추천 로직]
         if (text.trim()) {
             const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
             if (defectTerms.length > 0) {
@@ -724,24 +718,77 @@
                 scoredDB.sort((a, b) => b.score - a.score);
                 const topCandidates = scoredDB.map(item => item.data); 
 
-                let addedCount = 0;
+                // 🔥 5:5 밸런스 패치 코어 로직 🔥
+                let finalCandidates = [];
+                let nefCount = 0;
+                let melCount = 0;
+
                 for (let i = 0; i < topCandidates.length; i++) {
-                    if (addedCount >= 10) break; 
-                    
                     let rawItem = topCandidates[i];
                     const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
-                    
-                    // ATA는 4자리 기준으로 중복 필터링
                     const searchCode = searchType === 'ATA' ? pureCode.substring(0,4) : pureCode;
                     
                     if (seenCodes.has(searchCode)) continue; 
-                    seenCodes.add(searchCode); 
                     
+                    if (searchType !== 'ATA') {
+                        // NEF 5개, 그 외(MEL/CDL) 5개 할당
+                        if (rawItem.type === 'NEF') {
+                            if (nefCount < 5) {
+                                finalCandidates.push(rawItem);
+                                seenCodes.add(searchCode);
+                                nefCount++;
+                            }
+                        } else {
+                            if (melCount < 5) {
+                                finalCandidates.push(rawItem);
+                                seenCodes.add(searchCode);
+                                melCount++;
+                            }
+                        }
+                        if (nefCount === 5 && melCount === 5) break; 
+                    } else {
+                        if (finalCandidates.length < 10) {
+                            finalCandidates.push(rawItem);
+                            seenCodes.add(searchCode);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                // 만약 한쪽이 부족해서 10개를 꽉 못 채웠다면 남은 후보들로 백업!
+                if (searchType !== 'ATA' && finalCandidates.length < 10) {
+                    for (let i = 0; i < topCandidates.length; i++) {
+                        if (finalCandidates.length >= 10) break;
+                        let rawItem = topCandidates[i];
+                        const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
+                        if (!seenCodes.has(pureCode)) {
+                            finalCandidates.push(rawItem);
+                            seenCodes.add(pureCode);
+                        }
+                    }
+                }
+
+                // 점수대로 출력하기 위해 다시 정렬
+                finalCandidates.sort((a, b) => {
+                    let scoreA = 0; let scoreB = 0;
+                    defectTerms.forEach(term => { 
+                        if(a.searchTarget && a.searchTarget.includes(term)) scoreA += 10; 
+                        if(b.searchTarget && b.searchTarget.includes(term)) scoreB += 10; 
+                    });
+                    if (searchType !== 'ATA' && a.row >= 83266) scoreA += 500;
+                    scoreA += (a.row / 100000);
+                    if (searchType !== 'ATA' && b.row >= 83266) scoreB += 500;
+                    scoreB += (b.row / 100000);
+                    return scoreB - scoreA;
+                });
+
+                finalCandidates.forEach(rawItem => {
                     let repItem = rawItem;
                     if (searchType === 'ATA') {
-                        // 🚨 방대하게 찾은 데이터(rawItem)의 4자리 코드를, 1~733행 대표 사전(repActions)에서 찾아 바꿔치기!!
+                        const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4);
                         const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) === searchCode);
-                        if (foundRep) repItem = foundRep; // 찾으면 깔끔한 사전 문구로 교체!
+                        if (foundRep) repItem = foundRep; 
                     }
 
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
@@ -754,8 +801,7 @@
                     row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
                     hasOptions = true;
-                    addedCount++;
-                }
+                });
             }
         }
         
@@ -929,12 +975,11 @@
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
-            // 🔥 해결: 기종/구간을 확실히 동기화하기 위해 값을 넣자마자 함수 강제 호출!
             if (data.regNo) { 
                 let cleanReg = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, "");
                 document.getElementById('regNo').value = cleanReg; 
             }
-            fillAcType(); // 무조건 실행
+            fillAcType(); 
             
             if (data.flightNo) { 
                 let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '');
@@ -948,7 +993,6 @@
                 document.getElementById('legTo').value = String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase();
             }
 
-            // 편명/구간 누락 시 똑똑하게 매칭 시도
             if (document.getElementById('flightNo').value && (!document.getElementById('legFrom').value || !document.getElementById('legTo').value)) {
                 matchLegsFromFlight();
             } else if (!document.getElementById('flightNo').value && (document.getElementById('legFrom').value && document.getElementById('legTo').value)) {
