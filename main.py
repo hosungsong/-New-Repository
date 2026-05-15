@@ -226,7 +226,7 @@ class SmartSearchRequest(BaseModel):
 async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        model = genai.GenerativeModel('gemini-1.5-flash') 
         
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
