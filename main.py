@@ -80,13 +80,23 @@ def startup_event():
 @app.get("/")
 async def serve_frontend(): return FileResponse("index.html")
 
+@app.get("/ping")
+async def keep_alive_ping(): return {"status": "awake"}
+
+# 🚨 [핵심 복구] 웹페이지가 DB를 가져가는 핵심 통로 (아까 제가 누락했던 부분입니다!)
+@app.get("/api/db")
+async def get_db():
+    return APP_DB
+
 @app.post("/upload_db")
 async def upload_db(file: UploadFile = File(...)):
     content = await file.read()
     try: text = content.decode("utf-8-sig").splitlines()
     except: text = content.decode("euc-kr").splitlines()
+    
     reload_db_from_lines(text)
-    with open("database.csv", "w", encoding="utf-8-sig") as f: f.write("\n".join(text))
+    with open("database.csv", "w", encoding="utf-8-sig") as f:
+        f.write("\n".join(text))
     return {"status": "success"}
 
 # 🚀 스텔스 오답 노트 저장 API
@@ -102,7 +112,9 @@ async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         content = await file.read()
-        model = genai.GenerativeModel('gemini-flash-latest') 
+        
+        # 🚀 빠르고 가벼운 LITE 모델 유지
+        model = genai.GenerativeModel('gemini-flash-lite-latest') 
         l_dict = load_learning_dict()
 
         # 🔄 [1. 지능형 조건부 자동 회전 (Smart Flip)]
@@ -114,7 +126,6 @@ async def extract_text(file: UploadFile = File(...)):
                 deg_str = re.sub(r'[^0-9]', '', res_orient.text.strip())
                 
                 if deg_str in ["90", "180", "270"]:
-                    # 시계 방향 회전을 위해 음수값 적용
                     img = img.rotate(-int(deg_str), expand=True)
                     buf = io.BytesIO()
                     img.save(buf, format="JPEG")
@@ -139,46 +150,37 @@ async def extract_text(file: UploadFile = File(...)):
 
         [2. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
-        - flightNo: 'OZ' 제외 순수 숫자. (이게 세글자일수도 있고, 네글자 일수도 있어)
+        - flightNo: 'OZ' 제외 순수 숫자.
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
         [3. 작성자(asAp) 🚨 엄격한 빈칸 규칙 적용 🚨]
-        - 로그의 종류를 먼저 파악하세요 (오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG).
+        - 오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG입니다.
         - CABIN LOG: 무조건 "AS" 출력.
-        - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력.
-        - 🚨 [가장 중요] FLIGHT & MAINTENANCE LOG인데 해당 칸에 도장도 없고 서명도 완전히 비어있다면, 무조건 빈 문자열("")을 출력하세요. 임의 작성 금지!
+        - FLIGHT & MAINTENANCE LOG: 도장(Stamp)이 있으면 "AS", 서명만 있으면 "AP". 도장/서명 없으면 무조건 빈 문자열("").
 
-        [4. 🚨 이월(DEFER) 항목 추출 조건 (아주 중요) 🚨]
-        - 각 아이템(행)별로 우측의 'DEFER No.' 칸과 'ACTION TAKEN(정리문구)' 칸을 확인하세요.
-        - 조건 A: 'DEFER No.' 칸에 체크(X 또는 V)가 명확히 있으면 -> **추출 O**
-        - 조건 B: 체크가 없고 'ACTION TAKEN' 칸에 조치 내용(정리문구)이 적혀있으면 종결된 결함이므로 -> **추출 X (절대 무시, 뽑지 마세요)**
-        - 조건 C: 사진이 잘려서 우측 체크 유무나 조치 내용을 전혀 확인할 수 없다면 -> **추출 O (누락 방지를 위해 무조건 추출)**
+        [4. 🚨 이월(DEFER) 항목 추출 조건 🚨]
+        - 조건 A: 'DEFER No.' 칸에 체크(X, V) 있으면 -> 추출 O
+        - 조건 B: 체크 없고 'ACTION TAKEN'에 조치 내용 있으면 종결결함 -> 추출 X
+        - 조건 C: 사진이 잘려서 우측 체크/조치내용 안 보이면 -> 추출 O
 
-        [5. 결함 본문(defect) 추출 및 💡항공 용어 스펠링 복원💡 규칙]
-        - 로그북 구조: 위쪽 조그만 'ITEM' 칸에 적힌 문자는 무시하고, 아래쪽 넓은 'DEFECT DESCRIPTION' 칸의 내용만 추출하세요.
-        - 🚨 [외계어 필터링 및 복원]: 정비사의 악필로 인해 알파벳이 이상하게 뭉개져 보일 경우 기계적으로 외계어를 뱉어내지 마세요.
-        - (예시: 'PLEM' ➡️ 'PRIM', 'LGIHT' 또는 'LCH' ➡️ 'LIGHT', 'INTLMITENT' ➡️ 'INTERMITTENT')
-        - 전체 문맥을 파악하여, 반드시 **올바른 항공 정비 전문 용어(Aviation Maintenance Terminology)와 정상적인 영단어 스펠링으로 교정(복원)**하여 출력하세요.
-        - 단, 문장 맨 앞에 적힌 좌석 번호("18C", "4G" 등)는 절대 지우지 말고 그대로 출력하세요.
+        [5. 결함 본문(defect) 추출 및 💡스펠링 복원 규칙💡]
+        - 위쪽 'ITEM' 칸 무시, 아래쪽 'DEFECT DESCRIPTION' 내용만 100% 추출.
+        - 🚨 정비사의 악필로 알파벳이 이상하게 뭉개져 보여도 기계적으로 외계어를 뱉지 마세요.
+        - (예: 'PLEM' ➡️ 'PRIM', 'LGIHT' ➡️ 'LIGHT', 'INTLMITENT' ➡️ 'INTERMITTENT')
+        - 문맥을 파악하여 반드시 올바른 항공 정비 용어로 교정(복원) 출력. 좌석 번호("18C")는 지우지 마세요.
 
-        [6. 적용근거(reason) 분류 🚨 다수 아이템 환각 방지 규칙 🚨]
-        - 🚨 [가장 중요] 이 규칙은 모든 아이템에 대해 각각 독립적이고 엄격하게 적용해야 합니다.
-        - 해당 아이템의 ACTION TAKEN 칸에 있는 MEL, NEF, AMM 박스 중 어느 곳에도 체크 표시가 없거나 잘려서 안 보이면 무조건 빈 문자열("") 출력.
-        - 💡 공식 1: 'MEL X NEF □ AMM □' ➡️ 100% MEL!
-        - 💡 공식 2: 'MEL □ NEF X AMM □' ➡️ 무조건 NEF!
-        - 💡 공식 3: 'MEL □ NEF □ AMM X' ➡️ 무조건 AMM!
-        - 첫번째 아이템 이후의 판독 오류를 주의하고 대충 넘겨짚지 마세요.
-        - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (예: MEL 25-21-02A)
+        [6. 적용근거(reason) 분류 🚨 다수 아이템 환각 방지 🚨]
+        - 모든 아이템 독립적 적용. MEL, NEF, AMM 체크 없거나 안 보이면 빈 문자열("").
+        - 'MEL X NEF □ AMM □' ➡️ 100% MEL! / 'MEL □ NEF X' ➡️ 무조건 NEF!
+        - 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 자르세요. (예: MEL 25-21-02A)
 
-        [7. ATA CODE 추출 규칙 🚨 무조건 4자리 숫자만 허용 🚨]
-        - 'ATA CODE' 칸에 사람이 펜으로 직접 적은 글자를 찾으세요.
-        - 대시(-), 슬래시(/), 알파벳 등이 섞여 있어도 **오직 숫자 4자리만 골라내어 추출**하세요.
+        [7. ATA CODE 추출 규칙 🚨 무조건 4자리 숫자 🚨]
+        - 대시(-), 슬래시(/), 알파벳 등이 섞여 있어도 오직 숫자 4자리만 골라내어 추출하세요.
 
-        [8. 🚨 필기체 정밀 판독 (절대 오독 주의 및 억지 교정 금지) 🚨]
-        - 💡 [숫자 1, 2, 7 완벽 구분]: 윗부분이 둥글게 이어지면 '2', 날카롭게 꺾이면 '7', 단순한 직선이나 짧은 삐침이면 '1'입니다.
-        - 💡 [숫자/알파벳 구분]: '0'과 'O', '5'와 'S', '8'과 'B'를 명확히 구분하세요.
-        - ATA CODE의 앞 2자리와 적용근거(DEFER No.)의 앞 2자리는 서로 연관성이 높은 경우가 많아 판독이 애매할 때 훌륭한 힌트가 됩니다.
-        - 🚨 [가장 중요한 예외 규칙]: 단, ATA와 적용근거 챕터가 실제로 다른 경우도 존재하므로, 글씨가 명확하게 다르게 적혀 있다면 억지로 똑같이 맞추지 마세요!
+        [8. 🚨 필기체 정밀 판독 (절대 오독 주의) 🚨]
+        - 💡 [1, 2, 7 구분]: 윗부분 둥글면 '2', 날카로우면 '7', 단순 직선이면 '1'.
+        - 💡 [숫자/알파벳 구분]: '0'/'O', '5'/'S', '8'/'B' 명확히 구분.
+        - ATA 앞 2자리와 적용근거 앞 2자리 연관성 참고. 단, 다르게 적혀 있다면 억지로 맞추지 마세요.
 
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
@@ -225,8 +227,87 @@ async def extract_text(file: UploadFile = File(...)):
 
     except Exception as e: return {"error": f"AI 분석 오류: {str(e)}"}
 
-# (나머지 /extract_raw, /smart_search, /send_email 코드는 이전과 동일하게 유지)
-# ... [이전 코드와 동일하므로 지면상 생략, 위 코드 아래에 붙여넣으시면 됩니다] ...
+@app.post("/extract_raw")
+async def extract_raw_text(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        image_part = {
+            "mime_type": file.content_type or "image/jpeg",
+            "data": content
+        }
+        # 🚀 LITE 모델 유지
+        model = genai.GenerativeModel('gemini-flash-lite-latest') 
+        response = await model.generate_content_async(["이미지의 모든 텍스트를 추출하세요.", image_part])
+        return {"text": response.text.strip()}
+    except Exception as e: return {"error": str(e)}
+
+class SmartSearchRequest(BaseModel):
+    defect: str
+    search_type: str
+    db_text: str
+
+@app.post("/smart_search")
+async def smart_search(req: SmartSearchRequest):
+    if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
+    try:
+        model = genai.GenerativeModel('gemini-flash-lite-latest') 
+        
+        prompt = f"""
+        당신은 항공 정비 데이터베이스 검색 마스터입니다.
+        사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
+
+        사용자 결함 내용: "{req.defect}"
+
+        [DB 목록 형식]
+        결함적용코드::결함키워드
+
+        [DB 목록]
+        {req.db_text}
+
+        🚨 [절대 규칙] 
+        - 반드시 제공된 [DB 목록] 안에 존재하는 '결함적용코드'만 정확히 추출.
+        - ATA 코드에 임의로 대시(-)를 추가하거나 빼지 마세요.
+        
+        응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요.
+        {{"matches": ["코드1", "코드2", "코드3"]}}
+        """
+        response = await model.generate_content_async(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
+        return json.loads(response.text.strip())
+    except Exception as e:
+        return {"error": str(e)}
+
+class EmailRequest(BaseModel):
+    target: str
+    to_emails: str
+    subject: str
+    body_html: str
+    sender_name: str
+
+@app.post("/send_email")
+async def send_email(req: EmailRequest):
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")      
+    smtp_password = os.environ.get("SMTP_PASSWORD") 
+
+    if not smtp_user or not smtp_password:
+        return {"error": "SMTP 설정 미비"}
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"{req.sender_name} <{smtp_user}>"
+        msg['To'] = req.to_emails
+        msg['Subject'] = req.subject
+        msg.attach(MIMEText(req.body_html, 'html'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        return {"status": "success"}
+    except Exception as e:
+        return {"error": f"실패: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
