@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>정비 이월 전송 시스템</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
-    <style>
+<style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
         
-        /* 🔥 울렁거림 방지: transition 제거 */
         .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
         
         .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
@@ -18,11 +17,9 @@
         .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
         .user-display:hover { color: var(--secondary); text-decoration: underline; }
 
-        /* 🔥 울렁거림 방지: transition 제거 */
         .top-section { display: flex; gap: 25px; margin-bottom: 20px; align-items: stretch; }
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
         
-        /* 🔥 울렁거림 방지: transition 제거 */
         .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
@@ -49,12 +46,13 @@
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
-        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; }
+        /* 🔥 수정포인트 1: 컨테이너가 줄어들 때 숨겨지는 게 아니라 유연하게 스크롤 대응하도록 수정 */
+        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow-x: auto; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🔥 울렁거림 방지: transition 제거 */
-        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 190px 120px 30px; gap: 10px; align-items: start; }
+        /* 🔥 수정포인트 2: 표(Grid)의 딱딱한 픽셀을 고무줄(minmax)로 변경하여 뚫고 나감 방지 */
+        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 2fr) minmax(130px, 1.5fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -79,8 +77,7 @@
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
-        /* 🔥 울렁거림 방지: transition 제거 */
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; }
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; }
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; }
         #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; }
         #pasteArea img:active { cursor: grabbing; }
@@ -90,13 +87,14 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🔥 겹침 방지: 레이아웃 완전 교정 🔥 */
+        /* 🔥 확대(확장) 모드일 때의 폭과 그리드 비율 최적화 */
         .top-section.expanded .left-panel { flex: 1; }
-        .top-section.expanded .right-panel { flex: 1.5; } /* 오른쪽 패널의 가로 폭을 늘려줌 */
+        .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(140px, 1fr) 160px 90px 30px; } 
-        .top-section.expanded #pasteArea { height: 60vh; min-height: 400px; max-height: none; } /* 버튼을 밀어내도록 안정적인 세로 크기 부여 */
+        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(110px, 2fr) minmax(120px, 1.5fr) minmax(60px, 1fr) 28px; } 
+        /* 확대 시 우측 이미지 영역이 하단 버튼을 짓누르지 않도록 max-height 설정 */
+        .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
         .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
@@ -117,15 +115,17 @@
             background-size: 20px; background-repeat: no-repeat; background-position: center;
         }
 
-        .action-buttons { display: flex; gap: 10px; flex-shrink: 0; }
-        .btn-extract { color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        /* 🔥 수정포인트 3: 분석/추출 버튼이 무식하게 위아래로 커지지 않도록 50px로 철통 방어 */
+        .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
+        .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
         .btn-extract.main { flex: 2; background: #27ae60; }
         .btn-extract.sub { flex: 1; background: #8e44ad; }
         .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
 
         #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
 
-        .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
+        /* 🔥 수정포인트 4: 하단 4개 전송 버튼이 밀려서 잘리지 않도록 공간 확보 (flex-shrink 억제) */
+        .bottom-section { display: flex; gap: 10px; margin-top: 15px; padding-bottom: 5px; flex-shrink: 0; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
 
