@@ -82,13 +82,12 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         
-        # 🚀 무거운 이미지 변환 생략, 다이렉트 전송 (속도 방어)
         image_part = {
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
         
-        # 🙇‍♂️ 정비사님 서버 환경에서 가장 안정적이었던 똘똘한 원본 모델 복구
+        # 🚀 LITE 모델 유지
         model = genai.GenerativeModel('gemini-flash-latest') 
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
@@ -153,8 +152,8 @@ async def extract_text(file: UploadFile = File(...)):
         }}
         """
         
-        # 🙇‍♂️ 구버전 SDK 환경에서 충돌을 일으켰던 response_schema를 제거하여 에러 원천 차단
-        response = model.generate_content(
+        # 🛠️ 비동기(_async) 처리 및 await 적용 완료! (서버 먹통 방지)
+        response = await model.generate_content_async(
             [prompt, image_part], 
             generation_config={"response_mime_type": "application/json", "temperature": 0.0}
         )
@@ -205,9 +204,9 @@ async def extract_raw_text(file: UploadFile = File(...)):
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
-        # 🙇‍♂️ 원본 모델 복구
         model = genai.GenerativeModel('gemini-flash-latest') 
-        response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image_part])
+        # 🛠️ 비동기 처리 적용
+        response = await model.generate_content_async(["이미지의 모든 텍스트를 추출하세요.", image_part])
         return {"text": response.text.strip()}
     except Exception as e: return {"error": str(e)}
 
@@ -220,7 +219,6 @@ class SmartSearchRequest(BaseModel):
 async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
-        # 🙇‍♂️ 원본 모델 복구
         model = genai.GenerativeModel('gemini-flash-latest') 
         
         prompt = f"""
@@ -242,7 +240,8 @@ async def smart_search(req: SmartSearchRequest):
         응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요.
         {{"matches": ["코드1", "코드2", "코드3"]}}
         """
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
+        # 🛠️ 비동기 처리 적용
+        response = await model.generate_content_async(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
     except Exception as e:
         return {"error": str(e)}
