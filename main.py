@@ -18,20 +18,6 @@ if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 # 🔥 서버 메모리에 저장되는 글로벌 DB
 APP_DB = {"flights": [], "ataDatabase": [], "actionDatabase": [], "ac": {}, "emails": {}}
 
-# 🚀 초고속 응답을 위한 JSON 뼈대 강제화
-class DefectItem(BaseModel):
-    asAp: str
-    defect: str
-    reason: str
-    ata: str
-
-class LogResponse(BaseModel):
-    regNo: str
-    legFrom: str
-    legTo: str
-    flightNo: str
-    items: List[DefectItem]
-
 def reload_db_from_lines(lines):
     APP_DB["flights"].clear()
     APP_DB["ataDatabase"].clear()
@@ -96,17 +82,17 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         
-        # 🚀 무거운 이미지 변환 생략, 다이렉트 전송 (속도 대폭 향상)
+        # 🚀 무거운 이미지 변환 생략, 다이렉트 전송 (속도 방어)
         image_part = {
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
         
-        model = genai.GenerativeModel('gemini-flash-lite-latest') 
+        # 🙇‍♂️ 정비사님 서버 환경에서 가장 안정적이었던 똘똘한 원본 모델 복구
+        model = genai.GenerativeModel('gemini-flash-latest') 
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
-        # 🔥 정비사님의 원본 프롬프트 100% 복구 완료 🔥
         prompt = f"""
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
@@ -116,8 +102,7 @@ async def extract_text(file: UploadFile = File(...)):
 
         [2. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
-        - flightNo: 'OZ' 제외 순수 숫자. (이게 세글자일수도 있고, 네글자 일수도 있어) - 방금 2047 을 204로 오인하는 경우가 있었어. 4자리 FLIGHT 를 확실하게 출력해줘.
-        - FLIGHT&MAINTENANCE LOG 에선 좌측 상단부위에 FLIGHT NO. 밑에 OZ 숫자 조합으로 써있어. OZ 제외하고 숫자만 확실하게 출력해주길바라 (최소3자리 이고, 2자리로 너가 알아봤으면 잘못 알아본거야. 다시생각해.)
+        - flightNo: 'OZ' 제외 순수 숫자. (이게 세글자일수도 있고, 네글자 일수도 있어)
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
         [3. 작성자(asAp) 🚨 엄격한 빈칸 규칙 적용 🚨]
@@ -132,11 +117,10 @@ async def extract_text(file: UploadFile = File(...)):
         - 조건 B: 체크가 없고 'ACTION TAKEN' 칸에 조치 내용(정리문구)이 적혀있으면 종결된 결함이므로 -> **추출 X (절대 무시, 뽑지 마세요)**
         - 조건 C: 사진이 잘려서 우측 체크 유무나 조치 내용을 전혀 확인할 수 없다면 -> **추출 O (누락 방지를 위해 무조건 추출)**
 
-       [5. 결함 본문(defect) 추출 및 🚨스마트 교정🚨 규칙]
+        [5. 결함 본문(defect) 추출 규칙 (좌석번호 날림 방지!)]
         - 로그북 구조를 명확히 인식하세요: 위에 조그맣게 'ITEM [번호]' 칸이 있고, 그 아래에 넓은 'DEFECT DESCRIPTION' 칸이 있습니다.
         - 위쪽 'ITEM' 칸에 적힌 숫자나 문자는 절대 추출하지 마세요.
-        - 💡 [핵심]: 아래쪽 넓은 'DEFECT DESCRIPTION' 칸의 내용을 추출하되, 정비사의 악필로 스펠링이 뭉개졌다면 기계적으로 이상한 글자를 적지 말고 **항공 정비 전문 용어(예: HYD PUMP 등) 문맥에 맞게 올바른 스펠링으로 지능적으로 교정**하여 출력하세요.
-        - 단, 문장 맨 앞의 좌석 번호("18C", "4G" 등)는 절대 지우거나 교정하지 말고 있는 그대로 출력하세요!
+        - 🚨 [핵심] 아래쪽 넓은 **'DEFECT DESCRIPTION' 칸 안에 적힌 결함 내용은 단 한 글자도 빠짐없이 100% 그대로 추출**하세요. 문장 맨 앞에 "18C", "4G" 같은 좌석 번호가 적혀있더라도 절대 지우지 말고 있는 그대로 출력하세요!
 
         [6. 적용근거(reason) 분류 🚨 다수 아이템 환각 방지 규칙 🚨]
         - 🚨 [가장 중요] 이 규칙은 ITEM 1 뿐만 아니라 ITEM 2, ITEM 3 등 **모든 아이템에 대해 각각 독립적이고 엄격하게 적용**해야 합니다. 절대 첫 번째 아이템의 결과를 보고 두 번째, 세 번째 아이템을 임의로 NEF나 MEL로 유추하지 마세요!
@@ -145,11 +129,9 @@ async def extract_text(file: UploadFile = File(...)):
         - 💡 공식 1: 만약 텍스트가 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 NEF가 아니라 100% MEL!
         - 💡 공식 2: 만약 텍스트가 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ 무조건 NEF!
         - 💡 공식 3: 만약 텍스트가 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ 무조건 AMM!
-        - 지금 한번 돌려봤는데, 이제 첫번째 것도 잘 인식을 못하네? 분명히 NEF 오른 쪽에 체크가 있는데 왜 MEL로 출력하지? 해당 부분 해상도때문에 글씨가 안보이면 글씨뭉치와 체크박스의 위치를 통해서 문자를 유추하도록해. CABIN로그는 분명히 얘기하는데 MEL 체크박스 NEF 체크박스 AMM 체크박스로 이루어져있고, 체크된 거의 왼쪽 이 적용근거가 되는 것이야. 즉 NEF 체크박스 중간것에 체크가 되면 NEF 로 출력해야해. 분명히!!
         - 첫번째 아이템은 잘 인식되는 경향이 있는데 두번째, 세번째, 네번째 는 이상하리만치 잘 인식이 안됩니다. 위 적용 규칙을 엄격하게 적용해 주시고, MEL 과 NEF 사이에 체크가 있으면 MEL 이니, 절대 이런경우 NEF 로 대충 기록하지 마세요.
         - 모든 적용근거 양식은 숫자와 숫자 사이 대쉬 '-' 로 이뤄져 있고, 슬래쉬(/)나, 쉼표(,), 콜론(;:) 등 다른 기호는 없습니다. 기호가 있다면 그건 대쉬밖에 없습니다. 다른 기호를 읽었다면 그건 잘 못읽은 겁니다.
         - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
-        
         - FLIGHT & MAINTENANCE LOG 는 다른 규칙이 적용됩니다. 해당되는 칸(MEL, CDL, NEF, SRM, AMM) 박스 위에 체크(X)가 되어 있으면 바로 그 글자를 선택하세요.
 
         [7. ATA CODE 추출 규칙 🚨 무조건 4자리 숫자만 허용 🚨]
@@ -163,16 +145,18 @@ async def extract_text(file: UploadFile = File(...)):
         - 💡 [숫자/알파벳 구분]: '0'과 'O', '5'와 'S', '8'과 'B'를 명확히 구분하세요.
         - ATA CODE의 앞 2자리와 적용근거(DEFER No.)의 앞 2자리는 서로 연관성이 높은 경우가 많아 판독이 애매할 때 훌륭한 힌트가 됩니다.
         - 🚨 [가장 중요한 예외 규칙]: 단, ATA와 적용근거 챕터가 실제로 다른 경우도 존재하므로, 글씨가 명확하게 다르게 적혀 있다면 무조건 펜으로 적힌 그대로 각각 독립적으로 추출해야 합니다. 절대 억지로 두 숫자를 똑같이 맞추지 마세요!
+
+        응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
+        {{
+          "regNo": "", "legFrom": "", "legTo": "", "flightNo": "",
+          "items": [ {{"asAp": "", "defect": "TEXT", "reason": "CODE", "ata": "NUM"}} ]
+        }}
         """
         
-        # 🚀 스키마 강제 적용 (응답 대기시간 획기적 단축)
+        # 🙇‍♂️ 구버전 SDK 환경에서 충돌을 일으켰던 response_schema를 제거하여 에러 원천 차단
         response = model.generate_content(
             [prompt, image_part], 
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json",
-                response_schema=LogResponse,
-                temperature=0.0
-            )
+            generation_config={"response_mime_type": "application/json", "temperature": 0.0}
         )
         
         data = json.loads(response.text.strip())
@@ -192,11 +176,11 @@ async def extract_text(file: UploadFile = File(...)):
             if reason == "NULL" or reason == "NONE":
                 reason = ""
                 
-            ata = str(item.get("ata", "")).upper()
+            ata_raw = str(item.get("ata", "")).upper()
             asAp = str(item.get("asAp", "")).upper()
             
             import re
-            ata = re.sub(r'[^0-9A-Z-]', '', ata) 
+            ata = re.sub(r'[^0-9A-Z-]', '', ata_raw) 
             
             if asAp not in ["AS", "AP"]:
                 asAp = ""
@@ -221,7 +205,8 @@ async def extract_raw_text(file: UploadFile = File(...)):
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
-        model = genai.GenerativeModel('gemini-flash-lite-latest') 
+        # 🙇‍♂️ 원본 모델 복구
+        model = genai.GenerativeModel('gemini-flash-latest') 
         response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image_part])
         return {"text": response.text.strip()}
     except Exception as e: return {"error": str(e)}
@@ -235,7 +220,8 @@ class SmartSearchRequest(BaseModel):
 async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
-        model = genai.GenerativeModel('gemini-flash-lite-latest') 
+        # 🙇‍♂️ 원본 모델 복구
+        model = genai.GenerativeModel('gemini-flash-latest') 
         
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
@@ -252,6 +238,9 @@ async def smart_search(req: SmartSearchRequest):
         🚨 [절대 규칙] 
         - 반드시 제공된 [DB 목록] 안에 존재하는 '결함적용코드'만 정확히 추출.
         - ATA 코드에 임의로 대시(-)를 추가하거나 빼지 마세요.
+        
+        응답은 반드시 아래 순수 JSON 배열 형식으로만 출력하세요.
+        {{"matches": ["코드1", "코드2", "코드3"]}}
         """
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json", "temperature": 0.1})
         return json.loads(response.text.strip())
