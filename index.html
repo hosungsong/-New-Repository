@@ -3,305 +3,1097 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Log Analyzer (Pro)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>정비 이월 전송 시스템</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
     <style>
-        /* 폰트 및 세부 스타일 */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        body { font-family: 'Inter', 'Pretendard', sans-serif; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
+        body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; transition: 0.3s; }
         
-        /* 로딩 애니메이션 */
-        .loader {
-            border-top-color: #3498db;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
-        }
-        @-webkit-keyframes spinner { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .header h2 { margin: 0; display: flex; align-items: baseline; }
+        
+        .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
+        .user-display:hover { color: var(--secondary); text-decoration: underline; }
 
-        /* 결과 영역 스크롤바 디자인 */
-        #resultArea::-webkit-scrollbar { width: 6px; }
-        #resultArea::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; align-items: stretch; }
+        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; transition: 0.3s; }
         
-        /* 이미지 회전 전환 효과 */
-        #preview { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
+        .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
+        .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
+        .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
+        .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
+        
+        .dropdown-list { 
+            position: absolute; top: calc(100% + 2px); left: 0; 
+            min-width: 100%; width: max-content; max-width: 800px; 
+            background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
+            max-height: 250px; overflow-y: auto; overflow-x: hidden; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
+        }
+        .dropdown-opt { 
+            padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
+            text-align: left; font-weight: bold; color: var(--primary); 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+        }
+        .dropdown-opt:hover { background: var(--secondary); color: white; }
+        .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
+        .dropdown-opt.pinned:hover { background: #d0e7f9; color: var(--primary); }
+
+        .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
+        .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
+        .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+
+        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; }
+        .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
+        .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+        
+        /* 🔥 기본 상태 그리드 수정: 적용근거를 180px -> 190px로 살짝 확대 🔥 */
+        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 190px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
+        .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
+        .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
+        .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
+        .defect-row:last-child { border-bottom: none; }
+        
+        .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
+        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .toggle-btn.active { background: var(--primary); color: white; }
+
+        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
+        .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
+        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
+        .search-wrap button:hover { background: #2c3e50; }
+
+        .defect-row textarea { 
+            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
+            font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
+        } 
+        
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
+        .btn-remove:hover { background: #c0392b; }
+
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; transition: 0.3s; position: relative; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
+        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: max-height 0.3s; }
+        #pasteArea img:active { cursor: grabbing; }
+        
+        .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
+        
+        .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
+        .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
+
+        .top-section.expanded .left-panel { flex: 1; }
+        .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
+        .top-section.expanded .static-fields { flex-wrap: wrap; }
+        .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
+        /* 🔥 사진 확대 상태 그리드 수정: 결함 칸을 약간 양보하고 적용근거를 130px -> 160px로 확대 🔥 */
+        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(140px, 1fr) 160px 90px 30px; } 
+        .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
+        .top-section.expanded #pasteArea img { max-height: 100%; }
+
+        .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
+        .text-extract-mode #pasteArea img { max-height: 180px; }
+
+        .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
+        .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn-tool:hover { background: var(--secondary); }
+        .btn-tool.btn-close { background: #e74c3c; }
+        .btn-tool.btn-close:hover { background: #c0392b; }
+
+        /* 🔥 90도 좌/우 회전 SVG 아이콘 수정 (오타 해결 완벽 복구!) 🔥 */
+        .btn-tool.btn-rotate-left {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E");
+            background-size: 20px; background-repeat: no-repeat; background-position: center;
+        }
+        .btn-tool.btn-rotate-right {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E");
+            background-size: 20px; background-repeat: no-repeat; background-position: center;
+        }
+
+        .action-buttons { display: flex; gap: 10px; flex-shrink: 0; }
+        .btn-extract { color: white; border: none; padding: 16px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-extract.main { flex: 2; background: #27ae60; }
+        .btn-extract.sub { flex: 1; background: #8e44ad; }
+        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
+
+        .bottom-section { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+<body>
 
-    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-        
-        <header class="bg-slate-900 p-6 text-white flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-extrabold tracking-tight text-blue-400">PRO-MAINTENANCE AI <span class="text-xs font-normal text-slate-400 ml-2">v3.0 Pro</span></h1>
-                <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest font-semibold">Aviation Maintenance Log Intelligent Analyzer</p>
-            </div>
-            <div class="text-right hidden sm:block">
-                <p class="text-xs text-slate-300 font-medium">또는 화면 어디서든 <span class="text-yellow-400">Ctrl+V</span>로 붙여넣고,</p>
-                <p class="text-xs text-slate-300 font-medium"><span class="text-yellow-400">방향키</span>로 회전 후 <span class="text-yellow-400">Enter</span>로 분석하세요.</p>
-            </div>
-        </header>
+<div class="main-container">
+    <div class="header">
+        <h2>✈️ 정비 이월 전송 시스템 <span id="userNameDisplay" class="user-display" onclick="changeUserName()" title="클릭하여 이름 변경"></span></h2>
+    </div>
 
-        <div class="flex flex-col lg:flex-row p-6 gap-8">
-            
-            <div class="w-full lg:w-1/2 space-y-4">
-                <div id="dropZone" class="group relative border-4 border-dashed border-slate-200 rounded-xl h-[500px] flex flex-col items-center justify-center bg-slate-50 hover:bg-white hover:border-blue-400 transition-all overflow-hidden cursor-pointer">
-                    <input type="file" id="fileInput" class="hidden" accept="image/*">
-                    <div id="dropContent" class="text-center group-hover:scale-105 transition-transform">
-                        <div class="bg-blue-100 text-blue-600 p-4 rounded-full inline-block mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </div>
-                        <p class="text-slate-600 font-bold">로그북 이미지 붙여넣기 (Ctrl+V)</p>
-                        <p class="text-slate-400 text-sm">또는 클릭하여 파일 선택</p>
-                    </div>
-                    <img id="preview" class="hidden max-h-full max-w-full select-none pointer-events-none">
-                    
-                    <div id="loadingOverlay" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center hidden z-10">
-                        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-                        <p class="text-blue-600 font-bold animate-pulse">지능형 분석 및 보정 중...</p>
+    <div class="top-section" id="mainTopSection">
+        <div class="left-panel">
+            <div class="static-fields">
+                <div class="input-group">
+                    <label>기번 / 기종</label>
+                    <div class="box">
+                        <span class="prefix">HL</span>
+                        <input type="text" id="regNo" style="flex: 1;" oninput="fillAcType()">
+                        <input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center; border-left: 1px solid var(--border); font-weight: bold; color: #495057;">
                     </div>
                 </div>
-
-                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <div class="flex gap-2">
-                        <button onclick="rotate(-90)" class="bg-white border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-md text-sm font-semibold flex items-center transition">
-                            <span class="mr-1">↺</span> 좌 (←)
-                        </button>
-                        <button onclick="rotate(90)" class="bg-white border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-md text-sm font-semibold flex items-center transition">
-                            우 (→) <span class="ml-1">↻</span>
-                        </button>
+                <div class="input-group">
+                    <label>편명</label>
+                    <div class="box">
+                        <span class="prefix">OZ</span>
+                        <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
+                        <div id="flightOptions" class="dropdown-list"></div>
                     </div>
-                    <button id="analyzeBtn" onclick="startAnalysis()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-md font-bold shadow-lg transition active:scale-95">
-                        AI 분석 시작 (Enter)
-                    </button>
                 </div>
+                <div class="input-group">
+                    <label>구간</label>
+                    <div class="box leg-box">
+                        <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
+                        <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
+                        <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
+                        <div id="legOptions" class="dropdown-list"></div>
+                    </div>
+                </div>
+                <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
             </div>
 
-            <div class="w-full lg:w-1/2 flex flex-col h-[560px]">
-                <div class="bg-slate-50 rounded-xl border border-slate-200 flex flex-col h-full overflow-hidden shadow-inner">
-                    <div class="bg-white p-4 border-b flex justify-between items-center">
-                        <h3 class="text-lg font-extrabold text-slate-800 cursor-help select-none" ondblclick="openLearningModal()" title="정비사 전용 오답 학습 창 열기">
-                            📋 Items <span class="text-xs font-normal text-slate-400 ml-2 font-mono italic">(Smart Learning Enabled)</span>
-                        </h3>
-                        <div id="statusBadge" class="hidden px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase tracking-tighter">AI Corrected</div>
-                    </div>
-
-                    <div id="resultArea" class="p-4 overflow-y-auto flex-grow space-y-4">
-                        <div class="text-center text-slate-400 mt-20">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            <p>이미지를 업로드하고 분석을 진행하세요.</p>
-                        </div>
-                    </div>
+            <div class="dynamic-container">
+                <div class="dynamic-header"><span>결함 및 조치내역</span><button class="btn-add" onclick="addRow()">+</button></div>
+                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>삭제</span></div>
+                <div id="defectRowsContainer"></div>
+            </div>
+        </div>
+        <div class="right-panel" id="rightPanel">
+            <input type="file" id="imageFileInput" style="position: absolute; width: 1px; height: 1px; opacity: 0; z-index: -1;" accept="image/*" onchange="handleImageFile(event)">
+            <div id="pasteArea">
+                <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
+                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
+                    이곳을 터치(클릭)하여 사진 첨부<br>
+                    <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
                 </div>
-
-                <div class="grid grid-cols-2 gap-4 mt-6">
-                    <button onclick="sendTo('OCC')" class="bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black text-lg shadow-xl transition transform active:scale-95 flex flex-col items-center justify-center">
-                        <span>OCC 전송</span>
-                        <span class="text-[10px] opacity-70 font-normal">SHORTCUT: F8</span>
-                    </button>
-                    <button onclick="sendTo('DUTY')" class="bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-xl font-black text-lg shadow-xl transition transform active:scale-95 flex flex-col items-center justify-center">
-                        <span>DUTY 전송</span>
-                        <span class="text-[10px] opacity-70 font-normal">SHORTCUT: F9</span>
-                    </button>
-                </div>
+            </div>
+            <textarea id="rawTextArea" placeholder="추출된 텍스트가 이곳에 표시됩니다..."></textarea>
+            <div class="action-buttons">
+                <button class="btn-extract main" id="btnExtractMain" onclick="extractText()">✨ AI 분석 및 자동 매칭</button>
+                <button class="btn-extract sub" id="btnExtractRaw" onclick="extractRawText()">📝 TEXT 추출</button>
             </div>
         </div>
     </div>
-
-    <div id="learningModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div class="bg-blue-600 p-4 text-white">
-                <h3 class="font-bold text-lg">AI 지능 교정 학습</h3>
-                <p class="text-xs opacity-80">AI가 틀린 단어를 입력하면 다음부터 자동으로 바뀝니다.</p>
-            </div>
-            <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">AI가 잘못 읽은 외계어</label>
-                    <input id="wrongWord" type="text" placeholder="예: PLEM" class="w-full border-2 border-slate-100 rounded-lg p-3 outline-none focus:border-blue-500 transition uppercase font-mono">
-                </div>
-                <div class="text-center">
-                    <div class="inline-block bg-slate-100 rounded-full p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">내가 의도한 정상 정비용어</label>
-                    <input id="rightWord" type="text" placeholder="예: PRIM" class="w-full border-2 border-slate-100 rounded-lg p-3 outline-none focus:border-blue-500 transition uppercase font-mono">
-                </div>
-            </div>
-            <div class="bg-slate-50 p-4 flex gap-2 justify-end">
-                <button onclick="closeLearningModal()" class="px-6 py-2 text-slate-500 font-bold hover:bg-slate-200 rounded-lg transition">취소</button>
-                <button onclick="saveLearning()" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md transition">학습 데이터 저장</button>
-            </div>
-        </div>
+    <div class="bottom-section">
+        <button class="btn-mail bg-occ" id="btn-occ" onclick="sendWebhook('OCC')">OCC 전송</button>
+        <button class="btn-mail bg-icn" id="btn-icn" onclick="sendEmailViaMailto('ICN')">ICN 전송</button>
+        <button class="btn-mail bg-gmp" id="btn-gmp" onclick="sendEmailViaMailto('GMP')">GMP 전송</button>
+        <button class="btn-mail bg-duty" id="btn-duty" onclick="sendWebhook('DUTY')">DUTY 전송</button>
     </div>
+</div>
 
-    <script>
-        let currentRotation = 0;
-        let isProcessing = false;
-        let lastImageBlob = null;
+<script>
+    const WEBHOOK_URLS = {
+        "OCC": "https://chat.googleapis.com/v1/spaces/AAQAkm9cIHk/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DHRSasF0dZDVUu2cb2QUqM5RNjQOD3Q5BIpWOBEjJro",
+        "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAyIkJVWM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=vrARRhME-upDKnSnLiWZ2qnycamT6XyxhaSSZH8vOXg"
+    };
 
-        /**
-         * 1. ⌨️ 풀-키보드 컨트롤러 (Shortcuts)
-         */
-        document.addEventListener('keydown', (e) => {
-            if (isProcessing) return;
+    let fileToUpload = null; let rowIdCounter = 0;
+    let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
+    let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
+    let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
+    
+    let currentAbortController = null;
 
-            const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200; 
+                    const MAX_HEIGHT = 1200; 
+                    let width = img.width;
+                    let height = img.height;
 
-            // [F8, F9] 전송 단축키 - 어떤 상황에서도 즉시 실행
-            if (e.key === 'F8') { e.preventDefault(); sendTo('OCC'); return; }
-            if (e.key === 'F9') { e.preventDefault(); sendTo('DUTY'); return; }
+                    let deg = currentRotation % 360;
+                    if (deg < 0) deg += 360;
 
-            // [Enter, 방향키] - 타이핑 중이 아닐 때만 작동
-            if (!isTyping) {
-                if (e.key === 'Enter') { e.preventDefault(); startAnalysis(); }
-                if (e.key === 'ArrowLeft') { e.preventDefault(); rotate(-90); }
-                if (e.key === 'ArrowRight') { e.preventDefault(); rotate(90); }
-            }
+                    let isVertical = (deg === 90 || deg === 270);
+                    let targetWidth = isVertical ? height : width;
+                    let targetHeight = isVertical ? width : height;
+
+                    if (targetWidth > targetHeight) {
+                        if (targetWidth > MAX_WIDTH) { targetHeight *= MAX_WIDTH / targetWidth; targetWidth = MAX_WIDTH; }
+                    } else {
+                        if (targetHeight > MAX_HEIGHT) { targetWidth *= MAX_HEIGHT / targetHeight; targetHeight = MAX_HEIGHT; }
+                    }
+
+                    canvas.width = targetWidth;
+                    canvas.height = targetHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    // ❌ 흑백 필터 제거 완료! (컬러 원본 유지) ❌
+
+                    ctx.translate(targetWidth / 2, targetHeight / 2);
+                    ctx.rotate(deg * Math.PI / 180);
+
+                    let drawWidth = isVertical ? targetHeight : targetWidth;
+                    let drawHeight = isVertical ? targetWidth : targetHeight;
+                    ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.7); // 압축률만 0.7로 유지하여 속도 방어
+                };
+            };
         });
+    }
 
-        /**
-         * 2. 🖼️ 이미지 처리 로직 (Paste / Drop / Rotation)
-         */
-        window.addEventListener('paste', e => {
-            const items = e.clipboardData.items;
-            for (let item of items) {
-                if (item.type.indexOf('image') !== -1) {
-                    const blob = item.getAsFile();
-                    displayImage(blob);
+    async function loadDB() {
+        try {
+            const res = await fetch("/api/db");
+            const data = await res.json();
+            if (data && Object.keys(data.ac).length > 0) {
+                DB = data;
+
+                if(DB.ataDatabase) {
+                    DB.ataDatabase.forEach(d => {
+                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
+                    });
                 }
+                if(DB.actionDatabase) {
+                    DB.actionDatabase.forEach(d => {
+                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
+                    });
+                }
+
+                console.log("✅ 서버 DB 로드 완료!");
+            } else {
+                console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
             }
-        });
-
-        const dropZone = document.getElementById('dropZone');
-        dropZone.onclick = () => document.getElementById('fileInput').click();
-        document.getElementById('fileInput').onchange = (e) => displayImage(e.target.files[0]);
-
-        function displayImage(blob) {
-            if (!blob) return;
-            lastImageBlob = blob;
-            const url = URL.createObjectURL(blob);
-            const preview = document.getElementById('preview');
-            const content = document.getElementById('dropContent');
-            
-            preview.src = url;
-            preview.classList.remove('hidden');
-            content.classList.add('hidden');
-            currentRotation = 0;
-            preview.style.transform = `rotate(0deg)`;
+        } catch (e) {
+            console.error("서버 DB 로드 실패:", e);
         }
+    }
 
-        function rotate(deg) {
-            if (!lastImageBlob) return;
-            currentRotation = (currentRotation + deg) % 360;
-            document.getElementById('preview').style.transform = `rotate(${currentRotation}deg)`;
+    function fillAcType() {
+        let regInput = document.getElementById('regNo').value.toUpperCase().trim();
+        let reg = regInput.replace(/^HL/, "").replace(/[^0-9A-Z]/g, '');
+        let type = DB.ac[reg] || DB.ac["HL" + reg] || DB.ac[regInput] || "";
+        document.getElementById('acType').value = type;
+    }
+
+    function updateUserNameDisplay() {
+        let name = localStorage.getItem('logScanner_userName');
+        const displayEl = document.getElementById('userNameDisplay');
+        if (displayEl) displayEl.innerText = name ? `(USER : ${name})` : `(USER : 미설정)`;
+    }
+
+    function changeUserName() {
+        let currentName = localStorage.getItem('logScanner_userName') || "";
+        let newName = prompt("전송자로 표시될 성함을 입력해주세요:", currentName);
+        if (newName !== null && newName.trim() !== "") {
+            localStorage.setItem('logScanner_userName', newName.trim());
+            updateUserNameDisplay();
         }
+    }
 
-        /**
-         * 3. 🚀 AI 분석 요청 (OCR)
-         */
-        async function startAnalysis() {
-            if (!lastImageBlob || isProcessing) return;
-
-            isProcessing = true;
-            document.getElementById('loadingOverlay').classList.remove('hidden');
-            document.getElementById('analyzeBtn').innerText = "분석 중...";
-
-            const formData = new FormData();
-            formData.append('file', lastImageBlob);
-
-            try {
-                const response = await fetch('/ocr', { method: 'POST', body: formData });
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.error);
-                renderResults(data);
-            } catch (err) {
-                alert("분석 실패: " + err.message);
-            } finally {
-                isProcessing = false;
-                document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('analyzeBtn').innerText = "AI 분석 시작 (Enter)";
-            }
-        }
-
-        function renderResults(data) {
-            const area = document.getElementById('resultArea');
-            area.innerHTML = ''; // 초기화
-
-            if (!data.items || data.items.length === 0) {
-                area.innerHTML = `<p class="text-center text-red-500 mt-10 font-bold italic">추출된 항목이 없습니다. (이월 없음)</p>`;
+    function sendEmailViaMailto(target) {
+        let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
+        
+        if (!emails) {
+            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
+            if (emails && emails.trim() !== "") {
+                localStorage.setItem(`logScanner_email_${target}`, emails.trim());
+            } else {
                 return;
             }
+        }
 
-            // 상단 공통 정보 (RegNo 등) 표시
-            const headerInfo = document.createElement('div');
-            headerInfo.className = "bg-white p-3 rounded-lg border border-blue-100 flex justify-between text-xs font-bold mb-4";
-            headerInfo.innerHTML = `
-                <span>REG: <span class="text-blue-600">${data.regNo || 'N/A'}</span></span>
-                <span>FLT: <span class="text-blue-600">${data.flightNo || 'N/A'}</span></span>
-                <span>ROUTE: <span class="text-blue-600">${data.legFrom || '?'} → ${data.legTo || '?'}</span></span>
-            `;
-            area.appendChild(headerInfo);
+        const 기번 = document.getElementById('regNo').value.trim() || '미확인';
+        const acType = document.getElementById('acType').value.trim() || '기종미상';
 
-            // 아이템 리스트 생성
-            data.items.forEach((item, idx) => {
-                const div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-2 relative group hover:border-blue-300 transition";
-                div.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="bg-slate-800 text-white px-2 py-0.5 rounded text-[10px] font-bold">ITEM ${idx+1}</span>
-                        <span class="text-blue-600 font-black text-xs">${item.asAp || ''}</span>
-                    </div>
-                    <textarea class="w-full bg-slate-50 border-none rounded p-1 text-sm font-semibold focus:ring-0 resize-none h-auto" rows="2">${item.defect}</textarea>
-                    <div class="flex gap-2 text-[11px] font-bold">
-                        <span class="text-slate-400 italic">ATA: <input class="w-10 bg-transparent border-b border-slate-200 outline-none" value="${item.ata}"></span>
-                        <span class="text-slate-400 italic">REF: <input class="w-24 bg-transparent border-b border-slate-200 outline-none" value="${item.reason}"></span>
-                    </div>
-                `;
-                area.appendChild(div);
+        const rows = document.querySelectorAll('.defect-row');
+        let defectList = [];
+        let missingAsAp = false;
+        
+        rows.forEach(row => {
+            const id = row.id.split('-')[1];
+            const asApVal = document.getElementById(`asAp-${id}`).value;
+            const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
+            const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
+            
+            if (결함_raw) {
+                if (!asApVal) missingAsAp = true;
+                defectList.push({ defect: 결함_raw, reason: 근거_raw });
+            }
+        });
+
+        if (defectList.length === 0) {
+            alert("전송할 결함 내용이 없습니다.");
+            return;
+        }
+
+        if (missingAsAp) {
+            alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않은 결함이 있습니다!\n스위치를 눌러 올바르게 선택해주세요.");
+            return;
+        }
+
+        let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}`;
+        if (defectList.length > 1) {
+            subjectText += ` etc`;
+        }
+
+        let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
+        defectList.forEach((item, index) => {
+            bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
+        });
+
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+        window.open(gmailUrl, '_blank');
+    }
+
+    async function sendWebhook(target) {
+        const url = WEBHOOK_URLS[target];
+        if (!url) { alert(target + " 용 웹훅 주소가 설정되지 않았습니다."); return; }
+
+        const rows = document.querySelectorAll('.defect-row');
+        if (rows.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+
+        const firstId = rows[0].id.split('-')[1];
+        const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
+        
+        if (!첫번째구분_raw) {
+            alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않았습니다!\n스위치를 클릭하여 올바른 작성자를 지정해주세요.");
+            return;
+        }
+
+        let 이름 = localStorage.getItem('logScanner_userName');
+        if (!이름) {
+            이름 = prompt("전송자 성함을 입력해주세요. (이후 우측 상단에서 변경 가능합니다)", "");
+            if (이름 && 이름.trim() !== "") {
+                localStorage.setItem('logScanner_userName', 이름.trim());
+                updateUserNameDisplay();
+            } else 이름 = "미상";
+        }
+
+        const 기번_raw = document.getElementById('regNo').value.trim();
+        const 기번 = 기번_raw || '미확인';
+        const acType = document.getElementById('acType').value.trim() || '기종미상';
+        
+        const flightNoRaw = document.getElementById('flightNo').value.trim();
+        const legFromRaw = document.getElementById('legFrom').value.trim().toUpperCase();
+        const legToRaw = document.getElementById('legTo').value.trim().toUpperCase();
+        const 위탁체크박스상태 = document.getElementById('handover').checked;
+        const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+
+        let defectCount = 0;
+        let payload;
+
+        const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
+        const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
+
+        const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+
+        let hasFlightInfo = flightNoRaw !== "" || legFromRaw !== "" || legToRaw !== "";
+        let 편명구간 = "";
+
+        if (target === "DUTY") {
+            const 기번표시 = "HL" + 기번 + " (" + acType + ")";
+            const 위탁 = 위탁체크박스상태 ? 'Y 🔹' : 'N 🔸';
+            
+            if (hasFlightInfo) {
+                const fNo = flightNoRaw || '미상';
+                const lFrom = legFromRaw || '???';
+                const lTo = legToRaw || '???';
+                편명구간 = `OZ${fNo} (${lFrom} ➔ ${lTo})`;
+            }
+
+            let html결함묶음 = "";
+            rows.forEach(row => {
+                const id = row.id.split('-')[1];
+                const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
+                const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
+                const ata_raw = document.getElementById(`ata-${id}`).value.trim();
+
+                if (결함_raw) {
+                    defectCount++;
+                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
+
+                    let ataHtml = ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "";
+
+                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
+                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
+                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
+                                    ataHtml + `<br>`;
+                }
             });
-            document.getElementById('statusBadge').classList.remove('hidden');
+
+            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+
+            let flightHtml = hasFlightInfo ? `• <b>편명 :</b> ${편명구간}<br>` : "";
+
+            const htmlText = 
+                `🛠️ <b>정비 이월 사항 전달</b><br><br>` +
+                `• <b>기번 :</b> ${기번표시}<br>` +
+                flightHtml +
+                `• <b>작성자 :</b> ${공통작성자}<br>` +
+                `• <b>위탁 :</b> ${위탁}<br><br>` +
+                `<b>[ 결함내역 및 조치 ]</b><br>` +
+                html결함묶음 +
+                `<i>${이름} / ${현재시간}</i>`;
+
+            payload = {
+                cardsV2: [{
+                    cardId: "dutyCard",
+                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
+                }]
+            };
+
+        } else if (target === "OCC") {
+            const 기번표시 = "HL" + 기번;
+            
+            if (hasFlightInfo) {
+                const fNo = flightNoRaw || '미상';
+                const lFrom = legFromRaw || '???';
+                const lTo = legToRaw || '???';
+                편명구간 = `OZ${fNo} (${lFrom}-${lTo})`;
+            }
+
+            const gpsCodesByAcType = {
+                "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
+                "A330": ["34-50-08D", "34-50-08F"],
+                "A350": ["34-50-01A", "34-50-01B", "34-50-01C", "34-50-06A", "34-52-06B", "34-50-06C"],
+                "A380": ["34-50-01A", "34-50-01B", "34-50-01C"],
+                "B777": ["34-58-01A", "34-58-01B"]
+            };
+
+            let searchAcType = acType.toUpperCase();
+            if (searchAcType.includes("A321") || searchAcType.includes("A32N")) {
+                searchAcType = "A321";
+            }
+
+            let targetGpsCodes = [];
+            for (const ac in gpsCodesByAcType) {
+                if (searchAcType.includes(ac)) { targetGpsCodes = gpsCodesByAcType[ac]; break; }
+            }
+
+            let html결함묶음 = ""; 
+            let hasGpsIssue = false;
+
+            rows.forEach(row => {
+                const id = row.id.split('-')[1];
+                const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
+                const 근거_raw = document.getElementById(`reason-${id}`).value.trim() || '미입력';
+                const ata_raw = document.getElementById(`ata-${id}`).value.trim();
+
+                if (결함_raw) {
+                    defectCount++;
+                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
+                    
+                    let ataHtml = ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "";
+
+                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
+                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
+                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` + 
+                                    ataHtml + `<br>`;
+
+                    const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
+                    if (!hasGpsIssue) {
+                        hasGpsIssue = targetGpsCodes.some(code => cleanBasisRaw.includes(code.toUpperCase().replace(/\s+/g, '')));
+                    }
+                }
+            });
+
+            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+
+            const gpsTerm = searchAcType.includes("A350") ? "GNSS" : "GPS";
+            const gpsNotice = hasGpsIssue 
+                ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
+                : "";
+
+            let flightHtml = hasFlightInfo ? `• <b>편명 :</b> ${편명구간}<br><br>` : "<br>";
+
+            const htmlText = 
+                "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
+                "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
+                flightHtml +
+                "<b>[ 결함내역 및 조치 ]</b><br>" + html결함묶음 +
+                gpsNotice + 
+                "<i>" + 이름 + " / " + 현재시간 + "</i>";
+
+            payload = {
+                cardsV2: [{
+                    cardId: "dispatchApprovalCard",
+                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
+                }]
+            };
         }
 
-        /**
-         * 4. 🤫 오답 학습 로직 (Stealth Learning)
-         */
-        function openLearningModal() { 
-            document.getElementById('learningModal').classList.remove('hidden'); 
-            document.getElementById('wrongWord').focus();
-        }
-        function closeLearningModal() { document.getElementById('learningModal').classList.add('hidden'); }
+        const btn = document.getElementById(`btn-${target.toLowerCase()}`);
+        const originText = btn.innerText; btn.innerText = "전송 중... ⏳"; btn.disabled = true;
 
-        async function saveLearning() {
-            const wrong = document.getElementById('wrongWord').value.trim();
-            const right = document.getElementById('rightWord').value.trim();
-            if(!wrong || !right) return alert("오답과 정답을 모두 입력해주세요.");
+        try {
+            const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (res.ok) alert(`✅ ${target} 채널로 메시지가 전송되었습니다!`); else alert(`⚠️ 전송 실패 (에러코드: ${res.status})`);
+        } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
+    }
 
-            try {
-                await fetch('/save_learning', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({wrong, right})
+    function matchFlightFromLegs() {
+        const f = document.getElementById('legFrom').value.replace(/[^A-Z]/gi, '').toUpperCase();
+        const t = document.getElementById('legTo').value.replace(/[^A-Z]/gi, '').toUpperCase();
+        const input = document.getElementById('flightNo');
+        const optDiv = document.getElementById('flightOptions');
+        optDiv.innerHTML = ""; optDiv.style.display = "none";
+        
+        input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
+
+        if (f.length === 3 && t.length === 3 && DB.flights.length > 0) {
+            const matches = DB.flights.filter(item => item.from === f && item.to === t);
+            if (matches.length === 1) input.value = String(matches[0].no).replace(/^0+/, '');
+            else if (matches.length > 1) {
+                optDiv.style.display = "block";
+                matches.forEach(m => {
+                    const cleanNo = String(m.no).replace(/^0+/, '');
+                    const row = document.createElement('div'); row.className = 'dropdown-opt'; row.innerText = `OZ${cleanNo}`;
+                    row.onmousedown = () => { input.value = cleanNo; optDiv.style.display = "none"; };
+                    optDiv.appendChild(row);
                 });
-                alert(`학습 완료!\n이제 모든 분석 결과에서 "${wrong}"은 "${right}"로 자동 변환됩니다.`);
-                closeLearningModal();
-                // 초기화
-                document.getElementById('wrongWord').value = '';
-                document.getElementById('rightWord').value = '';
-            } catch (err) {
-                alert("저장 오류: " + err.message);
+            }
+        }
+    }
+
+    function matchLegsFromFlight() {
+        const input = document.getElementById('flightNo');
+        input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, '');
+        
+        const fNo = input.value.trim();
+        const optDiv = document.getElementById('legOptions');
+        optDiv.innerHTML = ""; optDiv.style.display = "none";
+        if (fNo && DB.flights.length > 0) {
+            const matches = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo);
+            if (matches.length === 1) { document.getElementById('legFrom').value = matches[0].from; document.getElementById('legTo').value = matches[0].to; } 
+            else if (matches.length > 1) {
+                optDiv.style.display = "block";
+                matches.forEach(m => {
+                    const row = document.createElement('div'); row.className = 'dropdown-opt'; row.innerText = `${m.from} ⇄ ${m.to}`;
+                    row.onmousedown = () => { document.getElementById('legFrom').value = m.from; document.getElementById('legTo').value = m.to; optDiv.style.display = "none"; };
+                    optDiv.appendChild(row);
+                });
+            }
+        }
+    }
+
+    function autoResize(el) {
+        if (!el) return; el.style.height = '38px'; 
+        const newHeight = el.scrollHeight; el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
+    }
+
+    function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
+
+    function removeDefectRow(btn) {
+        const container = document.getElementById('defectRowsContainer');
+        if (container.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); }
+    }
+
+    function addRow(data = {}) {
+        rowIdCounter++; const id = rowIdCounter;
+        const container = document.getElementById('defectRowsContainer');
+        const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
+        
+        const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
+        const isAs = asApVal === 'AS';
+        const isAp = asApVal === 'AP';
+
+        row.innerHTML = `
+            <div class="as-ap-wrapper">
+                <span class="idx-num"></span>
+                <div class="toggle-box">
+                    <button type="button" class="toggle-btn ${isAs ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
+                    <button type="button" class="toggle-btn ${isAp ? 'active' : ''}" onclick="setAsAp(${id},'AP')">AP</button>
+                </div>
+                <input type="hidden" id="asAp-${id}" value="${asApVal}">
+            </div>
+            <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
+            <div class="search-wrap">
+                <input type="text" id="reason-${id}" value="${data.reason || ''}" placeholder="MEL/CDL/NEF 등">
+                <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="실시간 로컬 검색">🔍</button>
+                <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
+            </div>
+            <div class="ata-wrapper">
+                <div class="search-wrap">
+                    <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
+                    <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="실시간 로컬 검색">🔍</button>
+                    <div id="dropdown-ATA-${id}" class="dropdown-list"></div>
+                </div>
+            </div>
+            <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
+        `;
+        container.appendChild(row); updateNums();
+        if(data.defect) { setTimeout(() => { autoResize(document.getElementById(`defect-${id}`)); }, 100); }
+    }
+
+    function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
+    function setAsAp(id, type) {
+        const row = document.getElementById(`row-${id}`);
+        row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
+    }
+
+    function searchSmartDB(id, searchType) {
+        const text = document.getElementById(`defect-${id}`).value;
+        const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
+        const inputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
+        const dropdownId = `dropdown-${searchType}-${id}`;
+        const optDiv = document.getElementById(dropdownId);
+
+        document.querySelectorAll('.dropdown-list').forEach(el => {
+            if (el.id !== 'flightOptions' && el.id !== 'legOptions') el.style.display = 'none';
+        });
+
+        const dbToSearch = searchType === 'ATA' ? DB.ataDatabase : DB.actionDatabase;
+        if (!dbToSearch || dbToSearch.length === 0) return alert(`⚠️ 해당 DB(${searchType})가 등록되어 있지 않습니다.`);
+        
+        let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
+        if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
+
+        let validActions = [];
+        let repActions = [];
+
+        if (searchType === 'ATA') {
+            validActions = dbToSearch; 
+            repActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
+        } else {
+            validActions = dbToSearch.filter(d => {
+                if (d.type === 'NEF') return true; 
+                if (d.acType !== 'ALL' && d.acType !== undefined) {
+                    return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
+                }
+                return true; 
+            });
+            repActions = validActions.filter(d => d.row >= 83266); 
+        }
+
+        const currentValue = document.getElementById(inputId).value.trim();
+        const cleanCurrent = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
+        
+        optDiv.innerHTML = "";
+        let hasOptions = false;
+        let seenCodes = new Set(); 
+
+        if (currentValue) {
+            let matchedItems = repActions.filter(d => {
+                const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
+                if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
+                return dbBase === cleanCurrent || d.code === currentValue;
+            });
+
+            if (matchedItems.length === 0 && searchType !== 'ATA') {
+                matchedItems = validActions.filter(d => {
+                    const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
+                    if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
+                    return dbBase === cleanCurrent || d.code === currentValue;
+                });
+            }
+
+            if (matchedItems.length > 0) {
+                matchedItems.sort((a, b) => b.row - a.row);
+                let currentItemMatched = matchedItems[0];
+
+                const prefix = searchType !== 'ATA' && currentItemMatched.type ? currentItemMatched.type + ' ' : '';
+                const fullDisplay = searchType !== 'ATA' ? `${prefix}${currentItemMatched.code}`.trim() : currentItemMatched.code;
+
+                const row = document.createElement('div');
+                row.className = 'dropdown-opt pinned';
+                row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${currentItemMatched.keyword}`;
+                row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
+                optDiv.appendChild(row);
+                hasOptions = true;
+                
+                seenCodes.add(searchType === 'ATA' ? currentItemMatched.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : currentItemMatched.code.replace(/[^0-9A-Z]/gi, '')); 
+            } else {
+                const row = document.createElement('div');
+                row.className = 'dropdown-opt pinned';
+                row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 매칭되는 내용 없음`;
+                row.onmousedown = () => { document.getElementById(inputId).value = currentValue; optDiv.style.display = "none"; };
+                optDiv.appendChild(row);
+                hasOptions = true;
             }
         }
 
-        /**
-         * 5. 📧 전송 로직
-         */
-        function sendTo(target) {
-            alert(`[${target}] 으로 정비 로그 데이터를 즉시 전송합니다.`);
-            // 여기에 실제 전송 API 연동 (send_email 등)
+        if (text.trim()) {
+            const defectTerms = text.toLowerCase().match(/[a-zA-Z0-9가-힣]{2,}/g) || []; 
+            if (defectTerms.length > 0) {
+                let scoredDB = [];
+                
+                validActions.forEach(d => {
+                    let score = 0;
+                    if (d.searchTarget) {
+                        defectTerms.forEach(term => { if (d.searchTarget.includes(term)) score += 10; });
+                    }
+                    if (score > 0) {
+                        if (searchType !== 'ATA' && d.row >= 83266) score += 500;
+                        score += (d.row / 100000); 
+                        scoredDB.push({ data: d, score: score });
+                    }
+                });
+
+                scoredDB.sort((a, b) => b.score - a.score);
+                const topCandidates = scoredDB.map(item => item.data); 
+
+                let finalCandidates = [];
+                let nefCount = 0;
+                let melCount = 0;
+
+                for (let i = 0; i < topCandidates.length; i++) {
+                    let rawItem = topCandidates[i];
+                    const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
+                    const searchCode = searchType === 'ATA' ? pureCode.substring(0,4) : pureCode;
+                    
+                    if (seenCodes.has(searchCode)) continue; 
+                    
+                    if (searchType !== 'ATA') {
+                        if (rawItem.type === 'NEF') {
+                            if (nefCount < 5) {
+                                finalCandidates.push(rawItem);
+                                seenCodes.add(searchCode);
+                                nefCount++;
+                            }
+                        } else {
+                            if (melCount < 5) {
+                                finalCandidates.push(rawItem);
+                                seenCodes.add(searchCode);
+                                melCount++;
+                            }
+                        }
+                        if (nefCount === 5 && melCount === 5) break; 
+                    } else {
+                        if (finalCandidates.length < 10) {
+                            finalCandidates.push(rawItem);
+                            seenCodes.add(searchCode);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if (searchType !== 'ATA' && finalCandidates.length < 10) {
+                    for (let i = 0; i < topCandidates.length; i++) {
+                        if (finalCandidates.length >= 10) break;
+                        let rawItem = topCandidates[i];
+                        const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
+                        if (!seenCodes.has(pureCode)) {
+                            finalCandidates.push(rawItem);
+                            seenCodes.add(pureCode);
+                        }
+                    }
+                }
+
+                finalCandidates.sort((a, b) => {
+                    let scoreA = 0; let scoreB = 0;
+                    defectTerms.forEach(term => { 
+                        if(a.searchTarget && a.searchTarget.includes(term)) scoreA += 10; 
+                        if(b.searchTarget && b.searchTarget.includes(term)) scoreB += 10; 
+                    });
+                    if (searchType !== 'ATA' && a.row >= 83266) scoreA += 500;
+                    scoreA += (a.row / 100000);
+                    if (searchType !== 'ATA' && b.row >= 83266) scoreB += 500;
+                    scoreB += (b.row / 100000);
+                    return scoreB - scoreA;
+                });
+
+                finalCandidates.forEach(rawItem => {
+                    let repItem = rawItem;
+                    if (searchType === 'ATA') {
+                        const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4);
+                        const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) === searchCode);
+                        if (foundRep) repItem = foundRep; 
+                    }
+
+                    const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
+                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
+
+                    const row = document.createElement('div');
+                    row.className = 'dropdown-opt';
+                    row.innerText = `${fullDisplay} :: ${repItem.keyword}`;
+                    row.title = `${fullDisplay} :: ${repItem.keyword}`; 
+                    row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
+                    optDiv.appendChild(row);
+                    hasOptions = true;
+                });
+            }
         }
-    </script>
+        
+        if (hasOptions) {
+            optDiv.style.display = "block";
+        } else {
+            alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
+        }
+    }
+
+    function loadAndDisplayImage(file) {
+        try {
+            if (!file) throw new Error("파일이 존재하지 않습니다.");
+            
+            fileToUpload = file; 
+            const url = URL.createObjectURL(fileToUpload);
+            
+            currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
+            document.getElementById('mainTopSection').classList.remove('expanded'); 
+            document.getElementById('rightPanel').classList.remove('text-extract-mode');
+            document.getElementById('rawTextArea').style.display = 'none';
+
+            document.getElementById('pasteArea').innerHTML = `
+                <div class="img-tools">
+                    <button class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
+                    <button class="btn-tool btn-rotate-left" onclick="rotateLeft(event)" title="좌회전 90도"></button>
+                    <button class="btn-tool btn-rotate-right" onclick="rotateRight(event)" title="우회전 90도"></button>
+                    <button class="btn-tool btn-close" onclick="resetImage(event)">✖</button>
+                </div>
+                <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
+            `;
+            setTimeout(refreshAllHeights, 50);
+        } catch (e) {
+            alert("사진을 불러오지 못했습니다: " + e.message);
+        }
+    }
+
+    function resetImage(e) {
+        if(e) e.stopPropagation();
+        
+        if (currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
+        }
+
+        fileToUpload = null; 
+        document.getElementById('imageFileInput').value = "";
+        document.getElementById('mainTopSection').classList.remove('expanded');
+        document.getElementById('pasteArea').innerHTML = `
+            <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
+                <div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치(클릭)하여 사진 첨부<br>
+                <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal;">또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기</span>
+            </div>
+        `;
+        
+        document.getElementById('defectRowsContainer').innerHTML = ""; 
+        rowIdCounter = 0;
+        addRow();
+        
+        const btnMain = document.getElementById('btnExtractMain');
+        if (btnMain) { btnMain.innerText = "✨ AI 분석 및 자동 매칭"; btnMain.disabled = false; }
+        
+        const btnRaw = document.getElementById('btnExtractRaw');
+        if (btnRaw) { btnRaw.innerText = "📝 TEXT 추출"; btnRaw.disabled = false; }
+        
+        setTimeout(refreshAllHeights, 50);
+    }
+
+    function handleImageFile(event) {
+        const file = event.target.files[0];
+        if (file) loadAndDisplayImage(file);
+        event.target.value = ""; 
+    }
+
+    window.onload = async () => { 
+        addRow(); 
+        try {
+            await loadDB(); 
+        } catch(e) { console.error(e); }
+        
+        setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
+        updateUserNameDisplay(); 
+
+        window.addEventListener('mousedown', (e) => { 
+            if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap')) {
+                document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none");
+            }
+        });
+
+        const pasteArea = document.getElementById('pasteArea');
+        pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('drag-over'); });
+        pasteArea.addEventListener('dragleave', (e) => { e.preventDefault(); pasteArea.classList.remove('drag-over'); });
+        pasteArea.addEventListener('drop', (e) => {
+            e.preventDefault(); pasteArea.classList.remove('drag-over');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (file.type.startsWith('image/')) loadAndDisplayImage(file);
+            }
+        });
+
+        pasteArea.addEventListener('wheel', (e) => {
+            if (!document.getElementById('pastedImg')) return; e.preventDefault(); 
+            currentScale += e.deltaY < 0 ? 0.15 : -0.15; 
+            currentScale = Math.max(0.2, Math.min(currentScale, 6)); applyTransform();
+        });
+
+        pasteArea.addEventListener('mousedown', (e) => {
+            if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
+            e.preventDefault(); isDragging = true; clickStartX = e.clientX; clickStartY = e.clientY; 
+            startDragX = e.clientX - translateX; startDragY = e.clientY - translateY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
+                if (diffX < 5 && diffY < 5 && e.button === 0) { 
+                    if (e.target.id === 'pastedImg') toggleExpand(); 
+                }
+            }
+            isDragging = false;
+        });
+    };
+
+    window.addEventListener('paste', function(e) {
+        if (!e.clipboardData) return;
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                e.preventDefault();
+                const file = items[i].getAsFile();
+                if (file) loadAndDisplayImage(file);
+                return; 
+            }
+        }
+    });
+
+    function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
+    
+    function rotateLeft(e) {
+        e.stopPropagation();
+        currentRotation -= 90; 
+        applyTransform();
+    }
+
+    function rotateRight(e) {
+        e.stopPropagation();
+        currentRotation += 90; 
+        applyTransform();
+    }
+    
+    function toggleExpand() {
+        document.getElementById('mainTopSection').classList.toggle('expanded');
+        translateX = 0; translateY = 0; currentScale = 1; applyTransform();
+        
+        setTimeout(refreshAllHeights, 50);
+        setTimeout(refreshAllHeights, 150);
+        setTimeout(refreshAllHeights, 400); 
+    }
+
+    async function extractText() {
+        if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
+        const btn = document.getElementById('btnExtractMain'); 
+        btn.innerText = "분석 중... ⏳"; 
+        btn.disabled = true; 
+        
+        if (currentAbortController) currentAbortController.abort();
+        currentAbortController = new AbortController();
+
+        const compressedFile = await compressImage(fileToUpload);
+        const formData = new FormData(); 
+        formData.append("file", compressedFile); 
+
+        try {
+            const res = await fetch("/ocr", { 
+                method: "POST", 
+                body: formData,
+                signal: currentAbortController.signal 
+            });
+            const data = await res.json();
+            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
+            
+            if (data.regNo) { 
+                let cleanReg = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, "");
+                document.getElementById('regNo').value = cleanReg; 
+                fillAcType(); 
+            }
+            
+            if (data.flightNo) { 
+                let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '');
+                document.getElementById('flightNo').value = cleanFno; 
+            } 
+            
+            if (data.legFrom) {
+                document.getElementById('legFrom').value = String(data.legFrom).replace(/[^A-Z]/gi, '').toUpperCase();
+            }
+            if (data.legTo) {
+                document.getElementById('legTo').value = String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase();
+            }
+
+            if (data.flightNo && (!data.legFrom || !data.legTo)) {
+                matchLegsFromFlight();
+            } else if (!data.flightNo && (data.legFrom && data.legTo)) {
+                matchFlightFromLegs();
+            }
+            
+            if (data.items && data.items.length > 0) {
+                document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
+                data.items.forEach(item => addRow(item));
+                setTimeout(refreshAllHeights, 150); 
+            } else {
+                alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
+                if (document.querySelectorAll('.defect-row').length === 0) {
+                    addRow();
+                }
+            }
+        } catch (e) { 
+            if (e.name === 'AbortError') {
+                console.log("분석이 사용자에 의해 취소되었습니다.");
+            } else {
+                alert("⚠️ 에러: " + e.message); 
+            }
+        } finally { 
+            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
+            btn.disabled = false; 
+            currentAbortController = null;
+        }
+    }
+
+    async function extractRawText() {
+        if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
+        const btn = document.getElementById('btnExtractRaw'); 
+        btn.innerText = "추출 중... ⏳"; 
+        btn.disabled = true;
+        
+        if (currentAbortController) currentAbortController.abort();
+        currentAbortController = new AbortController();
+
+        const compressedFile = await compressImage(fileToUpload);
+        const formData = new FormData(); 
+        formData.append("file", compressedFile);
+
+        try {
+            const res = await fetch("/extract_raw", { 
+                method: "POST", 
+                body: formData,
+                signal: currentAbortController.signal
+            });
+            const data = await res.json();
+            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
+            document.getElementById('rightPanel').classList.add('text-extract-mode');
+            const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
+        } catch (e) { 
+            if (e.name === 'AbortError') {
+                console.log("추출이 취소되었습니다.");
+            } else {
+                alert("⚠️ 통신 에러: " + e.message); 
+            }
+        } finally { 
+            btn.innerText = "📝 TEXT 추출"; 
+            btn.disabled = false; 
+            currentAbortController = null;
+        }
+    }
+</script>
 </body>
 </html>
