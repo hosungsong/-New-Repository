@@ -49,7 +49,8 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 180px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
+        /* 🔥 기본 상태 그리드 수정: 적용근거를 180px -> 190px로 살짝 확대 🔥 */
+        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 190px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -88,7 +89,8 @@
         .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(180px, 1fr) 130px 90px 30px; } 
+        /* 🔥 사진 확대 상태 그리드 수정: 결함 칸을 약간 양보하고 적용근거를 130px -> 160px로 확대 🔥 */
+        .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(140px, 1fr) 160px 90px 30px; } 
         .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
         .top-section.expanded #pasteArea img { max-height: 100%; }
 
@@ -205,7 +207,6 @@
     
     let currentAbortController = null;
 
-    // 🔥 이미지 물리 회전 압축 로직 (Turn 0 패치 완료)
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -220,11 +221,9 @@
                     let width = img.width;
                     let height = img.height;
 
-                    // 1. 현재 회전 각도 계산 (0, 90, 180, 270)
                     let deg = currentRotation % 360;
                     if (deg < 0) deg += 360;
 
-                    // 2. 90도나 270도로 누워있으면 가로/세로 길이를 서로 바꿔줌
                     let isVertical = (deg === 90 || deg === 270);
                     let targetWidth = isVertical ? height : width;
                     let targetHeight = isVertical ? width : height;
@@ -239,10 +238,8 @@
                     canvas.height = targetHeight;
                     const ctx = canvas.getContext('2d');
 
-                    // 🔥 핵심: 흑백(Grayscale) 다이어트 전송 (속도 극대화 꿀팁) 🔥
                     ctx.filter = 'grayscale(100%)'; 
 
-                    // 3. 캔버스 중심을 기준으로 돌려서 이미지를 안착시킴!
                     ctx.translate(targetWidth / 2, targetHeight / 2);
                     ctx.rotate(deg * Math.PI / 180);
 
@@ -750,17 +747,68 @@
                 scoredDB.sort((a, b) => b.score - a.score);
                 const topCandidates = scoredDB.map(item => item.data); 
 
-                let addedCount = 0;
+                let finalCandidates = [];
+                let nefCount = 0;
+                let melCount = 0;
+
                 for (let i = 0; i < topCandidates.length; i++) {
-                    if (addedCount >= 10) break; 
-                    
                     let rawItem = topCandidates[i];
                     const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
                     const searchCode = searchType === 'ATA' ? pureCode.substring(0,4) : pureCode;
                     
                     if (seenCodes.has(searchCode)) continue; 
-                    seenCodes.add(searchCode); 
                     
+                    if (searchType !== 'ATA') {
+                        if (rawItem.type === 'NEF') {
+                            if (nefCount < 5) {
+                                finalCandidates.push(rawItem);
+                                seenCodes.add(searchCode);
+                                nefCount++;
+                            }
+                        } else {
+                            if (melCount < 5) {
+                                finalCandidates.push(rawItem);
+                                seenCodes.add(searchCode);
+                                melCount++;
+                            }
+                        }
+                        if (nefCount === 5 && melCount === 5) break; 
+                    } else {
+                        if (finalCandidates.length < 10) {
+                            finalCandidates.push(rawItem);
+                            seenCodes.add(searchCode);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if (searchType !== 'ATA' && finalCandidates.length < 10) {
+                    for (let i = 0; i < topCandidates.length; i++) {
+                        if (finalCandidates.length >= 10) break;
+                        let rawItem = topCandidates[i];
+                        const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
+                        if (!seenCodes.has(pureCode)) {
+                            finalCandidates.push(rawItem);
+                            seenCodes.add(pureCode);
+                        }
+                    }
+                }
+
+                finalCandidates.sort((a, b) => {
+                    let scoreA = 0; let scoreB = 0;
+                    defectTerms.forEach(term => { 
+                        if(a.searchTarget && a.searchTarget.includes(term)) scoreA += 10; 
+                        if(b.searchTarget && b.searchTarget.includes(term)) scoreB += 10; 
+                    });
+                    if (searchType !== 'ATA' && a.row >= 83266) scoreA += 500;
+                    scoreA += (a.row / 100000);
+                    if (searchType !== 'ATA' && b.row >= 83266) scoreB += 500;
+                    scoreB += (b.row / 100000);
+                    return scoreB - scoreA;
+                });
+
+                finalCandidates.forEach(rawItem => {
                     let repItem = rawItem;
                     if (searchType === 'ATA') {
                         const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4);
@@ -778,8 +826,7 @@
                     row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
                     hasOptions = true;
-                    addedCount++;
-                }
+                });
             }
         }
         
@@ -802,7 +849,6 @@
             document.getElementById('rightPanel').classList.remove('text-extract-mode');
             document.getElementById('rawTextArea').style.display = 'none';
 
-            // 🔥 업데이트: 신규 회전 아이콘(좌/우) 및 HTML 구조 적용 🔥
             document.getElementById('pasteArea').innerHTML = `
                 <div class="img-tools">
                     <button class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
@@ -923,18 +969,15 @@
 
     function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
     
-    // 🔥 업데이트: 신규 90도 회전 자바스크립트 로직 적용 🔥
-    // 좌회전 90도 (반시계 방향)
     function rotateLeft(e) {
         e.stopPropagation();
-        currentRotation -= 90; // 90도 차감
+        currentRotation -= 90; 
         applyTransform();
     }
 
-    // 우회전 90도 (시계 방향 - 기존 rotateImg 업데이트)
     function rotateRight(e) {
         e.stopPropagation();
-        currentRotation += 90; // 90도 추가
+        currentRotation += 90; 
         applyTransform();
     }
     
