@@ -102,7 +102,7 @@ async def extract_text(file: UploadFile = File(...)):
             "data": content
         }
         
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        model = genai.GenerativeModel('gemini-1.5-flash') 
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
@@ -212,7 +212,7 @@ async def extract_raw_text(file: UploadFile = File(...)):
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        model = genai.GenerativeModel('gemini-1.5-flash') 
         response = model.generate_content(["이미지의 모든 텍스트를 추출하세요.", image_part])
         return {"text": response.text.strip()}
     except Exception as e: return {"error": str(e)}
