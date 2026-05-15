@@ -117,6 +117,7 @@ async def extract_text(file: UploadFile = File(...)):
         [2. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
         - flightNo: 'OZ' 제외 순수 숫자. (이게 세글자일수도 있고, 네글자 일수도 있어) - 방금 2047 을 204로 오인하는 경우가 있었어. 4자리 FLIGHT 를 확실하게 출력해줘.
+        - FLIGHT&MAINTENANCE LOG 에선 좌측 상단부위에 FLIGHT NO. 밑에 OZ 숫자 조합으로 써있어. OZ 제외하고 숫자만 확실하게 출력해주길바라 (최소3자리 이고, 2자리로 너가 알아봤으면 잘못 알아본거야. 다시생각해.)
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
         [3. 작성자(asAp) 🚨 엄격한 빈칸 규칙 적용 🚨]
