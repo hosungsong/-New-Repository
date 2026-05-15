@@ -238,7 +238,7 @@
                     canvas.height = targetHeight;
                     const ctx = canvas.getContext('2d');
 
-                    ctx.filter = 'grayscale(100%)'; 
+                    // ❌ 흑백 필터 제거 완료! (컬러 원본 유지) ❌
 
                     ctx.translate(targetWidth / 2, targetHeight / 2);
                     ctx.rotate(deg * Math.PI / 180);
@@ -249,7 +249,7 @@
 
                     canvas.toBlob((blob) => {
                         resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-                    }, 'image/jpeg', 0.7);
+                    }, 'image/jpeg', 0.7); // 압축률만 0.7로 유지하여 속도 방어
                 };
             };
         });
