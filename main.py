@@ -88,7 +88,7 @@ async def extract_text(file: UploadFile = File(...)):
         }
         
         # 🚀 LITE 모델 유지
-        model = genai.GenerativeModel('gemini-flash-latest') 
+        model = genai.GenerativeModel('gemini-flash-lite-latest') 
 
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
@@ -204,7 +204,7 @@ async def extract_raw_text(file: UploadFile = File(...)):
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
-        model = genai.GenerativeModel('gemini-flash-latest') 
+        model = genai.GenerativeModel('gemini-flash-lite-latest') 
         # 🛠️ 비동기 처리 적용
         response = await model.generate_content_async(["이미지의 모든 텍스트를 추출하세요.", image_part])
         return {"text": response.text.strip()}
@@ -219,7 +219,7 @@ class SmartSearchRequest(BaseModel):
 async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
-        model = genai.GenerativeModel('gemini-flash-latest') 
+        model = genai.GenerativeModel('gemini-flash-lite-latest') 
         
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
