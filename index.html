@@ -8,7 +8,9 @@
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; transition: 0.3s; }
+        
+        /* 🔥 울렁거림 방지: transition 제거 */
+        .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
         
         .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
         .header h2 { margin: 0; display: flex; align-items: baseline; }
@@ -16,10 +18,12 @@
         .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
         .user-display:hover { color: var(--secondary); text-decoration: underline; }
 
-        .top-section { display: flex; gap: 25px; margin-bottom: 20px; transition: 0.3s; align-items: stretch; }
-        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; transition: 0.3s; }
+        /* 🔥 울렁거림 방지: transition 제거 */
+        .top-section { display: flex; gap: 25px; margin-bottom: 20px; align-items: stretch; }
+        .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
         
-        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; transition: 0.3s; }
+        /* 🔥 울렁거림 방지: transition 제거 */
+        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
@@ -49,7 +53,8 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 190px 120px 30px; gap: 10px; align-items: start; transition: 0.3s; }
+        /* 🔥 울렁거림 방지: transition 제거 */
+        .defect-grid { display: grid; grid-template-columns: 90px minmax(200px, 1fr) 190px 120px 30px; gap: 10px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -74,9 +79,10 @@
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; transition: 0.3s; position: relative; }
-        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: 0.3s; }
-        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: max-height 0.3s; }
+        /* 🔥 울렁거림 방지: transition 제거 */
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; }
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; }
+        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; }
         #pasteArea img:active { cursor: grabbing; }
         
         .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
@@ -84,13 +90,14 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
+        /* 🔥 겹침 방지: 레이아웃 완전 교정 🔥 */
         .top-section.expanded .left-panel { flex: 1; }
-        .top-section.expanded .right-panel { flex: 1; max-height: 85vh; }
+        .top-section.expanded .right-panel { flex: 1.5; } /* 오른쪽 패널의 가로 폭을 늘려줌 */
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         .top-section.expanded .defect-grid { grid-template-columns: 85px minmax(140px, 1fr) 160px 90px 30px; } 
-        .top-section.expanded #pasteArea { min-height: 300px; max-height: calc(85vh - 80px); }
-        .top-section.expanded #pasteArea img { max-height: 100%; }
+        .top-section.expanded #pasteArea { height: 60vh; min-height: 400px; max-height: none; } /* 버튼을 밀어내도록 안정적인 세로 크기 부여 */
+        .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
         .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
         .text-extract-mode #pasteArea img { max-height: 180px; }
@@ -122,7 +129,6 @@
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
 
-        /* 🔥 스텔스 오답노트 팝업 CSS 추가 🔥 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;}
@@ -237,18 +243,11 @@
     
     let currentAbortController = null;
 
-    // 🔥 풀-키보드 쾌속 워크플로우 (F8, F9, 방향키, 엔터) 추가 🔥
     document.addEventListener('keydown', (e) => {
-        // AI가 분석 중이거나 이미지를 로드 중일 때는 키보드 입력 방지
         if (currentAbortController) return;
-
         const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
-
-        // [F8, F9] 전송 단축키 - 입력창에서 타이핑 중이어도 즉시 전송
         if (e.key === 'F8') { e.preventDefault(); sendWebhook('OCC'); return; }
         if (e.key === 'F9') { e.preventDefault(); sendWebhook('DUTY'); return; }
-
-        // [방향키, Enter] 단축키 - 타이핑 중이 아닐 때만 작동
         if (!isTyping) {
             if (e.key === 'Enter') { 
                 e.preventDefault(); 
@@ -259,7 +258,6 @@
         }
     });
 
-    // 🔥 스텔스 오답노트 기능 스크립트 추가 🔥
     function openLearningModal() {
         document.getElementById('learningModal').style.display = 'flex';
         document.getElementById('wrongWord').focus();
@@ -289,7 +287,6 @@
         }
     }
 
-    // --- (이하 기존 정비사님 코드 100% 동일 유지) ---
     function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -956,7 +953,6 @@
         fileToUpload = null; 
         document.getElementById('imageFileInput').value = "";
         document.getElementById('mainTopSection').classList.remove('expanded');
-        // 🔥 초기화 시 안내 문구도 원래대로 복구 🔥
         document.getElementById('pasteArea').innerHTML = `
             <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
                 <div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치(클릭)하여 사진 첨부<br>
