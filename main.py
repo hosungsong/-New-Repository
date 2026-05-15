@@ -116,7 +116,7 @@ async def extract_text(file: UploadFile = File(...)):
 
         [2. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
-        - flightNo: 'OZ' 제외 순수 숫자.
+        - flightNo: 'OZ' 제외 순수 숫자. (이게 세글자일수도 있고, 네글자 일수도 있어)
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
         [3. 작성자(asAp) 🚨 엄격한 빈칸 규칙 적용 🚨]
