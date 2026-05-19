@@ -16,11 +16,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY: genai.configure(api_key=GEMINI_API_KEY)
 
-# 🔥 글로벌 DB 및 오답 노트 파일 설정
 APP_DB = {"flights": [], "ataDatabase": [], "actionDatabase": [], "ac": {}, "emails": {}}
 LEARNING_FILE = "learning_dict.json"
 
-# 🧠 오답 노트 로드 및 저장
 def load_learning_dict():
     if os.path.exists(LEARNING_FILE):
         with open(LEARNING_FILE, "r", encoding="utf-8") as f:
@@ -31,7 +29,6 @@ def save_learning_dict(data):
     with open(LEARNING_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# 🧠 오답 강제 치환 로직 (대소문자 무시)
 def apply_learning(text, l_dict):
     if not text: return text
     for wrong, right in l_dict.items():
@@ -83,7 +80,6 @@ async def serve_frontend(): return FileResponse("index.html")
 @app.get("/ping")
 async def keep_alive_ping(): return {"status": "awake"}
 
-# 🚨 [핵심 복구] 웹페이지가 DB를 가져가는 핵심 통로 (돋보기 기능 부활)
 @app.get("/api/db")
 async def get_db():
     return APP_DB
@@ -99,7 +95,6 @@ async def upload_db(file: UploadFile = File(...)):
         f.write("\n".join(text))
     return {"status": "success"}
 
-# 🚀 스텔스 오답 노트 저장 API
 @app.post("/save_learning")
 async def save_learning(data: dict = Body(...)):
     l_dict = load_learning_dict()
@@ -112,15 +107,12 @@ async def extract_text(file: UploadFile = File(...)):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         content = await file.read()
-        
-        # 🚀 빠르고 가벼운 LITE 모델 유지
         model = genai.GenerativeModel('gemini-flash-lite-latest') 
         l_dict = load_learning_dict()
 
-        # 🔄 [1. 지능형 조건부 자동 회전 (Smart Flip)]
         try:
             img = Image.open(io.BytesIO(content))
-            if img.height > img.width: # 세로가 더 길면 (Tall)
+            if img.height > img.width:
                 orient_prompt = "이 이미지는 항공 정비 로그의 일부야. 글자들이 수평으로 똑바로 서 보이기 위해 이미지를 시계 방향으로 몇 도 돌려야 할까? (0, 90, 180, 270 중 숫자 하나만 대답해)"
                 res_orient = await model.generate_content_async([orient_prompt, {"mime_type": file.content_type or "image/jpeg", "data": content}])
                 deg_str = re.sub(r'[^0-9]', '', res_orient.text.strip())
@@ -131,9 +123,8 @@ async def extract_text(file: UploadFile = File(...)):
                     img.save(buf, format="JPEG")
                     content = buf.getvalue()
         except Exception as img_e:
-            print(f"이미지 회전 전처리 오류 (무시하고 진행): {img_e}")
+            pass
 
-        # 🚀 [2. 메인 분석 및 규칙 적용]
         image_part = {
             "mime_type": file.content_type or "image/jpeg",
             "data": content
@@ -141,24 +132,24 @@ async def extract_text(file: UploadFile = File(...)):
         
         valid_ac_list = ", ".join(APP_DB["ac"].keys()) if APP_DB["ac"] else "목록 없음"
 
-        # 🔥 정비사님의 피와 땀이 서린 100% 원본 프롬프트 완벽 복구 🔥
+        # 🔥 CABIN LOG 및 편명 4자리 완벽 추출 규칙이 반영된 프롬프트 🔥
         prompt = f"""
         당신은 항공 정비 로그 분석의 절대적인 마스터입니다. 아래 🚨절대 규칙🚨을 무조건 따르세요.
 
         [1. 🚨 없는 정보 창조 금지 (빈칸 채우기 불가) 🚨]
         - 문서에 펜으로 명시적으로 적혀있지 않거나 비어있는 칸의 값을 문맥을 보고 임의로 지어내지 마세요.
-        - 특히 'ATA CODE'나 '적용근거(DEFER No.)' 란에 글씨가 없다면 다른 항목을 보고 지어내지 말고 **무조건 빈 문자열("")**을 출력하세요.
+        - 특히 'ATA CODE'나 '적용근거(DEFER No.)' 란에 글씨가 없다면 다른 항목을 보고 지어내지 말고 무조건 빈 문자열("")을 출력하세요.
 
         [2. 문서 상단 공통 정보]
         - regNo: 'AIRCRAFT REG. NO.' 란의 숫자. (반드시 이 목록 [{valid_ac_list}] 중에서만 매칭)
-        - flightNo: 'OZ' 제외 순수 숫자. (이게 세글자일수도 있고, 네글자 일수도 있어)
+        - flightNo: 'OZ' 우측에 적힌 숫자를 단 하나도 빠짐없이 3자리든 4자리든 100% 모두 추출하세요. (예: OZ1234 ➡️ 1234, OZ745 ➡️ 745). 임의로 숫자를 자르지 마세요.
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
-        [3. 작성자(asAp) 🚨 엄격한 빈칸 규칙 적용 🚨]
-        - 로그의 종류를 먼저 파악하세요 (오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG).
-        - CABIN LOG: 무조건 "AS" 출력.
-        - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력.
-        - 🚨 [가장 중요] FLIGHT & MAINTENANCE LOG인데 해당 칸에 도장도 없고 서명도 완전히 비어있다면, 무조건 빈 문자열("")을 출력하세요. 절대 임의로 "AS"를 적지 마세요!
+        [3. 작성자(asAp) 및 🚨 CABIN LOG 특별 규칙 🚨]
+        - 로그의 종류를 먼저 파악하세요 (오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG, 아니면 CABIN LOG입니다).
+        - CABIN LOG: 무조건 작성자는 "AS" 출력.
+        - 🚨 [가장 중요] CABIN LOG의 결함은 99% 'NEF'입니다. CABIN LOG 문서라면, 적용근거(reason) 칸에 체크박스가 명확히 보이지 않더라도 무조건 "NEF"를 기본으로 추출하세요! 절대 MEL로 적지 마세요.
+        - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력. 도장/서명 없으면 무조건 빈 문자열("").
 
         [4. 🚨 이월(DEFER) 항목 추출 조건 (아주 중요) 🚨]
         - 각 아이템(행)별로 우측의 'DEFER No.' 칸과 'ACTION TAKEN(정리문구)' 칸을 확인하세요.
@@ -171,31 +162,22 @@ async def extract_text(file: UploadFile = File(...)):
         - 🚨 [외계어 필터링 및 복원]: 정비사의 악필로 인해 알파벳이 이상하게 뭉개져 보일 경우 기계적으로 외계어를 뱉어내지 마세요.
         - (예시: 'PLEM' ➡️ 'PRIM', 'LGIHT' 또는 'LCH' ➡️ 'LIGHT', 'INTLMITENT' ➡️ 'INTERMITTENT')
         - 전체 문맥을 파악하여, 반드시 **올바른 항공 정비 전문 용어(Aviation Maintenance Terminology)와 정상적인 영단어 스펠링으로 교정(복원)**하여 출력하세요.
-        - 단, 문장 맨 앞에 적힌 좌석 번호("18C", "4G" 등)는 절대 지우지 말고 그대로 출력하세요.
 
         [6. 적용근거(reason) 분류 🚨 다수 아이템 환각 방지 규칙 🚨]
-        - 🚨 [가장 중요] 이 규칙은 ITEM 1 뿐만 아니라 ITEM 2, ITEM 3 등 **모든 아이템에 대해 각각 독립적이고 엄격하게 적용**해야 합니다. 절대 첫 번째 아이템의 결과를 보고 두 번째, 세 번째 아이템을 임의로 NEF나 MEL로 유추하지 마세요!
-        - 해당 아이템의 ACTION TAKEN 칸에 있는 MEL, NEF, AMM 박스 중 **어느 곳에도 체크(X, V) 표시가 없거나 잘려서 안 보이면**, 무조건 빈 문자열("") 출력.
-        - (기존의 착시 방지 공식은 체크가 있을 때만 완벽히 적용합니다)
-        - 💡 공식 1: 만약 텍스트가 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 NEF가 아니라 100% MEL!
-        - 💡 공식 2: 만약 텍스트가 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ 무조건 NEF!
-        - 💡 공식 3: 만약 텍스트가 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ 무조건 AMM!
-        - 첫번째 아이템은 잘 인식되는 경향이 있는데 두번째, 세번째, 네번째 는 이상하리만치 잘 인식이 안됩니다. 위 적용 규칙을 엄격하게 적용해 주시고, MEL 과 NEF 사이에 체크가 있으면 MEL 이니, 절대 이런경우 NEF 로 대충 기록하지 마세요.
-        - 모든 적용근거 양식은 숫자와 숫자 사이 대쉬 '-' 로 이뤄져 있고, 슬래쉬(/)나, 쉼표(,), 콜론(;:) 등 다른 기호는 없습니다. 기호가 있다면 그건 대쉬밖에 없습니다. 다른 기호를 읽었다면 그건 잘 못읽은 겁니다.
+        - 🚨 [가장 중요] 이 규칙은 ITEM 1 뿐만 아니라 ITEM 2, ITEM 3 등 모든 아이템에 대해 각각 독립적이고 엄격하게 적용해야 합니다.
+        - CABIN LOG가 아닌 FLIGHT LOG일 경우: MEL, NEF, AMM 박스 중 어느 곳에도 체크(X, V) 표시가 없거나 잘려서 안 보이면, 무조건 빈 문자열("") 출력.
+        - 💡 공식 1: 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 NEF가 아니라 100% MEL!
+        - 💡 공식 2: 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ 무조건 NEF!
+        - 💡 공식 3: 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ 무조건 AMM!
         - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
-        - FLIGHT & MAINTENANCE LOG 는 다른 규칙이 적용됩니다. 해당되는 칸(MEL, CDL, NEF, SRM, AMM) 박스 위에 체크(X)가 되어 있으면 바로 그 글자를 선택하세요.
 
         [7. ATA CODE 추출 규칙 🚨 무조건 4자리 숫자만 허용 🚨]
-        - 'ATA CODE' 칸에 사람이 펜으로 직접 적은 글자를 찾으세요.
-        - 대시(-), 슬래시(/), 알파벳 등이 섞여 있어도 **오직 숫자 4자리만 골라내어 추출**하세요. (예: 44-20 ➡️ 4420, 25/11 ➡️ 2511)
-        - 빈칸이거나 사진이 잘려서 아예 보이지 않는다면, 적용근거(MEL) 등 다른 곳에서 유추해서 끌어오지 말고 무조건 빈 문자열("")을 출력하세요.
+        - 대시(-), 슬래시(/), 알파벳 등이 섞여 있어도 오직 숫자 4자리만 골라내어 추출하세요. (예: 44-20 ➡️ 4420, 25/11 ➡️ 2511)
 
         [8. 🚨 필기체 정밀 판독 (절대 오독 주의 및 억지 교정 금지) 🚨]
-        - 당신은 속도보다 '정확도'가 훨씬 중요합니다. 글씨가 악필이거나 흐릿하더라도 획의 모양을 두 번, 세 번 확인하세요.
-        - 💡 [숫자 1, 2, 7 완벽 구분]: 윗부분이 둥글게 이어지면 '2', 날카롭게 꺾이면 '7', 단순한 직선이나 짧은 삐침이면 '1'입니다. 대충 보고 넘겨짚지 마세요.
+        - 💡 [숫자 1, 2, 7 완벽 구분]: 윗부분이 둥글게 이어지면 '2', 날카롭게 꺾이면 '7', 단순한 직선이나 짧은 삐침이면 '1'입니다.
         - 💡 [숫자/알파벳 구분]: '0'과 'O', '5'와 'S', '8'과 'B'를 명확히 구분하세요.
-        - ATA CODE의 앞 2자리와 적용근거(DEFER No.)의 앞 2자리는 서로 연관성이 높은 경우가 많아 판독이 애매할 때 훌륭한 힌트가 됩니다.
-        - 🚨 [가장 중요한 예외 규칙]: 단, ATA와 적용근거 챕터가 실제로 다른 경우도 존재하므로, 글씨가 명확하게 다르게 적혀 있다면 무조건 펜으로 적힌 그대로 각각 독립적으로 추출해야 합니다. 절대 억지로 두 숫자를 똑같이 맞추지 마세요!
+        - ATA와 적용근거 챕터가 실제로 다른 경우도 존재하므로, 명확하게 다르게 적혀 있다면 억지로 똑같이 맞추지 마세요.
 
         응답은 반드시 아래 순수 JSON 형식으로만 출력하세요.
         {{
@@ -219,8 +201,6 @@ async def extract_text(file: UploadFile = File(...)):
         cleaned_items = []
         for item in data.get("items", []):
             defect = str(item.get("defect", "")).upper()
-            
-            # 🧠 [3. 스텔스 오답 노트: 정비사 맞춤 치환 적용]
             defect = apply_learning(defect, l_dict)
 
             reason = str(item.get("reason", "")).upper()
@@ -250,7 +230,6 @@ async def extract_raw_text(file: UploadFile = File(...)):
             "mime_type": file.content_type or "image/jpeg",
             "data": content
         }
-        # 🚀 LITE 모델 유지
         model = genai.GenerativeModel('gemini-flash-lite-latest') 
         response = await model.generate_content_async(["이미지의 모든 텍스트를 추출하세요.", image_part])
         return {"text": response.text.strip()}
@@ -266,7 +245,6 @@ async def smart_search(req: SmartSearchRequest):
     if not GEMINI_API_KEY: return {"error": "API Key 미설정"}
     try:
         model = genai.GenerativeModel('gemini-flash-lite-latest') 
-        
         prompt = f"""
         당신은 항공 정비 데이터베이스 검색 마스터입니다.
         사용자가 입력한 결함(Defect) 내용을 분석하고, [DB 목록]에서 의미상 가장 잘 맞는 후보를 최대 5개까지 찾으세요.
@@ -305,8 +283,7 @@ async def send_email(req: EmailRequest):
     smtp_user = os.environ.get("SMTP_USER")      
     smtp_password = os.environ.get("SMTP_PASSWORD") 
 
-    if not smtp_user or not smtp_password:
-        return {"error": "SMTP 설정 미비"}
+    if not smtp_user or not smtp_password: return {"error": "SMTP 설정 미비"}
 
     try:
         msg = MIMEMultipart()
