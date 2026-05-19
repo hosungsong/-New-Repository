@@ -949,13 +949,25 @@
                     if (finalCandidates.length >= 10) break; 
                 }
 
+// [수정할 부위 핀포인트 교체]
                 finalCandidates.forEach(rawItem => {
                     let repItem = rawItem;
                     if (searchType === 'ATA') {
                         const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4);
                         const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) === searchCode);
                         if (foundRep) repItem = foundRep; 
+                    } else {
+                        // 🔥 빠져있던 ACTION(적용근거) 대표 문구 매칭 로직 완벽 복구 🔥
+                        const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
+                        // DB에서 동일한 코드를 가진 대표 항목(row >= 83266)을 찾아 교체합니다.
+                        const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '') === searchCode && r.type === rawItem.type);
+                        if (foundRep) repItem = foundRep;
                     }
+
+                    const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
+                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
+                    
+                    // ... (이하 기존 코드 유지)
 
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
                     const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
