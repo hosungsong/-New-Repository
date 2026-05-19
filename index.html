@@ -26,46 +26,34 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
+        /* 🔥 넓고 시원한 1열 드롭다운 (잘림 방지) 🔥 */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); left: 0; 
-            min-width: 100%; width: max-content; max-width: 800px; 
+            width: max-content; min-width: 350px; max-width: 550px; /* 내용이 충분히 보이게 확장 */
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
-            max-height: none !important; 
             overflow: visible !important; 
         }
         .dropdown-opt { 
             padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
             text-align: left; font-weight: bold; color: var(--primary); 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+            white-space: normal; line-height: 1.4; /* 내용이 너무 길면 예쁘게 줄바꿈 */
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
         .dropdown-opt.pinned:hover { background: #d0e7f9; color: var(--primary); }
 
-        /* 🔥 넓은 왼쪽 공간을 활용하는 와이드 2열 드롭다운 (결함/ATA 전용) 🔥 */
-        .wide-dropdown { 
-            right: 0 !important; left: auto !important; 
-            width: 500px !important; max-width: none !important;
-            padding: 6px !important; border-radius: 6px !important;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
-        }
-        .wide-dropdown .dropdown-opt { 
-            width: calc(50% - 8px); margin: 4px; padding: 10px; 
-            border: 1px solid #f1f3f5; border-radius: 4px; font-size: 12px; box-sizing: border-box; 
-            transition: 0.1s; border-bottom: none;
-        }
-        .wide-dropdown .dropdown-opt.pinned { width: calc(100% - 8px); background: #e1f0fa; border-color: var(--secondary); }
-
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
-        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow-x: auto; }
+        /* 🔥 스크롤 갇힘 방지: overflow 속성 완전 제거 🔥 */
+        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow: visible; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
+        /* 🔥 기본 상태 표 비율 최적화 🔥 */
+        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.2fr) minmax(250px, 1.8fr) minmax(70px, 0.8fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -77,11 +65,12 @@
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 105px; flex-shrink: 0; position: relative; background: white;}
+        /* 🔥 스위치 크기 살짝 다이어트 🔥 */
+        .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 95px; flex-shrink: 0; position: relative; background: white;}
         .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; }
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
         .doc-toggle-btn.active { background: var(--primary); color: white; }
-        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; }
+        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; overflow: visible !important; }
         .etc-dropdown .dropdown-opt { padding: 8px; font-size: 11px; text-align: center; }
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
@@ -107,11 +96,13 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
+        /* 🔥 확대(확장) 모드 겹침 방지: 공간 완벽 재설정 🔥 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(110px, 1.8fr) minmax(190px, 2.3fr) minmax(60px, 1fr) 28px; } 
+        /* 적용근거 칸(minmax 240px) 공간을 넉넉히 확보하여 ATA와 겹치지 않게 방어 */
+        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(100px, 1fr) minmax(240px, 1.8fr) minmax(70px, 0.7fr) 28px; } 
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
@@ -181,7 +172,7 @@
                     <div class="box">
                         <span class="prefix">OZ</span>
                         <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
-                        <div id="flightOptions" class="dropdown-list" style="width:auto; display:none;"></div>
+                        <div id="flightOptions" class="dropdown-list"></div>
                     </div>
                 </div>
                 <div class="input-group">
@@ -190,7 +181,7 @@
                         <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
                         <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
                         <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <div id="legOptions" class="dropdown-list" style="width:auto; display:none;"></div>
+                        <div id="legOptions" class="dropdown-list"></div>
                     </div>
                 </div>
                 <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
@@ -795,7 +786,7 @@
                 <div class="search-wrap" style="flex:1;">
                     <input type="text" id="reason-${id}" value="${parsedReasonCode}" placeholder="코드 입력">
                     <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="실시간 로컬 검색">🔍</button>
-                    <div id="dropdown-ACTION-${id}" class="dropdown-list wide-dropdown"></div>
+                    <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
                 </div>
                 <input type="hidden" id="docType-${id}" value="${parsedDocType}">
             </div>
@@ -804,7 +795,7 @@
                 <div class="search-wrap">
                     <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
                     <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="실시간 로컬 검색">🔍</button>
-                    <div id="dropdown-ATA-${id}" class="dropdown-list wide-dropdown"></div>
+                    <div id="dropdown-ATA-${id}" class="dropdown-list"></div>
                 </div>
             </div>
             <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
@@ -822,6 +813,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🔥 5건 + 입력값 1건 추출 로직 🔥
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -949,7 +941,8 @@
                     finalCandidates.push(rawItem);
                     seenCodes.add(searchCode);
                     
-                    if (finalCandidates.length >= 10) break; 
+                    // 🔥 최상위 딱 5개만 추출하도록 제한 🔥
+                    if (finalCandidates.length >= 5) break; 
                 }
 
                 finalCandidates.forEach(rawItem => {
@@ -959,7 +952,6 @@
                         const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) === searchCode);
                         if (foundRep) repItem = foundRep; 
                     } else {
-                        // 🔥 대표 문구 매칭 로직 완벽 복구 🔥
                         const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
                         const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '') === searchCode && r.type === rawItem.type);
                         if (foundRep) repItem = foundRep;
@@ -989,17 +981,25 @@
         }
         
         if (hasOptions) {
-            // 🔥 와이드 드롭다운에 flex 적용하여 2열 나열 활성화 🔥
-            if (optDiv.classList.contains('wide-dropdown')) {
-                optDiv.style.display = "flex";
-                optDiv.style.flexWrap = "wrap";
-            } else {
-                optDiv.style.display = "block";
-            }
+            optDiv.style.display = "block";
         } else {
             alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
         }
     }
+
+    // Ctrl+V 로직 온전하게 보호됨
+    window.addEventListener('paste', function(e) {
+        if (!e.clipboardData) return;
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                e.preventDefault();
+                const file = items[i].getAsFile();
+                if (file) loadAndDisplayImage(file);
+                return; 
+            }
+        }
+    });
 
     function loadAndDisplayImage(file) {
         try {
@@ -1120,19 +1120,6 @@
             isDragging = false;
         });
     };
-
-    window.addEventListener('paste', function(e) {
-        if (!e.clipboardData) return;
-        const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                e.preventDefault();
-                const file = items[i].getAsFile();
-                if (file) loadAndDisplayImage(file);
-                return; 
-            }
-        }
-    });
 
     function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
     
