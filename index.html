@@ -43,6 +43,20 @@
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
         .dropdown-opt.pinned:hover { background: #d0e7f9; color: var(--primary); }
 
+        /* 🔥 넓은 왼쪽 공간을 활용하는 와이드 2열 드롭다운 (결함/ATA 전용) 🔥 */
+        .wide-dropdown { 
+            right: 0 !important; left: auto !important; 
+            width: 500px !important; max-width: none !important;
+            padding: 6px !important; border-radius: 6px !important;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
+        }
+        .wide-dropdown .dropdown-opt { 
+            width: calc(50% - 8px); margin: 4px; padding: 10px; 
+            border: 1px solid #f1f3f5; border-radius: 4px; font-size: 12px; box-sizing: border-box; 
+            transition: 0.1s; border-bottom: none;
+        }
+        .wide-dropdown .dropdown-opt.pinned { width: calc(100% - 8px); background: #e1f0fa; border-color: var(--secondary); }
+
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
@@ -51,7 +65,6 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🔥 문서 스위치가 들어갈 3번째 열(적용근거)의 공간을 살짝 늘려 안정감 부여 🔥 */
         .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -64,7 +77,6 @@
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 🔥 신규: 적용근거 앞의 문서 종류 스위치 디자인 🔥 */
         .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 105px; flex-shrink: 0; position: relative; background: white;}
         .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; }
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
@@ -95,7 +107,6 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🔥 확대(확장) 모드 그리드 튜닝 🔥 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
@@ -170,7 +181,7 @@
                     <div class="box">
                         <span class="prefix">OZ</span>
                         <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
-                        <div id="flightOptions" class="dropdown-list"></div>
+                        <div id="flightOptions" class="dropdown-list" style="width:auto; display:none;"></div>
                     </div>
                 </div>
                 <div class="input-group">
@@ -179,7 +190,7 @@
                         <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
                         <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
                         <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <div id="legOptions" class="dropdown-list"></div>
+                        <div id="legOptions" class="dropdown-list" style="width:auto; display:none;"></div>
                     </div>
                 </div>
                 <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
@@ -411,7 +422,6 @@
             const asApVal = document.getElementById(`asAp-${id}`).value;
             const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
             
-            // 🔥 문서 종류(docType)와 코드(reasonCode) 결합하여 전송 🔥
             const docType = document.getElementById(`docType-${id}`).value;
             const reasonCode = document.getElementById(`reason-${id}`).value.trim();
             let 근거_raw = '';
@@ -511,7 +521,6 @@
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
                 
-                // 🔥 문서 종류(docType)와 코드(reasonCode) 결합하여 전송 🔥
                 const docType = document.getElementById(`docType-${id}`).value;
                 const reasonCode = document.getElementById(`reason-${id}`).value.trim();
                 let 근거_raw = '';
@@ -591,7 +600,6 @@
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
                 
-                // 🔥 문서 종류(docType)와 코드(reasonCode) 결합하여 전송 🔥
                 const docType = document.getElementById(`docType-${id}`).value;
                 const reasonCode = document.getElementById(`reason-${id}`).value.trim();
                 let 근거_raw = '';
@@ -711,7 +719,6 @@
         if (container.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); }
     }
 
-    // 🔥 문서 타입 세팅 함수 (MEL/NEF/CDL 등) 🔥
     function setDocType(id, type) {
         if(!type) return;
         document.getElementById(`docType-${id}`).value = type;
@@ -739,7 +746,6 @@
         if(drop) drop.style.display = 'none';
     }
 
-    // 🔥 ETC 드롭다운 열기/닫기 🔥
     function toggleEtcDropdown(id) {
         const drop = document.getElementById(`dropdown-etc-${id}`);
         if(drop) drop.style.display = drop.style.display === 'block' ? 'none' : 'block';
@@ -754,7 +760,6 @@
         const isAs = asApVal === 'AS';
         const isAp = asApVal === 'AP';
 
-        // 🔥 AI가 반환한 "MEL 25-21-02A"를 문서(docType)와 코드(reasonCode)로 분리 🔥
         let parsedDocType = "";
         let parsedReasonCode = data.reason || "";
         if (parsedReasonCode) {
@@ -790,7 +795,7 @@
                 <div class="search-wrap" style="flex:1;">
                     <input type="text" id="reason-${id}" value="${parsedReasonCode}" placeholder="코드 입력">
                     <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="실시간 로컬 검색">🔍</button>
-                    <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
+                    <div id="dropdown-ACTION-${id}" class="dropdown-list wide-dropdown"></div>
                 </div>
                 <input type="hidden" id="docType-${id}" value="${parsedDocType}">
             </div>
@@ -799,7 +804,7 @@
                 <div class="search-wrap">
                     <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
                     <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="실시간 로컬 검색">🔍</button>
-                    <div id="dropdown-ATA-${id}" class="dropdown-list"></div>
+                    <div id="dropdown-ATA-${id}" class="dropdown-list wide-dropdown"></div>
                 </div>
             </div>
             <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
@@ -807,7 +812,6 @@
         container.appendChild(row); updateNums();
         
         if(data.defect) { setTimeout(() => { autoResize(document.getElementById(`defect-${id}`)); }, 100); }
-        // 🔥 AI 파싱 결과에 맞춰 자동으로 불 켜주기 🔥
         if(parsedDocType) { setTimeout(() => { setDocType(id, parsedDocType); }, 10); }
     }
 
@@ -913,7 +917,6 @@
             if (defectTerms.length > 0) {
                 let scoredDB = [];
                 
-                // 🔥 검색 시 숨겨진 문서 종류(docType)를 확인하여 가점 적용 🔥
                 const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
 
                 validActions.forEach(d => {
@@ -949,7 +952,6 @@
                     if (finalCandidates.length >= 10) break; 
                 }
 
-// [수정할 부위 핀포인트 교체]
                 finalCandidates.forEach(rawItem => {
                     let repItem = rawItem;
                     if (searchType === 'ATA') {
@@ -957,17 +959,11 @@
                         const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) === searchCode);
                         if (foundRep) repItem = foundRep; 
                     } else {
-                        // 🔥 빠져있던 ACTION(적용근거) 대표 문구 매칭 로직 완벽 복구 🔥
+                        // 🔥 대표 문구 매칭 로직 완벽 복구 🔥
                         const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
-                        // DB에서 동일한 코드를 가진 대표 항목(row >= 83266)을 찾아 교체합니다.
                         const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '') === searchCode && r.type === rawItem.type);
                         if (foundRep) repItem = foundRep;
                     }
-
-                    const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
-                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
-                    
-                    // ... (이하 기존 코드 유지)
 
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
                     const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
@@ -978,7 +974,6 @@
                     row.title = `${fullDisplay} :: ${repItem.keyword}`; 
                     row.onmousedown = () => { 
                         if (searchType !== 'ATA') {
-                            // 검색 리스트를 눌러도 문서타입 버튼과 텍스트칸에 샥 갈라져서 입력됨
                             const match = fullDisplay.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
                             if (match) { setDocType(id, match[1].toUpperCase()); document.getElementById(inputId).value = match[2].trim(); } 
                             else { document.getElementById(inputId).value = fullDisplay; }
@@ -994,7 +989,13 @@
         }
         
         if (hasOptions) {
-            optDiv.style.display = "block";
+            // 🔥 와이드 드롭다운에 flex 적용하여 2열 나열 활성화 🔥
+            if (optDiv.classList.contains('wide-dropdown')) {
+                optDiv.style.display = "flex";
+                optDiv.style.flexWrap = "wrap";
+            } else {
+                optDiv.style.display = "block";
+            }
         } else {
             alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
         }
@@ -1077,7 +1078,6 @@
         updateUserNameDisplay(); 
 
         window.addEventListener('mousedown', (e) => { 
-            // 🔥 외부 클릭 시 ETC 드롭다운도 닫히도록 예외 조건 추가 🔥
             if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap') && !e.target.closest('.doc-toggle-box')) {
                 document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none");
             }
