@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>정비 이월 전송 시스템</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
-<style>
+    <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
         
+        /* 🔥 울렁거림 방지: transition 제거 */
         .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
         
         .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
@@ -17,26 +18,28 @@
         .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
         .user-display:hover { color: var(--secondary); text-decoration: underline; }
 
+        /* 🔥 울렁거림 방지: transition 제거 */
         .top-section { display: flex; gap: 25px; margin-bottom: 20px; align-items: stretch; }
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
         
+        /* 🔥 울렁거림 방지: transition 제거 */
         .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
+        /* 🔥 드롭다운 스크롤바 제거 및 최적화 */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); left: 0; 
             min-width: 100%; width: max-content; max-width: 800px; 
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
-            max-height: 250px; overflow-y: auto; overflow-x: hidden; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
         }
         .dropdown-opt { 
             padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
             text-align: left; font-weight: bold; color: var(--primary); 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
@@ -46,12 +49,12 @@
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
-        /* 🔥 수정포인트 1: 컨테이너가 줄어들 때 숨겨지는 게 아니라 유연하게 스크롤 대응하도록 수정 */
+        /* 🔥 수정: 컨테이너가 줄어들 때 숨겨지는 게 아니라 유연하게 대응하도록 수정 */
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow-x: auto; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🔥 수정포인트 2: 표(Grid)의 딱딱한 픽셀을 고무줄(minmax)로 변경하여 뚫고 나감 방지 */
+        /* 🔥 수정: 표(Grid)의 딱딱한 픽셀을 고무줄(minmax)로 변경하여 뚫고 나감 방지 */
         .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 2fr) minmax(130px, 1.5fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -77,6 +80,7 @@
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
+        /* 🔥 오른쪽 패널 수정: transition 제거 및 min-width 추가 */
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; }
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; }
         #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; }
@@ -115,7 +119,7 @@
             background-size: 20px; background-repeat: no-repeat; background-position: center;
         }
 
-        /* 🔥 수정포인트 3: 분석/추출 버튼이 무식하게 위아래로 커지지 않도록 50px로 철통 방어 */
+        /* 🔥 수정: 분석/추출 버튼이 무식하게 위아래로 커지지 않도록 50px로 철통 방어 */
         .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
         .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
         .btn-extract.main { flex: 2; background: #27ae60; }
@@ -124,7 +128,7 @@
 
         #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
 
-        /* 🔥 수정포인트 4: 하단 4개 전송 버튼이 밀려서 잘리지 않도록 공간 확보 (flex-shrink 억제) */
+        /* 🔥 수정: 하단 4개 전송 버튼이 밀려서 잘리지 않도록 공간 확보 (flex-shrink 억제) */
         .bottom-section { display: flex; gap: 10px; margin-top: 15px; padding-bottom: 5px; flex-shrink: 0; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
@@ -724,6 +728,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🔥 검색 로직 수정: 5:5 쿼터제 폐지, 순수 점수 순 정렬 🔥
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -826,9 +831,8 @@
                 const topCandidates = scoredDB.map(item => item.data); 
 
                 let finalCandidates = [];
-                let nefCount = 0;
-                let melCount = 0;
 
+                // 🔥 강제 5:5 쿼터제 폐지! MEL/NEF 상관없이 점수 상위 10개 추출
                 for (let i = 0; i < topCandidates.length; i++) {
                     let rawItem = topCandidates[i];
                     const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
@@ -836,55 +840,11 @@
                     
                     if (seenCodes.has(searchCode)) continue; 
                     
-                    if (searchType !== 'ATA') {
-                        if (rawItem.type === 'NEF') {
-                            if (nefCount < 5) {
-                                finalCandidates.push(rawItem);
-                                seenCodes.add(searchCode);
-                                nefCount++;
-                            }
-                        } else {
-                            if (melCount < 5) {
-                                finalCandidates.push(rawItem);
-                                seenCodes.add(searchCode);
-                                melCount++;
-                            }
-                        }
-                        if (nefCount === 5 && melCount === 5) break; 
-                    } else {
-                        if (finalCandidates.length < 10) {
-                            finalCandidates.push(rawItem);
-                            seenCodes.add(searchCode);
-                        } else {
-                            break;
-                        }
-                    }
+                    finalCandidates.push(rawItem);
+                    seenCodes.add(searchCode);
+                    
+                    if (finalCandidates.length >= 10) break; 
                 }
-
-                if (searchType !== 'ATA' && finalCandidates.length < 10) {
-                    for (let i = 0; i < topCandidates.length; i++) {
-                        if (finalCandidates.length >= 10) break;
-                        let rawItem = topCandidates[i];
-                        const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
-                        if (!seenCodes.has(pureCode)) {
-                            finalCandidates.push(rawItem);
-                            seenCodes.add(pureCode);
-                        }
-                    }
-                }
-
-                finalCandidates.sort((a, b) => {
-                    let scoreA = 0; let scoreB = 0;
-                    defectTerms.forEach(term => { 
-                        if(a.searchTarget && a.searchTarget.includes(term)) scoreA += 10; 
-                        if(b.searchTarget && b.searchTarget.includes(term)) scoreB += 10; 
-                    });
-                    if (searchType !== 'ATA' && a.row >= 83266) scoreA += 500;
-                    scoreA += (a.row / 100000);
-                    if (searchType !== 'ATA' && b.row >= 83266) scoreB += 500;
-                    scoreB += (b.row / 100000);
-                    return scoreB - scoreA;
-                });
 
                 finalCandidates.forEach(rawItem => {
                     let repItem = rawItem;
@@ -900,6 +860,7 @@
                     const row = document.createElement('div');
                     row.className = 'dropdown-opt';
                     row.innerText = `${fullDisplay} :: ${repItem.keyword}`;
+                    // 🔥 마우스 오버 시 툴팁으로 전체 내용 표시
                     row.title = `${fullDisplay} :: ${repItem.keyword}`; 
                     row.onmousedown = () => { document.getElementById(inputId).value = fullDisplay; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
