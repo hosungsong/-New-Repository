@@ -146,9 +146,8 @@ async def extract_text(file: UploadFile = File(...)):
         - legFrom, legTo: 문서 상단 'LEG' 또는 'ROUTE' 란 추출.
 
         [3. 작성자(asAp) 및 🚨 CABIN LOG 특별 규칙 🚨]
-        - 로그의 종류를 먼저 파악하세요 (오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG, 아니면 CABIN LOG입니다).
+        - 로그의 종류를 먼저 파악하세요 문서 상단에 어떤 로그인지 써있고, 식별 불가할 경우 오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG, 아니면 CABIN LOG입니다.
         - CABIN LOG: 무조건 작성자는 "AS" 출력.
-        - 🚨 [가장 중요] CABIN LOG의 결함은 99% 'NEF'입니다. CABIN LOG 문서라면, 적용근거(reason) 칸에 체크박스가 명확히 보이지 않더라도 무조건 "NEF"를 기본으로 추출하세요! 절대 MEL로 적지 마세요.
         - FLIGHT & MAINTENANCE LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력. 도장/서명 없으면 무조건 빈 문자열("").
 
         [4. 🚨 이월(DEFER) 항목 추출 조건 (아주 중요) 🚨]
@@ -159,6 +158,7 @@ async def extract_text(file: UploadFile = File(...)):
 
         [5. 결함 본문(defect) 추출 및 💡항공 용어 스펠링 복원💡 규칙]
         - 로그북 구조: 위쪽 조그만 'ITEM' 칸에 적힌 문자는 무시하고, 아래쪽 넓은 'DEFECT DESCRIPTION' 칸의 내용만 추출하세요.
+        - 간혹가다 DEFECT DESCRIPTION 에 있는 내용중에 문단 가장 앞의 글자가 빠진경우가 있습니다. 그런데 이는 결함을 나타내는 중요한 위치일 수 도 있어요. (L/H, LU, UD 등등) 절대 누락하지말고, DEFECT DESCRIPTION 에 있는 내용을 빠짐없이 추출해주세요. (그렇다고 ITEM 이 잘못추출하는 일은 없게 해주세요. 자주 실수다러라고요.)
         - 🚨 [외계어 필터링 및 복원]: 정비사의 악필로 인해 알파벳이 이상하게 뭉개져 보일 경우 기계적으로 외계어를 뱉어내지 마세요.
         - (예시: 'PLEM' ➡️ 'PRIM', 'LGIHT' 또는 'LCH' ➡️ 'LIGHT', 'INTLMITENT' ➡️ 'INTERMITTENT')
         - 전체 문맥을 파악하여, 반드시 **올바른 항공 정비 전문 용어(Aviation Maintenance Terminology)와 정상적인 영단어 스펠링으로 교정(복원)**하여 출력하세요.
@@ -166,9 +166,10 @@ async def extract_text(file: UploadFile = File(...)):
         [6. 적용근거(reason) 분류 🚨 다수 아이템 환각 방지 규칙 🚨]
         - 🚨 [가장 중요] 이 규칙은 ITEM 1 뿐만 아니라 ITEM 2, ITEM 3 등 모든 아이템에 대해 각각 독립적이고 엄격하게 적용해야 합니다.
         - CABIN LOG가 아닌 FLIGHT LOG일 경우: MEL, NEF, AMM 박스 중 어느 곳에도 체크(X, V) 표시가 없거나 잘려서 안 보이면, 무조건 빈 문자열("") 출력.
-        - 💡 공식 1: 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 NEF가 아니라 100% MEL!
-        - 💡 공식 2: 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ 무조건 NEF!
-        - 💡 공식 3: 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ 무조건 AMM!
+        - 🚨 [가장 중요] CABIN LOG 의 경우, 체크박스는 그 왼쪽에 있는 글씨 항목을 가리킵니다. 체크의 왼쪽이 문서의 근거이며, MEL, NEF, AMM 중 하나입니다. (X이던 CHECK 표시 이던 사람이 네모에 팬으로 적었으면 체크한겁니다.)
+        - 💡 공식 1: 'MEL X NEF □ AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 MEL
+        - 💡 공식 2: 'MEL □ NEF X AMM □' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 NEF
+        - 💡 공식 3: 'MEL □ NEF □ AMM X' 처럼 인식된다면 ➡️ X는 무조건 왼쪽 단어의 것이므로 절대 AMM
         - 꼬리표 절단: 번호 뒤의 'CAT C', 'CAT B' 등급 표시는 완전히 잘라버리세요. (출력 예: MEL 25-21-02A)
 
         [7. ATA CODE 추출 규칙 🚨 무조건 4자리 숫자만 허용 🚨]
