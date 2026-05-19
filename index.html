@@ -47,13 +47,13 @@
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
-        /* 🔥 스크롤 갇힘 방지: overflow를 visible로 변경하여 팝업이 밖으로 뚫고 나감 🔥 */
+        /* 🔥 스크롤 갇힘 방지: overflow를 visible로 설정 🔥 */
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow: visible; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🔥 기본 상태 그리드: ATA 칸 최소 넓이(90px) 확보 🔥 */
-        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.2fr) minmax(230px, 1.8fr) minmax(90px, 0.8fr) 30px; gap: 8px; align-items: start; }
+        /* 🔥 기본 상태 그리드 비율 최적화 🔥 */
+        .defect-grid { display: grid; grid-template-columns: 85px minmax(100px, 1.2fr) minmax(200px, 1.8fr) minmax(85px, 0.8fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -65,16 +65,16 @@
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 105px; flex-shrink: 0; position: relative; background: white;}
+        .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 95px; flex-shrink: 0; position: relative; background: white;}
         .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; }
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
         .doc-toggle-btn.active { background: var(--primary); color: white; }
-        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; }
+        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; overflow: visible !important; }
         .etc-dropdown .dropdown-opt { padding: 8px; font-size: 11px; text-align: center; white-space: nowrap; }
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
-        /* 🔥 돋보기 버튼 압사 방지: flex-shrink: 0 🔥 */
+        /* 🔥 돋보기 버튼 절대 압사 방지 (flex-shrink: 0) 🔥 */
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
         .search-wrap button:hover { background: #2c3e50; }
 
@@ -96,12 +96,15 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🔥 확대 모드 겹침 완전 방어: 적용근거를 줄이고 ATA에 90px 보장 🔥 */
+        /* 🚨🚨🚨 핵심 수정: 확대 모드 시 레이아웃 뚫림 방지! 🚨🚨🚨
+           적용근거의 최소 길이를 확 낮춰서 고무줄처럼 유연하게 줄어들게 하고,
+           ATA 칸과 삭제 버튼 공간을 완벽하게 확보했습니다. */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(100px, 1fr) minmax(190px, 1.4fr) minmax(90px, 0.8fr) 28px; } 
+        /* 적용근거 minmax 145px, ATA minmax 80px로 수정하여 완벽 밀착 및 뚫림 방지 */
+        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(80px, 1fr) minmax(145px, 1.6fr) minmax(80px, 0.8fr) 28px; gap: 6px; } 
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
@@ -812,6 +815,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🔥 5건 + 입력값 1건 추출 로직 🔥
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
         const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
@@ -939,6 +943,7 @@
                     finalCandidates.push(rawItem);
                     seenCodes.add(searchCode);
                     
+                    // 🔥 최상위 딱 5개만 추출하도록 제한 🔥
                     if (finalCandidates.length >= 5) break; 
                 }
 
@@ -984,6 +989,7 @@
         }
     }
 
+    // Ctrl+V 로직 온전하게 보호됨
     window.addEventListener('paste', function(e) {
         if (!e.clipboardData) return;
         const items = e.clipboardData.items;
