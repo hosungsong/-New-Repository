@@ -78,6 +78,8 @@ def startup_event():
 async def serve_frontend(): return FileResponse("index.html")
 
 @app.get("/ping")
+@app.head("/ping")  # 🔥 UptimeRobot 무료 버전을 위한 HEAD 허용!
+@app.head("/")      # 🔥 메인 주소 찌르기도 허용!
 async def keep_alive_ping(): return {"status": "awake"}
 
 @app.get("/api/db")
