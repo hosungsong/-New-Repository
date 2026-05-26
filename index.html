@@ -652,7 +652,20 @@
             if (res.ok) alert(`✅ ${target} 채널로 메시지가 전송되었습니다!`); else alert(`⚠️ 전송 실패 (에러코드: ${res.status})`);
         } catch (error) { alert(`⚠️ 에러: ${error.message}`); } finally { btn.innerText = originText; btn.disabled = false; }
     }
-
+// ⇄ 구간 변경 버튼 작동 및 편명(드롭다운) 자동 연동 복구
+        function swapLegs() {
+        const fromInput = document.getElementById('legFrom');
+        const toInput = document.getElementById('legTo');
+        
+        // 1. 구간 텍스트 서로 맞바꾸기
+        const temp = fromInput.value;
+        fromInput.value = toInput.value;
+        toInput.value = temp;
+        
+        // 2. 기존 편명 지우고, 바뀐 구간에 맞는 편명 다시 검색 (여러 개면 드롭다운 팝업)
+        document.getElementById('flightNo').value = ""; 
+        matchFlightFromLegs();
+    }
     function matchFlightFromLegs() {
         const f = document.getElementById('legFrom').value.replace(/[^A-Z]/gi, '').toUpperCase();
         const t = document.getElementById('legTo').value.replace(/[^A-Z]/gi, '').toUpperCase();
