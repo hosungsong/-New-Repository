@@ -26,18 +26,18 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* 🔥 넓고 시원한 1열 드롭다운 (잘림 방지) 🔥 */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); left: 0; 
-            width: max-content; min-width: 350px; max-width: 550px; 
+            min-width: 100%; width: max-content; max-width: 800px; 
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
+            max-height: none !important; 
             overflow: visible !important; 
         }
         .dropdown-opt { 
             padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
             text-align: left; font-weight: bold; color: var(--primary); 
-            white-space: normal; line-height: 1.4;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
@@ -47,13 +47,11 @@
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
-        /* 🔥 스크롤 갇힘 방지: overflow: visible 🔥 */
-        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow: visible; }
+        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow-x: auto; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🚨 정비사님의 원본 Grid 레이아웃 복구 + ATA 최소 넓이 95px 보장 🚨 */
-        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(95px, 1fr) 30px; gap: 8px; align-items: start; }
+        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
@@ -69,13 +67,15 @@
         .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; }
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
         .doc-toggle-btn.active { background: var(--primary); color: white; }
-        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; display: block; flex-wrap: nowrap;}
-        .etc-dropdown .dropdown-opt { width: 100%; margin: 0; padding: 8px; font-size: 11px; text-align: center; border: none; border-bottom: 1px solid #eee; }
+        
+        /* 🚨 수술 부위: 정중앙 정렬, 기본 닫힘 상속 보존, 파란불 잘림 가두기 완료 🚨 */
+        .etc-dropdown { min-width: 60px; left: auto; right: 0; text-align: center; border-radius: 4px; padding: 0; overflow: hidden !important; }
+        .etc-dropdown .dropdown-opt { width: 100%; margin: 0; padding: 8px 0; font-size: 11px; text-align: center; border: none; border-bottom: 1px solid #eee; box-sizing: border-box; }
+        .etc-dropdown .dropdown-opt:last-child { border-bottom: none; }
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
-        /* 돋보기 버튼 압사 방지 */
-        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
+        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
         .search-wrap button:hover { background: #2c3e50; }
 
         .defect-row textarea { 
@@ -96,12 +96,11 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🚨 정비사님 원본 확장 그리드 복구 + ATA 폭 확보 🚨 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(110px, 1.8fr) minmax(190px, 2.3fr) minmax(95px, 1fr) 28px; } 
+        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(110px, 1.8fr) minmax(190px, 2.3fr) minmax(70px, 1fr) 28px; } 
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
@@ -134,18 +133,6 @@
         .bottom-section { display: flex; gap: 10px; margin-top: 15px; padding-bottom: 5px; flex-shrink: 0; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
-
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;}
-        .modal-content label { font-size: 12px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 5px; }
-        .modal-content input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; font-size: 14px; text-transform: uppercase; }
-        .modal-btns { display: flex; justify-content: flex-end; gap: 10px; }
-        .modal-btns button { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s;}
-        .btn-cancel { background: #e9ecef; color: #495057; }
-        .btn-cancel:hover { background: #ced4da; }
-        .btn-save { background: var(--secondary); color: white; }
-        .btn-save:hover { background: #2980b9; }
     </style>
 </head>
 <body>
@@ -362,7 +349,7 @@
                 console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
             }
         } catch (e) {
-            console.error("서버 DB 로드 실패:", e);
+            console.error("서ver DB 로드 실패:", e);
         }
     }
 
@@ -697,17 +684,14 @@
         }
     }
 
-    // 🔥 구간 변경(⇄) 버튼 기능 완벽 복구 🔥
     function swapLegs() {
         const fromInput = document.getElementById('legFrom');
         const toInput = document.getElementById('legTo');
         
-        // 텍스트 맞바꾸기
         const temp = fromInput.value;
         fromInput.value = toInput.value;
         toInput.value = temp;
         
-        // 편명 지우고 바뀐 구간에 맞는 편명 재검색
         document.getElementById('flightNo').value = ""; 
         matchFlightFromLegs();
     }
@@ -822,12 +806,11 @@
 
     function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
     function setAsAp(id, type) {
-        const row = document.getElementById(`row-${id}`);
+        const row = document.getElementById('row-' + id);
         row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 정비사님의 스마트 ATA 사전(Dictionary) 기능 포함 🔥
     const ATA_DICT = {
         "SEAT": "25", "SEATS": "25", "BASSINET": "25", "TABLE": "25", "LAV": "25", "LAVATORY": "25", "TOILET": "25", "GALLEY": "25", "CARPET": "25", "CABIN": "25", "OVERHEAD": "25", "BIN": "25", "MONITOR": "25", "SCREEN": "25",
         "LIGHT": "33", "LAMP": "33", "LED": "33", "READING": "33", "ILLUMINATION": "33", "STROBE": "33", "BEACON": "33", "LOGO": "33",
@@ -991,7 +974,6 @@
                     finalCandidates.push(rawItem);
                     seenCodes.add(searchCode);
                     
-                    // 최상위 5개만 노출
                     if (finalCandidates.length >= 5) break; 
                 }
 
