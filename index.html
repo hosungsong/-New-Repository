@@ -6,9 +6,6 @@
     <title>정비 이월 전송 시스템</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
     <style>
-        /* 모든 요소의 테두리를 박스 사이즈에 포함시켜 1px 삐져나감도 방어 */
-        * { box-sizing: border-box; }
-        
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
         
@@ -23,12 +20,13 @@
         .top-section { display: flex; gap: 25px; margin-bottom: 20px; align-items: stretch; }
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
         
-        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
+        /* 🔥 넓고 시원한 1열 드롭다운 (잘림 방지) 🔥 */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); left: 0; 
             width: max-content; min-width: 350px; max-width: 550px; 
@@ -39,7 +37,7 @@
         .dropdown-opt { 
             padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
             text-align: left; font-weight: bold; color: var(--primary); 
-            white-space: normal; line-height: 1.4; 
+            white-space: normal; line-height: 1.4;
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
@@ -49,49 +47,43 @@
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
+        /* 🔥 스크롤 갇힘 방지: overflow: visible 🔥 */
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow: visible; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🚨 CSS Grid 폐기 및 Flexbox 도입으로 레이아웃 폭발 원천 차단 🚨 */
-        .defect-header-row { display: flex; width: 100%; gap: 6px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); align-items: center; }
+        /* 🚨 정비사님의 원본 Grid 레이아웃 복구 + ATA 최소 넓이 95px 보장 🚨 */
+        .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(95px, 1fr) 30px; gap: 8px; align-items: start; }
+        .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
-        
-        .defect-row { display: flex; width: 100%; gap: 6px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); align-items: start; }
+        .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
         
-        /* 각 열의 완벽한 비율 통제 */
-        .col-asap { width: 85px; flex-shrink: 0; }
-        .col-defect { flex: 1.2; min-width: 0; }
-        .col-reason { flex: 1.8; min-width: 0; display: flex; gap: 4px; }
-        .col-ata { flex: 0.8; min-width: 0; display: flex; }
-        .col-del { width: 28px; flex-shrink: 0; }
-
         .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
-        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; flex-shrink: 0; }
-        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; min-width: 0; }
-        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; padding: 0;}
+        .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
+        .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
-        /* 스위치 박스 다이어트 유지 (90px) */
-        .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 38px; width: 90px; flex-shrink: 0; position: relative; background: white;}
-        .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; min-width: 0;}
+        .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 105px; flex-shrink: 0; position: relative; background: white;}
+        .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; }
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
         .doc-toggle-btn.active { background: var(--primary); color: white; }
-        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; overflow: visible !important; }
-        .etc-dropdown .dropdown-opt { padding: 8px; font-size: 11px; text-align: center; white-space: nowrap; }
+        .etc-dropdown { min-width: 60px; left: auto; right: -5px; text-align: center; border-radius: 4px; display: block; flex-wrap: nowrap;}
+        .etc-dropdown .dropdown-opt { width: 100%; margin: 0; padding: 8px; font-size: 11px; text-align: center; border: none; border-bottom: 1px solid #eee; }
 
-        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; width: 100%; min-width: 0; }
+        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
-        /* 돋보기 버튼 강제 압사 방지 (flex-shrink: 0) */
+        /* 돋보기 버튼 압사 방지 */
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
         .search-wrap button:hover { background: #2c3e50; }
 
         .defect-row textarea { 
-            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
+            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
+            font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
         } 
         
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0;}
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; }
@@ -101,15 +93,15 @@
         
         .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
         
-        .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; }
+        .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 확대 모드 시 좌우 패널 비율 조정 */
+        /* 🚨 정비사님 원본 확장 그리드 복구 + ATA 폭 확보 🚨 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        /* Flexbox는 별도의 그리드 컬럼 수정 없이 자연스럽게 좁아집니다 */
+        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(110px, 1.8fr) minmax(190px, 2.3fr) minmax(95px, 1fr) 28px; } 
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
@@ -179,7 +171,7 @@
                     <div class="box">
                         <span class="prefix">OZ</span>
                         <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
-                        <div id="flightOptions" class="dropdown-list"></div>
+                        <div id="flightOptions" class="dropdown-list" style="width:auto; display:none;"></div>
                     </div>
                 </div>
                 <div class="input-group">
@@ -188,7 +180,7 @@
                         <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
                         <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
                         <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <div id="legOptions" class="dropdown-list"></div>
+                        <div id="legOptions" class="dropdown-list" style="width:auto; display:none;"></div>
                     </div>
                 </div>
                 <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
@@ -199,13 +191,7 @@
                     <span ondblclick="openLearningModal()" style="cursor:help;" title="더블 클릭하여 AI 오답노트 가르치기">결함 및 조치내역</span>
                     <button class="btn-add" onclick="addRow()">+</button>
                 </div>
-                <div class="defect-header-row">
-                    <span class="col-asap">AS/AP</span>
-                    <span class="col-defect">DEFECT</span>
-                    <span class="col-reason">적용근거</span>
-                    <span class="col-ata">ATA</span>
-                    <span class="col-del" style="text-align: right; padding-right: 5px;">삭제</span>
-                </div>
+                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>삭제</span></div>
                 <div id="defectRowsContainer"></div>
             </div>
         </div>
@@ -711,17 +697,17 @@
         }
     }
 
-    // 🔥 삭제되었던 구간 맞바꾸기 로직 완벽 복구 🔥
+    // 🔥 구간 변경(⇄) 버튼 기능 완벽 복구 🔥
     function swapLegs() {
         const fromInput = document.getElementById('legFrom');
         const toInput = document.getElementById('legTo');
         
-        // 구간 교환
+        // 텍스트 맞바꾸기
         const temp = fromInput.value;
         fromInput.value = toInput.value;
         toInput.value = temp;
         
-        // 편명 지우고 바뀐 구간으로 재검색 (다수 편명 시 드롭다운 팝업)
+        // 편명 지우고 바뀐 구간에 맞는 편명 재검색
         document.getElementById('flightNo').value = ""; 
         matchFlightFromLegs();
     }
@@ -773,7 +759,7 @@
     function addRow(data = {}) {
         rowIdCounter++; const id = rowIdCounter;
         const container = document.getElementById('defectRowsContainer');
-        const row = document.createElement('div'); row.className = 'defect-row'; row.id = `row-${id}`;
+        const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         
         const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
         const isAs = asApVal === 'AS';
@@ -790,7 +776,7 @@
         }
 
         row.innerHTML = `
-            <div class="col-asap as-ap-wrapper">
+            <div class="as-ap-wrapper">
                 <span class="idx-num"></span>
                 <div class="toggle-box">
                     <button type="button" class="toggle-btn ${isAs ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
@@ -798,12 +784,9 @@
                 </div>
                 <input type="hidden" id="asAp-${id}" value="${asApVal}">
             </div>
+            <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
             
-            <div class="col-defect">
-                <textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea>
-            </div>
-            
-            <div class="col-reason">
+            <div style="display:flex; gap:4px; height:38px; width:100%;">
                 <div class="doc-toggle-box" id="doc-toggle-box-${id}">
                     <button type="button" class="doc-toggle-btn" id="btn-mel-${id}" onclick="setDocType(${id}, 'MEL')">MEL</button>
                     <button type="button" class="doc-toggle-btn" id="btn-nef-${id}" onclick="setDocType(${id}, 'NEF')">NEF</button>
@@ -814,7 +797,7 @@
                         <div class="dropdown-opt" onclick="setDocType(${id}, 'SRM')">SRM</div>
                     </div>
                 </div>
-                <div class="search-wrap">
+                <div class="search-wrap" style="flex:1;">
                     <input type="text" id="reason-${id}" value="${parsedReasonCode}" placeholder="코드 입력">
                     <button id="btn-search-reason-${id}" onclick="searchSmartDB(${id}, 'ACTION')" title="실시간 로컬 검색">🔍</button>
                     <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
@@ -822,15 +805,14 @@
                 <input type="hidden" id="docType-${id}" value="${parsedDocType}">
             </div>
 
-            <div class="col-ata ata-wrapper">
+            <div class="ata-wrapper">
                 <div class="search-wrap">
                     <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
                     <button id="btn-search-ata-${id}" onclick="searchSmartDB(${id}, 'ATA')" title="실시간 로컬 검색">🔍</button>
                     <div id="dropdown-ATA-${id}" class="dropdown-list"></div>
                 </div>
             </div>
-            
-            <button class="col-del btn-remove" onclick="removeDefectRow(this)">-</button>
+            <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
         `;
         container.appendChild(row); updateNums();
         
@@ -845,7 +827,7 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🚨 항공 정비 전용 스마트 ATA 사전 이식 및 5건 추출 제한 🚨
+    // 🔥 정비사님의 스마트 ATA 사전(Dictionary) 기능 포함 🔥
     const ATA_DICT = {
         "SEAT": "25", "SEATS": "25", "BASSINET": "25", "TABLE": "25", "LAV": "25", "LAVATORY": "25", "TOILET": "25", "GALLEY": "25", "CARPET": "25", "CABIN": "25", "OVERHEAD": "25", "BIN": "25", "MONITOR": "25", "SCREEN": "25",
         "LIGHT": "33", "LAMP": "33", "LED": "33", "READING": "33", "ILLUMINATION": "33", "STROBE": "33", "BEACON": "33", "LOGO": "33",
@@ -989,6 +971,7 @@
                             if (currentReasonType.includes('NEF') && d.type === 'NEF') score += 1000;
                             if (currentReasonType.includes('MEL') && d.type === 'MEL') score += 1000;
                         }
+                        score += (d.row / 100000); 
                         scoredDB.push({ data: d, score: score });
                     }
                 });
@@ -1008,7 +991,7 @@
                     finalCandidates.push(rawItem);
                     seenCodes.add(searchCode);
                     
-                    // 최상위 딱 5개만 추출하도록 제한
+                    // 최상위 5개만 노출
                     if (finalCandidates.length >= 5) break; 
                 }
 
