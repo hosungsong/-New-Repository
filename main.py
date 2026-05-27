@@ -151,11 +151,11 @@ async def extract_text(file: UploadFile = File(...)):
         - CABIN LOG: 무조건 작성자는 "AS" 출력.
         - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력. 없으면 빈 문자열("").
 
-        [4. 🚨 결함 항목 추출 조건 (종결 결함 원천 차단 및 오픈/이월 판별) 🚨]
+        [4. 🚨 결함 항목 추출 조건 (종결 결함 원천 차단 및 이월 절대 방어선) 🚨]
         - 이 규칙이 1순위 절대 규칙입니다. 종결된 결함을 추출하면 시스템에 치명적인 오류가 발생합니다.
-        - 🔴 추출 절대 금지 (종결 결함): 우측의 'ACTION TAKEN' 칸에 "REPLACED", "CHANGE", "CHECKED", "INSPECTED", "IAW", "AMM", "IPC", "NORMAL", "OPS" 등의 정비 조치 내용이 조금이라도 적혀 있고, 'DEFER No.' 칸이 텅 비어있다면 ➡️ **완벽히 조치가 끝난 종결 건입니다. 무조건 무시하고 절대로 items 배열에 넣지 마세요.**
-        - 🟢 추출 O (오픈 결함): 'DEFECT' 내용은 적혀 있는데, 그 우측의 'ACTION TAKEN' 칸과 'DEFER No.' 칸이 **완전히 텅 비어 있는 경우** ➡️ 아직 조치 안 된 신규 결함이므로 무조건 추출하세요.
-        - 🟢 추출 O (이월 결함): 'DEFER No.' 칸(체크박스와 그 옆 빈 공간)에 펜으로 명확하게 글씨나 번호가 적혀 있는 경우 ➡️ 추출하세요.
+        - 🔴 추출 절대 금지 (종결 결함): 우측의 'ACTION TAKEN' 칸에 "REPLACED", "CHANGE", "CHECKED", "INSPECTED", "COMPLETED", "NORMAL", "OPS" 등의 조치 완료 단어가 있고, 'DEFER No.' 칸이 비어있다면 ➡️ 무조건 무시하세요.
+        - 🟢 🚨 [이월 절대 방어선] 🚨: 단, 'DEFER No.' 칸에 번호나 체크가 명확히 적혀 있거나, 'ACTION TAKEN' 칸에 "DEFER" 라는 단어가 명시되어 있다면 ➡️ 뒤에 "COMPLETED", "PULLED" 같은 단어가 있더라도 절대 버리지 마세요! 이것은 무조건 추출해야 하는 이월(Deferred) 건입니다.
+        - 🟢 추출 O (오픈 결함): 'DEFECT' 내용은 적혀 있는데, 우측 칸들이 완전히 비어 있는 경우 ➡️ 추출하세요.
 
         [5. 결함 본문(defect) 추출 및 복원]
         - 아래쪽 넓은 'DEFECT DESCRIPTION' 칸의 내용만 추출하되, 문단 첫 글자(L/H, LU, UD 등) 절대 누락 금지.
