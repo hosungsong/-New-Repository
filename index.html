@@ -7,6 +7,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
     <style>
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
+        * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
         
         .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
@@ -26,18 +27,24 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
+        /* 🔥 드롭다운 말줄임표(...) 및 우측 정렬 (화면 뚫림 방지) 🔥 */
         .dropdown-list { 
-            position: absolute; top: calc(100% + 2px); left: 0; 
-            min-width: 100%; width: max-content; max-width: 800px; 
+            position: absolute; top: calc(100% + 2px); 
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
-            max-height: none !important; 
-            overflow: visible !important; 
+        }
+        .search-wrap .dropdown-list {
+            width: max-content; max-width: 50vw; /* 화면 절반까지만 허용 */
+            right: 0; left: auto; /* 돋보기 버튼 쪽에 기준을 맞추고 왼쪽으로 펼쳐짐 */
+        }
+        .box .dropdown-list {
+            min-width: 100%; width: max-content; left: 0; right: auto;
         }
         .dropdown-opt { 
             padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
             text-align: left; font-weight: bold; color: var(--primary); 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* 글씨 길면 ... 처리 */
+            display: block; width: 100%; box-sizing: border-box;
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
@@ -47,20 +54,20 @@
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
 
-        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow-x: auto; }
+        .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow: visible; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 정상 화면 레이아웃 (정비사님 원본 사수) */
+        /* 🚨 평상시 레이아웃: 정비사님 세팅 100% 유지 🚨 */
         .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
         
-        .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; }
+        .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; min-width: 0; }
         .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
-        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; }
+        .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; min-width: 0; }
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
@@ -69,14 +76,20 @@
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
         .doc-toggle-btn.active { background: var(--primary); color: white; }
         
-        /* ETC 드롭다운 디자인 수정 사항 완벽 보존 */
         .etc-dropdown { min-width: 60px; left: auto; right: 0; text-align: center; border-radius: 4px; padding: 0; overflow: hidden !important; }
         .etc-dropdown .dropdown-opt { width: 100%; margin: 0; padding: 8px 0; font-size: 11px; text-align: center; border: none; border-bottom: 1px solid #eee; box-sizing: border-box; }
         .etc-dropdown .dropdown-opt:last-child { border-bottom: none; }
 
-        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; }
+        .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; min-width: 0; width: 100%; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
-        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; }
+        
+        /* 🔥 돋보기 안 눌림 완벽 해결 (z-index 및 relative 부여로 막힘 방지) 🔥 */
+        .search-wrap button { 
+            background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; 
+            cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; 
+            transition: 0.2s; border-radius: 0 4px 4px 0; 
+            position: relative; z-index: 10; 
+        }
         .search-wrap button:hover { background: #2c3e50; }
 
         .defect-row textarea { 
@@ -84,7 +97,7 @@
             font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
         } 
         
-        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; width: 30px; flex-shrink: 0; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
 
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; }
@@ -97,14 +110,21 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
+        /* 🚨 확대 모드 레이아웃 겹침 방지 (minmax(0, Xfr) 절대 사수) 🚨 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         
-        /* 🚨 핵심 수술 부위: 사진 확대 시 적용근거 폭폭발 방지 및 칸 간섭 차단 비율 최종본 🚨 */
-        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(60px, 1.2fr) minmax(145px, 2.2fr) minmax(60px, 0.8fr) 30px; gap: 6px; } 
-        
+        /* grid가 내용을 뚫고 나가지 못하도록 minmax의 최소값을 0으로 고정 */
+        .top-section.expanded .defect-grid { 
+            grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.8fr) minmax(0, 0.8fr) 30px; 
+            gap: 6px; 
+        } 
+        /* 확대 시 적용근거 스위치 박스 다이어트 */
+        .top-section.expanded .doc-toggle-box { width: 85px; }
+        .top-section.expanded .doc-toggle-btn { font-size: 9px; padding: 0; }
+
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
@@ -174,7 +194,7 @@
                     <div class="box">
                         <span class="prefix">OZ</span>
                         <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
-                        <div id="flightOptions" class="dropdown-list" style="width:auto; display:none;"></div>
+                        <div id="flightOptions" class="dropdown-list" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="input-group">
@@ -183,7 +203,7 @@
                         <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
                         <button style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
                         <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <div id="legOptions" class="dropdown-list" style="width:auto; display:none;"></div>
+                        <div id="legOptions" class="dropdown-list" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
@@ -700,7 +720,6 @@
         }
     }
 
-    // 구간 변경 버튼 기능 복구 완료
     function swapLegs() {
         const fromInput = document.getElementById('legFrom');
         const toInput = document.getElementById('legTo');
@@ -776,6 +795,7 @@
             }
         }
 
+        /* 🔥 min-width: 0 을 명시하여 컨텐츠가 강제로 늘어나는 것을 막습니다 🔥 */
         row.innerHTML = `
             <div class="as-ap-wrapper" style="min-width:0;">
                 <span class="idx-num"></span>
@@ -827,6 +847,25 @@
         row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
+
+    const ATA_DICT = {
+        "SEAT": "25", "SEATS": "25", "BASSINET": "25", "TABLE": "25", "LAV": "25", "LAVATORY": "25", "TOILET": "25", "GALLEY": "25", "CARPET": "25", "CABIN": "25", "OVERHEAD": "25", "BIN": "25", "MONITOR": "25", "SCREEN": "25",
+        "LIGHT": "33", "LAMP": "33", "LED": "33", "READING": "33", "ILLUMINATION": "33", "STROBE": "33", "BEACON": "33", "LOGO": "33",
+        "DOOR": "52", "CARGO": "52", "LATCH": "52", "HANDLE": "52",
+        "WINDOW": "56", "GLASS": "56", "WINDSHIELD": "56",
+        "TIRE": "32", "WHEEL": "32", "BRAKE": "32", "GEAR": "32", "STRUT": "32",
+        "OVEN": "25", "COFFEE": "25", "MAKER": "25", "WATER": "38", "WASTE": "38", "POTABLE": "38",
+        "HANDSET": "23", "PA": "23", "INTERCOM": "23", "AUDIO": "23", "VIDEO": "23", "RADIO": "23", "VHF": "23", "UHF": "23",
+        "OXYGEN": "35", "MASK": "35", "O2": "35",
+        "AIR": "21", "PACK": "21", "TEMP": "21", "CONDITIONING": "21", "VENTILATION": "21",
+        "ENGINE": "71", "COWL": "71", "OIL": "79", "FUEL": "28", "TANK": "28",
+        "APU": "49", "FIRE": "26", "SMOKE": "26", "EXTINGUISHER": "26",
+        "ICE": "30", "RAIN": "30", "WIPER": "30", "HEATER": "30", "PROBE": "30",
+        "NAV": "34", "GPS": "34", "RADAR": "34", "ALTIMETER": "34",
+        "WING": "57", "FLAP": "57", "SLAT": "57", "AILERON": "57", "SPOILER": "57",
+        "ELEVATOR": "55", "RUDDER": "55", "STABILIZER": "55",
+        "FUSELAGE": "53", "RADOME": "53", "TAIL": "53"
+    };
 
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
