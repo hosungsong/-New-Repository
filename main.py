@@ -149,7 +149,7 @@ async def extract_text(file: UploadFile = File(...)):
         [3. 작성자(asAp)]
         - 문서 종류를 먼저 파악하세요 (오른쪽 DEFER NO. 란에 네모가 5개면 FLIGHT & MAINTENANCE LOG, 아니면 CABIN LOG입니다).
         - CABIN LOG: 무조건 작성자는 "AS" 출력.
-        - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력. 없으면 빈 문자열("").
+        - FLIGHT LOG: 'ENTERED BY' 칸에 도장(Stamp)이 있으면 "AS", 수기 서명만 있으면 "AP" 출력. 없으면 빈 문자열(""). (Stamp 는 타원형 (또는 사각형) 에 숫자와 이름으로 이루어져 있습니다. stamping 되어 있으면 정비사 발췌 결함 이므로 반드시 AS로 출력해야합니다.)
 
         [4. 🚨 결함 항목 추출 조건 (종결 결함 원천 차단 및 이월 절대 방어선) 🚨]
         - 이 규칙이 1순위 절대 규칙입니다. 종결된 결함을 추출하면 시스템에 치명적인 오류가 발생합니다.
