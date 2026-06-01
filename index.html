@@ -366,21 +366,11 @@
             const data = await res.json();
             if (data && Object.keys(data.ac).length > 0) {
                 DB = data;
-
-                if(DB.ataDatabase) {
-                    DB.ataDatabase.forEach(d => {
-                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
-                    });
-                }
-                if(DB.actionDatabase) {
-                    DB.actionDatabase.forEach(d => {
-                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
-                    });
-                }
-
+                if(DB.ataDatabase) DB.ataDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
+                if(DB.actionDatabase) DB.actionDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
                 console.log("✅ 서버 DB 로드 완료!");
             } else {
-                console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
+                console.warn("⚠️ 서버에 DB가 없습니다.");
             }
         } catch (e) {
             console.error("서버 DB 로드 실패:", e);
@@ -413,12 +403,9 @@
         let emails = (DB.emails && DB.emails[target]) ? DB.emails[target] : localStorage.getItem(`logScanner_email_${target}`);
         
         if (!emails) {
-            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요 (여러 명일 경우 쉼표로 구분).\n\n💡 팁: 통합 DB(CSV) 파일에 'EMAIL, ${target}, 주소' 형식으로 적어두면 매번 입력할 필요가 없습니다!`, "");
-            if (emails && emails.trim() !== "") {
-                localStorage.setItem(`logScanner_email_${target}`, emails.trim());
-            } else {
-                return;
-            }
+            emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요.`, "");
+            if (emails && emails.trim() !== "") localStorage.setItem(`logScanner_email_${target}`, emails.trim());
+            else return;
         }
 
         const 기번 = document.getElementById('regNo').value.trim() || '미확인';
@@ -432,14 +419,9 @@
             const id = row.id.split('-')[1];
             const asApVal = document.getElementById(`asAp-${id}`).value;
             const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-            
             const docType = document.getElementById(`docType-${id}`).value;
             const reasonCode = document.getElementById(`reason-${id}`).value.trim();
-            let 근거_raw = '';
-            if (docType && reasonCode) 근거_raw = `${docType} ${reasonCode}`;
-            else if (docType) 근거_raw = docType;
-            else if (reasonCode) 근거_raw = reasonCode;
-            else 근거_raw = '미입력';
+            let 근거_raw = (docType && reasonCode) ? `${docType} ${reasonCode}` : docType || reasonCode || '미입력';
             
             if (결함_raw) {
                 if (!asApVal) missingAsAp = true;
@@ -447,221 +429,108 @@
             }
         });
 
-        if (defectList.length === 0) {
-            alert("전송할 결함 내용이 없습니다.");
-            return;
-        }
+        if (defectList.length === 0) return alert("전송할 결함 내용이 없습니다.");
+        if (missingAsAp) return alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않은 결함이 있습니다!");
 
-        if (missingAsAp) {
-            alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않은 결함이 있습니다!\n스위치를 눌러 올바르게 선택해주세요.");
-            return;
-        }
-
-        let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}`;
-        if (defectList.length > 1) {
-            subjectText += ` etc`;
-        }
-
+        let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}` + (defectList.length > 1 ? ` etc` : ``);
         let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
-        defectList.forEach((item, index) => {
-            bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
-        });
+        defectList.forEach((item, index) => { bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`; });
 
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
-        window.open(gmailUrl, '_blank');
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`, '_blank');
     }
 
     async function sendWebhook(target) {
         const url = WEBHOOK_URLS[target];
-        if (!url) { alert(target + " 용 웹훅 주소가 설정되지 않았습니다."); return; }
+        if (!url) return alert(target + " 용 웹훅 주소가 설정되지 않았습니다.");
 
         const rows = document.querySelectorAll('.defect-row');
-        if (rows.length === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+        if (rows.length === 0) return alert("전송할 결함 내용이 없습니다.");
 
         const firstId = rows[0].id.split('-')[1];
         const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
-        
-        if (!첫번째구분_raw) {
-            alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않았습니다!\n스위치를 클릭하여 올바른 작성자를 지정해주세요.");
-            return;
-        }
+        if (!첫번째구분_raw) return alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않았습니다!");
 
         let 이름 = localStorage.getItem('logScanner_userName');
         if (!이름) {
-            이름 = prompt("전송자 성함을 입력해주세요. (이후 우측 상단에서 변경 가능합니다)", "");
-            if (이름 && 이름.trim() !== "") {
-                localStorage.setItem('logScanner_userName', 이름.trim());
-                updateUserNameDisplay();
-            } else 이름 = "미상";
+            이름 = prompt("전송자 성함을 입력해주세요.", "");
+            if (이름 && 이름.trim() !== "") { localStorage.setItem('logScanner_userName', 이름.trim()); updateUserNameDisplay(); }
+            else 이름 = "미상";
         }
 
         const 기번_raw = document.getElementById('regNo').value.trim();
         const 기번 = 기번_raw || '미확인';
         const acType = document.getElementById('acType').value.trim() || '기종미상';
-        
         const flightNoRaw = document.getElementById('flightNo').value.trim();
         const legFromRaw = document.getElementById('legFrom').value.trim().toUpperCase();
         const legToRaw = document.getElementById('legTo').value.trim().toUpperCase();
-        const 위탁체크박스상태 = document.getElementById('handover').checked;
+        const 위탁 = document.getElementById('handover').checked ? 'Y 🔹' : 'N 🔸';
         const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 
         let defectCount = 0;
         let payload;
-
-        const 구분아이콘 = (첫번째구분_raw === "AP") ? "👨‍✈️" : "🔧";
-        const 공통작성자 = `${첫번째구분_raw} ${구분아이콘}`;
-
+        const 공통작성자 = `${첫번째구분_raw} ${첫번째구분_raw === "AP" ? "👨‍✈️" : "🔧"}`;
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-
-        let hasFlightInfo = flightNoRaw !== "" || legFromRaw !== "" || legToRaw !== "";
-        let 편명구간 = "";
+        const 편명구간 = (flightNoRaw || legFromRaw || legToRaw) ? `OZ${flightNoRaw||'미상'} (${legFromRaw||'???'} ➔ ${legToRaw||'???'})` : "";
 
         if (target === "DUTY") {
-            const 기번표시 = "HL" + 기번 + " (" + acType + ")";
-            const 위탁 = 위탁체크박스상태 ? 'Y 🔹' : 'N 🔸';
-            
-            if (hasFlightInfo) {
-                const fNo = flightNoRaw || '미상';
-                const lFrom = legFromRaw || '???';
-                const lTo = legToRaw || '???';
-                편명구간 = `OZ${fNo} (${lFrom} ➔ ${lTo})`;
-            }
-
             let html결함묶음 = "";
             rows.forEach(row => {
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                
                 const docType = document.getElementById(`docType-${id}`).value;
                 const reasonCode = document.getElementById(`reason-${id}`).value.trim();
-                let 근거_raw = '';
-                if (docType && reasonCode) 근거_raw = `${docType} ${reasonCode}`;
-                else if (docType) 근거_raw = docType;
-                else if (reasonCode) 근거_raw = reasonCode;
-                else 근거_raw = '미입력';
-
+                let 근거_raw = (docType && reasonCode) ? `${docType} ${reasonCode}` : docType || reasonCode || '미입력';
                 const ata_raw = document.getElementById(`ata-${id}`).value.trim();
 
                 if (결함_raw) {
                     defectCount++;
-                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
-
-                    let ataHtml = ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "";
-
-                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
-                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
-                                    ataHtml + `<br>`;
+                    html결함묶음 += `<b>${defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`} DEFECT INFO</b><br>` +
+                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` +
+                                    (ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "") + `<br>`;
                 }
             });
 
-            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+            if (defectCount === 0) return alert("전송할 결함 내용이 없습니다.");
 
-            let flightHtml = hasFlightInfo ? `• <b>편명 :</b> ${편명구간}<br>` : "";
-
-            const htmlText = 
-                `🛠️ <b>정비 이월 사항 전달</b><br><br>` +
-                `• <b>기번 :</b> ${기번표시}<br>` +
-                flightHtml +
-                `• <b>작성자 :</b> ${공통작성자}<br>` +
-                `• <b>위탁 :</b> ${위탁}<br><br>` +
-                `<b>[ 결함내역 및 조치 ]</b><br>` +
-                html결함묶음 +
-                `<i>${이름} / ${현재시간}</i>`;
-
-            payload = {
-                cardsV2: [{
-                    cardId: "dutyCard",
-                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
-                }]
-            };
+            payload = { cardsV2: [{ cardId: "dutyCard", card: { sections: [{ widgets: [{ textParagraph: { text: 
+                `🛠️ <b>정비 이월 사항 전달</b><br><br>• <b>기번 :</b> HL${기번} (${acType})<br>` +
+                (편명구간 ? `• <b>편명 :</b> ${편명구간}<br>` : "") +
+                `• <b>작성자 :</b> ${공통작성자}<br>• <b>위탁 :</b> ${위탁}<br><br><b>[ 결함내역 및 조치 ]</b><br>${html결함묶음}<i>${이름} / ${현재시간}</i>` 
+            } }] }] } }] };
 
         } else if (target === "OCC") {
-            const 기번표시 = "HL" + 기번;
-            
-            if (hasFlightInfo) {
-                const fNo = flightNoRaw || '미상';
-                const lFrom = legFromRaw || '???';
-                const lTo = legToRaw || '???';
-                편명구간 = `OZ${fNo} (${lFrom}-${lTo})`;
-            }
-
-            const gpsCodesByAcType = {
-                "A321": ["34-50-09E", "34-50-09F", "34-50-09G", "34-50-09D"],
-                "A330": ["34-50-08D", "34-50-08F"],
-                "A350": ["34-50-01A", "34-50-01B", "34-50-01C", "34-50-06A", "34-52-06B", "34-50-06C"],
-                "A380": ["34-50-01A", "34-50-01B", "34-50-01C"],
-                "B777": ["34-58-01A", "34-58-01B"]
-            };
-
             let searchAcType = acType.toUpperCase();
-            if (searchAcType.includes("A321") || searchAcType.includes("A32N")) {
-                searchAcType = "A321";
-            }
-
-            let targetGpsCodes = [];
-            for (const ac in gpsCodesByAcType) {
-                if (searchAcType.includes(ac)) { targetGpsCodes = gpsCodesByAcType[ac]; break; }
-            }
-
-            let html결함묶음 = ""; 
-            let hasGpsIssue = false;
+            if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
+            let targetGpsCodes = {"A321":["34-50-09E","34-50-09F","34-50-09G","34-50-09D"],"A330":["34-50-08D","34-50-08F"],"A350":["34-50-01A","34-50-01B","34-50-01C","34-50-06A","34-52-06B","34-50-06C"],"A380":["34-50-01A","34-50-01B","34-50-01C"],"B777":["34-58-01A","34-58-01B"]}[searchAcType] || [];
+            
+            let html결함묶음 = ""; let hasGpsIssue = false;
 
             rows.forEach(row => {
                 const id = row.id.split('-')[1];
                 const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                
                 const docType = document.getElementById(`docType-${id}`).value;
                 const reasonCode = document.getElementById(`reason-${id}`).value.trim();
-                let 근거_raw = '';
-                if (docType && reasonCode) 근거_raw = `${docType} ${reasonCode}`;
-                else if (docType) 근거_raw = docType;
-                else if (reasonCode) 근거_raw = reasonCode;
-                else 근거_raw = '미입력';
-
+                let 근거_raw = (docType && reasonCode) ? `${docType} ${reasonCode}` : docType || reasonCode || '미입력';
                 const ata_raw = document.getElementById(`ata-${id}`).value.trim();
 
                 if (결함_raw) {
                     defectCount++;
-                    let badge = defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`;
-                    
-                    let ataHtml = ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "";
-
-                    html결함묶음 += `<b>${badge} DEFECT INFO</b><br>` +
-                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>` +
-                                    `&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` + 
-                                    ataHtml + `<br>`;
-
-                    const cleanBasisRaw = 근거_raw.toUpperCase().replace(/\s+/g, '');
-                    if (!hasGpsIssue) {
-                        hasGpsIssue = targetGpsCodes.some(code => cleanBasisRaw.includes(code.toUpperCase().replace(/\s+/g, '')));
-                    }
+                    html결함묶음 += `<b>${defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`} DEFECT INFO</b><br>` +
+                                    `&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` + 
+                                    (ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "") + `<br>`;
+                    if (!hasGpsIssue) hasGpsIssue = targetGpsCodes.some(code => 근거_raw.toUpperCase().replace(/\s+/g, '').includes(code.toUpperCase().replace(/\s+/g, '')));
                 }
             });
 
-            if (defectCount === 0) { alert("전송할 결함 내용이 없습니다."); return; }
+            if (defectCount === 0) return alert("전송할 결함 내용이 없습니다.");
 
-            const gpsTerm = searchAcType.includes("A350") ? "GNSS" : "GPS";
-            const gpsNotice = hasGpsIssue 
-                ? `<br>※ <font color="#4DD0E1"><b>${gpsTerm}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` 
-                : "";
+            const gpsNotice = hasGpsIssue ? `<br>※ <font color="#4DD0E1"><b>${searchAcType.includes("A350") ? "GNSS" : "GPS"}</b></font> 관련 결함으로, 발부되어 있는 <font color="#FF6B6B"><b>항공고시보(NOTAM)</b></font>도 함께 검토 요청드립니다.` : "";
 
-            let flightHtml = hasFlightInfo ? `• <b>편명 :</b> ${편명구간}<br><br>` : "<br>";
-
-            const htmlText = 
-                "📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>" +
-                "• <b>기번 :</b> " + 기번표시 + " (" + acType + ")<br>" +
-                flightHtml +
-                "<b>[ 결함내역 및 조치 ]</b><br>" + html결함묶음 +
-                gpsNotice + 
-                "<i>" + 이름 + " / " + 현재시간 + "</i>";
-
-            payload = {
-                cardsV2: [{
-                    cardId: "dispatchApprovalCard",
-                    card: { sections: [{ widgets: [{ textParagraph: { text: htmlText } }] }] }
-                }]
-            };
+            payload = { cardsV2: [{ cardId: "occCard", card: { sections: [{ widgets: [{ textParagraph: { text: 
+                `📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>• <b>기번 :</b> HL${기번} (${acType})<br>` +
+                (편명구간 ? `• <b>편명 :</b> ${편명구간.replace('➔','-')}<br><br>` : "<br>") +
+                `<b>[ 결함내역 및 조치 ]</b><br>${html결함묶음}${gpsNotice}<i>${이름} / ${현재시간}</i>` 
+            } }] }] } }] };
         }
 
         const btn = document.getElementById(`btn-${target.toLowerCase()}`);
@@ -721,13 +590,8 @@
     function swapLegs() {
         const fromInput = document.getElementById('legFrom');
         const toInput = document.getElementById('legTo');
-        
-        const temp = fromInput.value;
-        fromInput.value = toInput.value;
-        toInput.value = temp;
-        
-        document.getElementById('flightNo').value = ""; 
-        matchFlightFromLegs();
+        const temp = fromInput.value; fromInput.value = toInput.value; toInput.value = temp;
+        document.getElementById('flightNo').value = ""; matchFlightFromLegs();
     }
 
     function autoResize(el) {
@@ -745,25 +609,14 @@
     function setDocType(id, type) {
         if(!type) return;
         document.getElementById(`docType-${id}`).value = type;
-        
         const box = document.getElementById(`doc-toggle-box-${id}`);
         if(box) box.querySelectorAll('.doc-toggle-btn').forEach(btn => btn.classList.remove('active'));
-        
         const etcBtn = document.getElementById(`btn-etc-${id}`);
         if(etcBtn) etcBtn.innerText = 'ETC';
         
-        if (type === 'MEL') {
-            const btn = document.getElementById(`btn-mel-${id}`);
-            if(btn) btn.classList.add('active');
-        } else if (type === 'NEF') {
-            const btn = document.getElementById(`btn-nef-${id}`);
-            if(btn) btn.classList.add('active');
-        } else if (type === 'CDL' || type === 'AMM' || type === 'SRM') {
-            if(etcBtn) {
-                etcBtn.innerText = type;
-                etcBtn.classList.add('active');
-            }
-        }
+        if (type === 'MEL') { const btn = document.getElementById(`btn-mel-${id}`); if(btn) btn.classList.add('active'); } 
+        else if (type === 'NEF') { const btn = document.getElementById(`btn-nef-${id}`); if(btn) btn.classList.add('active'); } 
+        else if (['CDL', 'AMM', 'SRM'].includes(type)) { if(etcBtn) { etcBtn.innerText = type; etcBtn.classList.add('active'); } }
         
         const drop = document.getElementById(`dropdown-etc-${id}`);
         if(drop) drop.style.display = 'none';
@@ -780,30 +633,22 @@
         const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         
         const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
-        const isAs = asApVal === 'AS';
-        const isAp = asApVal === 'AP';
-
-        let parsedDocType = "";
-        let parsedReasonCode = data.reason || "";
+        let parsedDocType = ""; let parsedReasonCode = data.reason || "";
         if (parsedReasonCode) {
             const match = parsedReasonCode.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
-            if (match) {
-                parsedDocType = match[1].toUpperCase();
-                parsedReasonCode = match[2].trim();
-            }
+            if (match) { parsedDocType = match[1].toUpperCase(); parsedReasonCode = match[2].trim(); }
         }
 
         row.innerHTML = `
             <div class="as-ap-wrapper" style="min-width:0;">
                 <span class="idx-num"></span>
                 <div class="toggle-box">
-                    <button type="button" class="toggle-btn ${isAs ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
-                    <button type="button" class="toggle-btn ${isAp ? 'active' : ''}" onclick="setAsAp(${id},'AP')">AP</button>
+                    <button type="button" class="toggle-btn ${asApVal==='AS' ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
+                    <button type="button" class="toggle-btn ${asApVal==='AP' ? 'active' : ''}" onclick="setAsAp(${id},'AP')">AP</button>
                 </div>
                 <input type="hidden" id="asAp-${id}" value="${asApVal}">
             </div>
             <div style="min-width:0;"><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
-            
             <div style="display:flex; gap:4px; height:38px; width:100%; min-width:0;">
                 <div class="doc-toggle-box" id="doc-toggle-box-${id}">
                     <button type="button" class="doc-toggle-btn" id="btn-mel-${id}" onclick="setDocType(${id}, 'MEL')">MEL</button>
@@ -822,7 +667,6 @@
                 </div>
                 <input type="hidden" id="docType-${id}" value="${parsedDocType}">
             </div>
-
             <div class="ata-wrapper" style="min-width:0; width:100%;">
                 <div class="search-wrap">
                     <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
@@ -833,9 +677,8 @@
             <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
         `;
         container.appendChild(row); updateNums();
-        
-        if(data.defect) { setTimeout(() => { autoResize(document.getElementById(`defect-${id}`)); }, 100); }
-        if(parsedDocType) { setTimeout(() => { setDocType(id, parsedDocType); }, 10); }
+        if(data.defect) setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 100);
+        if(parsedDocType) setTimeout(() => setDocType(id, parsedDocType), 10);
     }
 
     function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
@@ -845,42 +688,54 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🚨 1. NEF 대표 문구 절대 범위 방어 (행 번호 기반) 🚨
+    // 🚨 [핵심 변경 1] NEF 범위: 정비사님 지정 행 번호 절대 추적 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
+        
+        let sIdx = DB.actionDatabase.findIndex(d => d.row === 83266 && d.type === 'NEF');
+        let eIdx = DB.actionDatabase.findIndex(d => d.row === 83403 && d.type === 'NEF');
+        
+        if (sIdx !== -1 && eIdx !== -1) {
+            if (sIdx > eIdx) { let t = sIdx; sIdx = eIdx; eIdx = t; }
+            return DB.actionDatabase.slice(sIdx, eIdx + 1);
+        }
+        // 행 번호를 찾지 못했을 때의 백업
         return DB.actionDatabase.filter(d => d.type === 'NEF' && d.row >= 83266 && d.row <= 83403);
     }
 
-    // 🚨 2. 기종별 MEL 대표 문구 절대 범위 방어 (행 번호 기반) 🚨
+    // 🚨 [핵심 변경 2] MEL 기종별 범위: 마스터 배열 인덱스 기반 절대 슬라이싱 (쓰레기 데이터 원천 차단) 🚨
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        
         let searchAcType = acType.toUpperCase();
         if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
         else if (searchAcType.includes("A330")) searchAcType = "A330";
         else if (searchAcType.includes("A350")) searchAcType = "A350";
         else if (searchAcType.includes("A380")) searchAcType = "A380";
         
-        const targetDb = DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType.includes(searchAcType)));
-        if (targetDb.length === 0) return [];
-
         let startCode = '', endCode = '';
         if (searchAcType === "A321") { startCode = "21-00-04A"; endCode = "80-12-01A"; }
         else if (searchAcType === "A330") { startCode = "21-01-01-01A"; endCode = "80-12-01A"; }
         else if (searchAcType === "A350") { startCode = "21-01-01A"; endCode = "80-12-01A"; }
         else if (searchAcType === "A380") { startCode = "21-01-01A"; endCode = "80-11-02A"; }
-        else return targetDb; 
-
-        let startItem = targetDb.find(d => d.code.includes(startCode));
-        let endItem = [...targetDb].reverse().find(d => d.code.includes(endCode));
-
-        if (startItem && endItem) {
-            let sRow = startItem.row;
-            let eRow = endItem.row;
-            if (sRow > eRow) { let t = sRow; sRow = eRow; eRow = t; }
-            return DB.actionDatabase.filter(d => d.type === 'MEL' && d.row >= sRow && d.row <= eRow && (d.acType === searchAcType || d.acType === 'ALL' || d.acType.includes(searchAcType)));
+        else {
+            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL'));
         }
-        return targetDb; // 시작/끝 못 찾으면 해당 기종 전체 반환 (안전장치)
+
+        // 전체 DB 배열 안에서 정확한 인덱스 번호를 찾아서 그 사이만 싹둑 자릅니다.
+        let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType === searchAcType && d.code === startCode);
+        let eIdx = -1;
+        for (let i = DB.actionDatabase.length - 1; i >= 0; i--) {
+            if (DB.actionDatabase[i].type === 'MEL' && DB.actionDatabase[i].acType === searchAcType && DB.actionDatabase[i].code === endCode) {
+                eIdx = i; break;
+            }
+        }
+
+        if (sIdx !== -1 && eIdx !== -1) {
+            if (sIdx > eIdx) { let t = sIdx; sIdx = eIdx; eIdx = t; }
+            return DB.actionDatabase.slice(sIdx, eIdx + 1);
+        }
+        
+        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL'));
     }
 
     const ATA_DICT = {
@@ -918,10 +773,9 @@
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
-        // 🚨 풀 1: 무조건 수만 개의 데이터를 다 뒤지는 '검색 풀' (Search Pool) 🚨
-        let searchPool = []; 
-        // 🚨 풀 2: 정비사님이 지정한 깔끔한 제목만 있는 '출력 풀' (Display Pool) 🚨
-        let displayPool = [];   
+        // 🚨 [핵심 변경 3] 이원화 로직의 정수! 검색 풀(전체)과 출력 풀(대표)을 완벽 분리! 🚨
+        let searchPool = [];   // 모든 찌꺼기/세부 결함이 다 들어있는 검색 전용 스캐너
+        let displayPool = [];  // 오직 화면에 노출될 자격이 있는 정비사님 지정 대표 문구 전용 전시관
 
         if (searchType === 'ATA') {
             searchPool = dbToSearch; 
@@ -929,16 +783,14 @@
         } else {
             const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
             
-            // 검색 풀: 종류와 기종에만 맞으면 일단 전체를 다 가져온다.
+            // 검색 풀 세팅: 종류/기종만 맞으면 수만 개 전체 DB 다 가져옴
             searchPool = dbToSearch.filter(d => {
                 if (currentReasonType && d.type !== currentReasonType) return false;
-                if (d.acType !== 'ALL' && d.acType !== undefined) {
-                    return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
-                }
+                if (d.acType !== 'ALL' && d.acType !== undefined) return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
                 return true; 
             });
 
-            // 출력 풀: NEF, MEL은 무조건 '대표 문구 리스트'로만 엄격히 제한!
+            // 출력 풀 세팅: NEF, MEL은 무조건 '대표 문구 범위'에서 싹둑 자른 것들만 허락함
             if (currentReasonType === 'NEF') {
                 displayPool = getSmartNefPhrases(); 
             } else if (currentReasonType === 'MEL') {
@@ -955,52 +807,33 @@
         let hasOptions = false;
         let seenCodes = new Set(); 
 
-        // 📌 1. [입력값] 고정 핀 매칭 로직 📌
+        // 📌 [입력값] 핀 고정 : 입력된 번호를 '출력 풀(대표)'에서만 찾아서 깔끔하게 박습니다! 📌
         if (currentValue) {
-            // STEP 1: 입력한 코드를 '전체 검색 풀(searchPool)'에서 찾음
-            let foundInSearch = searchPool.find(d => {
+            let foundInDisplay = displayPool.find(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                 if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
                 return dbBase === cleanCurrent || d.code === currentValue;
             });
 
-            let currentItemMatched = null;
-
-            if (foundInSearch) {
-                // STEP 2: 찾은 원본 코드 번호를 '대표 문구 풀(displayPool)'에 들이밀어 예쁜 이름으로 옷을 갈아입힌다!
-                const searchCode = searchType === 'ATA' ? foundInSearch.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInSearch.code.replace(/[^0-9A-Z]/gi, '');
-                
-                let foundInRep = displayPool.find(r => {
-                    const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
-                    return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
-                });
-                
-                // 만약 대표 문구에 없으면(CDL 등) 원본을 그대로 띄우고, 있으면 예쁜 대표 문구를 띄운다.
-                currentItemMatched = foundInRep ? foundInRep : foundInSearch;
-            }
-
-            if (currentItemMatched) {
-                const prefix = searchType !== 'ATA' && currentItemMatched.type ? currentItemMatched.type + ' ' : '';
-                const fullDisplay = searchType !== 'ATA' ? `${prefix}${currentItemMatched.code}`.trim() : currentItemMatched.code;
+            if (foundInDisplay) {
+                const prefix = searchType !== 'ATA' && foundInDisplay.type ? foundInDisplay.type + ' ' : '';
+                const fullDisplay = searchType !== 'ATA' ? `${prefix}${foundInDisplay.code}`.trim() : foundInDisplay.code;
 
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
-                row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${currentItemMatched.keyword}`;
-                row.title = `[입력값] ${fullDisplay} :: ${currentItemMatched.keyword}`;
+                row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${foundInDisplay.keyword}`;
+                row.title = `[입력값] ${fullDisplay} :: ${foundInDisplay.keyword}`;
                 row.onmousedown = () => { 
                     if (searchType !== 'ATA') {
                         const match = fullDisplay.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
                         if (match) { setDocType(id, match[1].toUpperCase()); document.getElementById(inputId).value = match[2].trim(); } 
                         else { document.getElementById(inputId).value = fullDisplay; }
-                    } else {
-                        document.getElementById(inputId).value = fullDisplay; 
-                    }
+                    } else { document.getElementById(inputId).value = fullDisplay; }
                     optDiv.style.display = "none"; 
                 };
                 optDiv.appendChild(row);
                 hasOptions = true;
-                
-                seenCodes.add(searchType === 'ATA' ? currentItemMatched.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : currentItemMatched.code.replace(/[^0-9A-Z]/gi, '')); 
+                seenCodes.add(searchType === 'ATA' ? foundInDisplay.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInDisplay.code.replace(/[^0-9A-Z]/gi, '')); 
             } else {
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
@@ -1011,7 +844,7 @@
             }
         }
 
-        // 🔍 2. [추천 5개] 세부 검색 및 대표 치환 로직 🔍
+        // 🔍 [추천 5개] 세부 검색 후 대표 문구 치환! (대표 목록에 없으면 가차 없이 쳐냄) 🔍
         if (text.trim()) {
             const stopWords = ['INOP', 'INOPERATIVE', 'DEFECT', 'BROKEN', 'DAMAGED', 'MISSING', 'REPLACED', 'CHECK', 'CHK', 'THE', 'A', 'AN', 'OF', 'FOR', 'AND', 'TO', 'IS', 'NOT', 'PLZ', 'PLEASE', 'NEED'];
             const defectTerms = text.toUpperCase().match(/[A-Z0-9가-힣]{3,}/g)?.filter(t => !stopWords.includes(t)) || [];
@@ -1021,11 +854,9 @@
                 const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
 
                 let targetAtaChapter = null;
-                defectTerms.forEach(term => {
-                    if (ATA_DICT[term]) targetAtaChapter = ATA_DICT[term];
-                });
+                defectTerms.forEach(term => { if (ATA_DICT[term]) targetAtaChapter = ATA_DICT[term]; });
 
-                // STEP 1: 세부 결함까지 싹 다 들어있는 '검색 풀(searchPool)'을 채점하여 숨은 결함들을 모조리 찾아낸다!
+                // 1단계: 검색은 무조건 전체 수만 개 DB(searchPool)를 샅샅이 뒤져서 점수를 매깁니다.
                 searchPool.forEach(d => {
                     let score = 0;
                     if (d.searchTarget) {
@@ -1034,14 +865,9 @@
                             else if (d.searchTarget.includes(term.toLowerCase())) score += 10;
                         });
                     }
-                    
                     if (searchType === 'ATA' && targetAtaChapter) {
-                        const pureCode = d.code.replace(/[^0-9A-Z]/gi, '');
-                        if (pureCode.startsWith(targetAtaChapter)) {
-                            score += 5000; 
-                        }
+                        if (d.code.replace(/[^0-9A-Z]/gi, '').startsWith(targetAtaChapter)) score += 5000; 
                     }
-
                     if (score > 0) {
                         if (searchType !== 'ATA' && d.type) {
                             if (currentReasonType.includes('NEF') && d.type === 'NEF') score += 1000;
@@ -1055,45 +881,43 @@
                 scoredDB.sort((a, b) => b.score - a.score);
                 let finalCandidates = [];
 
+                // 2단계: 찾아낸 코드표를 들고 '출력 풀(대표 문구)'로 가서, 있는 놈만 예쁘게 치환해서 챙기고 없는 놈은 버립니다.
                 for (let i = 0; i < scoredDB.length; i++) {
                     let foundInSearch = scoredDB[i].data;
                     const searchCode = searchType === 'ATA' ? foundInSearch.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInSearch.code.replace(/[^0-9A-Z]/gi, '');
                     
-                    // STEP 2: 찾아낸 녀석의 번호를 들고 '출력 풀(displayPool)'로 가서 대표 문구로 치환한다!
-                    let foundInRep = displayPool.find(r => {
+                    let repItem = displayPool.find(r => {
                         const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
                         return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                     });
 
-                    // 대표 문구가 없으면 방어용으로 원래 값을, 있으면 치환된 예쁜 값을 넣는다.
-                    let itemToDisplay = foundInRep ? foundInRep : foundInSearch;
-                    const finalCodeBase = searchType === 'ATA' ? itemToDisplay.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : itemToDisplay.code.replace(/[^0-9A-Z]/gi, '');
-
+                    // 🚨 핵심 방어: 대표 목록에 없으면(A2-9 BREW CUP 등) 화면에 안 띄우고 그냥 버린다! 🚨
+                    if (!repItem) continue; 
+                    
+                    const finalCodeBase = searchType === 'ATA' ? repItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : repItem.code.replace(/[^0-9A-Z]/gi, '');
                     if (seenCodes.has(finalCodeBase)) continue; 
                     
-                    finalCandidates.push(itemToDisplay);
+                    finalCandidates.push(repItem);
                     seenCodes.add(finalCodeBase);
                     
                     if (finalCandidates.length >= 5) break; 
                 }
 
-                // 드롭다운에 출력!
-                finalCandidates.forEach(itemToDisplay => {
-                    const prefix = searchType !== 'ATA' && itemToDisplay.type ? itemToDisplay.type + ' ' : '';
-                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${itemToDisplay.code}`.trim() : itemToDisplay.code;
+                // 3단계: 살아남은 정예 5개를 드롭다운에 출력합니다.
+                finalCandidates.forEach(repItem => {
+                    const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
+                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
 
                     const row = document.createElement('div');
                     row.className = 'dropdown-opt';
-                    row.innerText = `${fullDisplay} :: ${itemToDisplay.keyword}`;
-                    row.title = `${fullDisplay} :: ${itemToDisplay.keyword}`; 
+                    row.innerText = `${fullDisplay} :: ${repItem.keyword}`;
+                    row.title = `${fullDisplay} :: ${repItem.keyword}`; 
                     row.onmousedown = () => { 
                         if (searchType !== 'ATA') {
                             const match = fullDisplay.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
                             if (match) { setDocType(id, match[1].toUpperCase()); document.getElementById(inputId).value = match[2].trim(); } 
                             else { document.getElementById(inputId).value = fullDisplay; }
-                        } else {
-                            document.getElementById(inputId).value = fullDisplay; 
-                        }
+                        } else { document.getElementById(inputId).value = fullDisplay; }
                         optDiv.style.display = "none"; 
                     };
                     optDiv.appendChild(row);
@@ -1115,11 +939,8 @@
         optDiv.appendChild(moreRow);
         hasOptions = true;
 
-        if (hasOptions) {
-            optDiv.style.display = "block";
-        } else {
-            alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
-        }
+        if (hasOptions) optDiv.style.display = "block";
+        else alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
     }
 
     function openFullListModal(id, searchType) {
@@ -1178,14 +999,12 @@
         document.getElementById('fullListSearch').value = '';
         renderFullList(currentFullList);
         document.getElementById('fullListModal').style.display = 'flex';
-        
         setTimeout(() => document.getElementById('fullListSearch').focus(), 100);
     }
 
     function renderFullList(list) {
         const container = document.getElementById('fullListContainer');
         container.innerHTML = '';
-        
         if(list.length === 0) {
             container.innerHTML = `<div style="padding: 20px; text-align: center; color: #7f8c8d;">해당 조건의 데이터가 없습니다.</div>`;
             return;
@@ -1194,7 +1013,6 @@
         list.forEach(item => {
             const prefix = currentSearchType !== 'ATA' && item.type ? item.type + ' ' : '';
             const fullDisplay = currentSearchType !== 'ATA' ? `${prefix}${item.code}`.trim() : item.code;
-
             const div = document.createElement('div');
             div.className = 'dropdown-opt';
             div.innerHTML = `<b>${fullDisplay}</b> :: ${item.keyword}`;
@@ -1204,12 +1022,8 @@
                     if (match) {
                         setDocType(currentTargetRowId, match[1].toUpperCase());
                         document.getElementById(currentTargetInputId).value = match[2].trim();
-                    } else {
-                        document.getElementById(currentTargetInputId).value = fullDisplay;
-                    }
-                } else {
-                    document.getElementById(currentTargetInputId).value = fullDisplay;
-                }
+                    } else document.getElementById(currentTargetInputId).value = fullDisplay;
+                } else document.getElementById(currentTargetInputId).value = fullDisplay;
                 closeFullListModal();
             };
             container.appendChild(div);
@@ -1218,30 +1032,20 @@
 
     function filterFullList() {
         const keyword = document.getElementById('fullListSearch').value.toUpperCase().replace(/\s+/g, '');
-        if (!keyword) {
-            renderFullList(currentFullList);
-            return;
-        }
-        const filtered = currentFullList.filter(item => {
-            const target = (item.code + item.keyword).toUpperCase().replace(/\s+/g, '');
-            return target.includes(keyword);
-        });
+        if (!keyword) { renderFullList(currentFullList); return; }
+        const filtered = currentFullList.filter(item => (item.code + item.keyword).toUpperCase().replace(/\s+/g, '').includes(keyword));
         renderFullList(filtered);
     }
 
-    function closeFullListModal() {
-        document.getElementById('fullListModal').style.display = 'none';
-    }
+    function closeFullListModal() { document.getElementById('fullListModal').style.display = 'none'; }
 
     window.addEventListener('paste', function(e) {
         if (!e.clipboardData) return;
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf("image") !== -1) {
-                e.preventDefault();
-                const file = items[i].getAsFile();
-                if (file) loadAndDisplayImage(file);
-                return; 
+                e.preventDefault(); const file = items[i].getAsFile();
+                if (file) loadAndDisplayImage(file); return; 
             }
         }
     });
@@ -1249,10 +1053,7 @@
     function loadAndDisplayImage(file) {
         try {
             if (!file) throw new Error("파일이 존재하지 않습니다.");
-            
-            fileToUpload = file; 
-            const url = URL.createObjectURL(fileToUpload);
-            
+            fileToUpload = file; const url = URL.createObjectURL(fileToUpload);
             currentRotation = 0; currentScale = 1; translateX = 0; translateY = 0;
             document.getElementById('mainTopSection').classList.remove('expanded'); 
             document.getElementById('rightPanel').classList.remove('text-extract-mode');
@@ -1268,57 +1069,32 @@
                 <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
             `;
             setTimeout(refreshAllHeights, 50);
-        } catch (e) {
-            alert("사진을 불러오지 못했습니다: " + e.message);
-        }
+        } catch (e) { alert("사진을 불러오지 못했습니다: " + e.message); }
     }
 
     function resetImage(e) {
         if(e) e.stopPropagation();
-        
-        if (currentAbortController) {
-            currentAbortController.abort();
-            currentAbortController = null;
-        }
-
-        fileToUpload = null; 
-        document.getElementById('imageFileInput').value = "";
+        if (currentAbortController) { currentAbortController.abort(); currentAbortController = null; }
+        fileToUpload = null; document.getElementById('imageFileInput').value = "";
         document.getElementById('mainTopSection').classList.remove('expanded');
         document.getElementById('pasteArea').innerHTML = `
             <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
                 <div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치(클릭)하여 사진 첨부<br>
                 <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal; line-height: 1.6;">
-                    또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기<br>
-                    키보드 <b>방향키(←, →)</b>로 회전하고 <b>Enter</b>로 AI 분석
+                    또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기<br>키보드 <b>방향키(←, →)</b>로 회전하고 <b>Enter</b>로 AI 분석
                 </span>
-            </div>
-        `;
-        
-        document.getElementById('defectRowsContainer').innerHTML = ""; 
-        rowIdCounter = 0;
-        addRow();
-        
-        const btnMain = document.getElementById('btnExtractMain');
-        if (btnMain) { btnMain.innerText = "✨ AI 분석 및 자동 매칭"; btnMain.disabled = false; }
-        
-        const btnRaw = document.getElementById('btnExtractRaw');
-        if (btnRaw) { btnRaw.innerText = "📝 TEXT 추출"; btnRaw.disabled = false; }
-        
+            </div>`;
+        document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0; addRow();
+        const btnMain = document.getElementById('btnExtractMain'); if (btnMain) { btnMain.innerText = "✨ AI 분석 및 자동 매칭"; btnMain.disabled = false; }
+        const btnRaw = document.getElementById('btnExtractRaw'); if (btnRaw) { btnRaw.innerText = "📝 TEXT 추출"; btnRaw.disabled = false; }
         setTimeout(refreshAllHeights, 50);
     }
 
-    function handleImageFile(event) {
-        const file = event.target.files[0];
-        if (file) loadAndDisplayImage(file);
-        event.target.value = ""; 
-    }
+    function handleImageFile(event) { const file = event.target.files[0]; if (file) loadAndDisplayImage(file); event.target.value = ""; }
 
     window.onload = async () => { 
         addRow(); 
-        try {
-            await loadDB(); 
-        } catch(e) { console.error(e); }
-        
+        try { await loadDB(); } catch(e) { console.error(e); }
         setInterval(() => fetch('/ping').catch(()=>{}), 600000); 
         updateUserNameDisplay(); 
 
@@ -1339,29 +1115,23 @@
                 if (file.type.startsWith('image/')) loadAndDisplayImage(file);
             }
         });
-
         pasteArea.addEventListener('wheel', (e) => {
             if (!document.getElementById('pastedImg')) return; e.preventDefault(); 
             currentScale += e.deltaY < 0 ? 0.15 : -0.15; 
             currentScale = Math.max(0.2, Math.min(currentScale, 6)); applyTransform();
         });
-
         pasteArea.addEventListener('mousedown', (e) => {
             if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
             e.preventDefault(); isDragging = true; clickStartX = e.clientX; clickStartY = e.clientY; 
             startDragX = e.clientX - translateX; startDragY = e.clientY - translateY;
         });
-
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
         });
-
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5 && e.button === 0) { 
-                    if (e.target.id === 'pastedImg') toggleExpand(); 
-                }
+                if (diffX < 5 && diffY < 5 && e.button === 0) { if (e.target.id === 'pastedImg') toggleExpand(); }
             }
             isDragging = false;
         });
@@ -1374,36 +1144,25 @@
     function toggleExpand() {
         document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
-        setTimeout(refreshAllHeights, 50);
-        setTimeout(refreshAllHeights, 150);
-        setTimeout(refreshAllHeights, 400); 
+        setTimeout(refreshAllHeights, 50); setTimeout(refreshAllHeights, 150); setTimeout(refreshAllHeights, 400); 
     }
 
     async function extractText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractMain'); 
         btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
-        
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();
 
         const compressedFile = await compressImage(fileToUpload);
-        const formData = new FormData(); 
-        formData.append("file", compressedFile); 
+        const formData = new FormData(); formData.append("file", compressedFile); 
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData, signal: currentAbortController.signal });
             const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
-            
-            if (data.regNo) { 
-                let cleanReg = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, "");
-                document.getElementById('regNo').value = cleanReg; fillAcType(); 
-            }
-            if (data.flightNo) { 
-                let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '');
-                document.getElementById('flightNo').value = cleanFno; 
-            } 
+            if (data.error) return alert("⚠️ 서버 오류: " + data.error);
+            if (data.regNo) { document.getElementById('regNo').value = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, ""); fillAcType(); }
+            if (data.flightNo) document.getElementById('flightNo').value = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '');
             if (data.legFrom) document.getElementById('legFrom').value = String(data.legFrom).replace(/[^A-Z]/gi, '').toUpperCase();
             if (data.legTo) document.getElementById('legTo').value = String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase();
 
@@ -1418,36 +1177,27 @@
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
                 if (document.querySelectorAll('.defect-row').length === 0) addRow();
             }
-        } catch (e) { 
-            if (e.name !== 'AbortError') alert("⚠️ 에러: " + e.message); 
-        } finally { 
-            btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; currentAbortController = null;
-        }
+        } catch (e) { if (e.name !== 'AbortError') alert("⚠️ 에러: " + e.message); 
+        } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; currentAbortController = null; }
     }
 
     async function extractRawText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
-        const btn = document.getElementById('btnExtractRaw'); 
-        btn.innerText = "추출 중... ⏳"; btn.disabled = true;
-        
+        const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();
 
         const compressedFile = await compressImage(fileToUpload);
-        const formData = new FormData(); 
-        formData.append("file", compressedFile);
+        const formData = new FormData(); formData.append("file", compressedFile);
 
         try {
             const res = await fetch("/extract_raw", { method: "POST", body: formData, signal: currentAbortController.signal });
             const data = await res.json();
-            if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
+            if (data.error) return alert("⚠️ 서버 오류: " + data.error);
             document.getElementById('rightPanel').classList.add('text-extract-mode');
             const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
-        } catch (e) { 
-            if (e.name !== 'AbortError') alert("⚠️ 통신 에러: " + e.message); 
-        } finally { 
-            btn.innerText = "📝 TEXT 추출"; btn.disabled = false; currentAbortController = null;
-        }
+        } catch (e) { if (e.name !== 'AbortError') alert("⚠️ 통신 에러: " + e.message); 
+        } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; currentAbortController = null; }
     }
 </script>
 </body>
