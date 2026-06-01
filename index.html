@@ -32,10 +32,7 @@
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
         }
-        .search-wrap .dropdown-list {
-            width: max-content; max-width: 50vw; 
-            right: 0; left: auto; 
-        }
+        .search-wrap .dropdown-list { width: max-content; max-width: 50vw; right: 0; left: auto; }
         .box .dropdown-list { min-width: 100%; width: max-content; left: 0; right: auto; }
         
         .dropdown-opt { 
@@ -79,18 +76,10 @@
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; min-width: 0; width: 100%; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
-        
-        .search-wrap button { 
-            background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; 
-            cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; 
-            transition: 0.2s; border-radius: 0 4px 4px 0; position: relative; z-index: 10; 
-        }
+        .search-wrap button { background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; position: relative; z-index: 10; }
         .search-wrap button:hover { background: #2c3e50; }
 
-        .defect-row textarea { 
-            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; 
-            font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; 
-        } 
+        .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; } 
         
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; width: 30px; flex-shrink: 0; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
@@ -105,7 +94,6 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 확대 모드 레이아웃 겹침 방지 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
@@ -137,7 +125,6 @@
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
 
-        /* 모달 팝업 디자인 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;}
@@ -150,7 +137,6 @@
         .btn-save { background: var(--secondary); color: white; }
         .btn-save:hover { background: #2980b9; }
 
-        /* 전체 리스트 보기 팝업창 전용 디자인 */
         .full-list-modal-content {
             background: white; padding: 25px; border-radius: 12px;
             width: 800px; max-width: 95vw; height: 85vh;
@@ -277,7 +263,6 @@
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
     
     let currentAbortController = null;
-
     let currentFullList = []; 
     let currentTargetInputId = '';
     let currentTargetRowId = '';
@@ -858,30 +843,81 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🔥 [핵심 수정 부위 1]: 행 번호 매칭 전면 폐기 ➡️ 키워드 FROM~TO 스마트 추적기 이식 🔥
+    // 🚨 NEF 대표 문구 스마트 추적 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        
-        // 오직 NEF 데이터만 소집
         const nefItems = DB.actionDatabase.filter(d => d.type === 'NEF');
         if (nefItems.length === 0) return [];
 
-        // 자석 추적 시작: 시작 문구(General)와 끝 문구(Lenses Cracked) 탐색
         let startIndex = nefItems.findIndex(d => d.code === '99-00-00' && d.searchTarget.includes('general'));
         let endIndex = nefItems.findIndex(d => d.code === '33-00-12' && d.searchTarget.includes('lenses cracked'));
 
-        // 만약 검색에 실패할 경우 유연하게 전체 목록을 기본값으로 상속 방어
         if (startIndex === -1) startIndex = 0;
         if (endIndex === -1) endIndex = nefItems.length - 1;
+        if (startIndex > endIndex) { const temp = startIndex; startIndex = endIndex; endIndex = temp; }
 
-        // 시작과 끝이 역전되었을 경우 스왑 방어
-        if (startIndex > endIndex) {
-            const temp = startIndex; startIndex = endIndex; endIndex = temp;
-        }
-
-        // FROM부터 TO까지 예쁘게 잘라내어 반환
         return nefItems.slice(startIndex, endIndex + 1);
     }
+
+    // 🚨 기종별 MEL 스마트 추적 로직 추가 🚨
+    function getSmartMelPhrases(acType) {
+        if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
+        
+        let searchAcType = acType.toUpperCase();
+        if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
+        else if (searchAcType.includes("A330")) searchAcType = "A330";
+        else if (searchAcType.includes("A350")) searchAcType = "A350";
+        else if (searchAcType.includes("A380")) searchAcType = "A380";
+        
+        const melItems = DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL' || d.acType.includes(searchAcType)));
+        if (melItems.length === 0) return [];
+
+        let startCode = '', endCode = '', startKeyword = '', endKeyword = '';
+
+        if (searchAcType === "A321") {
+            startCode = "21-00-04A"; startKeyword = "temp ctl";
+            endCode = "80-12-01A"; endKeyword = "eng master";
+        } else if (searchAcType === "A330") {
+            startCode = "21-01-01-01A"; startKeyword = "pack";
+            endCode = "80-12-01A"; endKeyword = "eng master";
+        } else if (searchAcType === "A350") {
+            startCode = "21-01-01A"; startKeyword = "pack";
+            endCode = "80-12-01A"; endKeyword = "engine master";
+        } else if (searchAcType === "A380") {
+            startCode = "21-01-01A"; startKeyword = "pack";
+            endCode = "80-11-02A"; endKeyword = "manual start";
+        } else {
+            return melItems; 
+        }
+
+        let startIndex = melItems.findIndex(d => d.code === startCode && d.searchTarget.includes(startKeyword.toLowerCase()));
+        let endIndex = melItems.findIndex(d => d.code === endCode && d.searchTarget.includes(endKeyword.toLowerCase()));
+
+        if (startIndex === -1) startIndex = 0;
+        if (endIndex === -1) endIndex = melItems.length - 1;
+        if (startIndex > endIndex) { const temp = startIndex; startIndex = endIndex; endIndex = temp; }
+
+        return melItems.slice(startIndex, endIndex + 1);
+    }
+
+    const ATA_DICT = {
+        "SEAT": "25", "SEATS": "25", "BASSINET": "25", "TABLE": "25", "LAV": "25", "LAVATORY": "25", "TOILET": "25", "GALLEY": "25", "CARPET": "25", "CABIN": "25", "OVERHEAD": "25", "BIN": "25", "MONITOR": "25", "SCREEN": "25",
+        "LIGHT": "33", "LAMP": "33", "LED": "33", "READING": "33", "ILLUMINATION": "33", "STROBE": "33", "BEACON": "33", "LOGO": "33",
+        "DOOR": "52", "CARGO": "52", "LATCH": "52", "HANDLE": "52",
+        "WINDOW": "56", "GLASS": "56", "WINDSHIELD": "56",
+        "TIRE": "32", "WHEEL": "32", "BRAKE": "32", "GEAR": "32", "STRUT": "32",
+        "OVEN": "25", "COFFEE": "25", "MAKER": "25", "WATER": "38", "WASTE": "38", "POTABLE": "38",
+        "HANDSET": "23", "PA": "23", "INTERCOM": "23", "AUDIO": "23", "VIDEO": "23", "RADIO": "23", "VHF": "23", "UHF": "23",
+        "OXYGEN": "35", "MASK": "35", "O2": "35",
+        "AIR": "21", "PACK": "21", "TEMP": "21", "CONDITIONING": "21", "VENTILATION": "21",
+        "ENGINE": "71", "COWL": "71", "OIL": "79", "FUEL": "28", "TANK": "28",
+        "APU": "49", "FIRE": "26", "SMOKE": "26", "EXTINGUISHER": "26",
+        "ICE": "30", "RAIN": "30", "WIPER": "30", "HEATER": "30", "PROBE": "30",
+        "NAV": "34", "GPS": "34", "RADAR": "34", "ALTIMETER": "34",
+        "WING": "57", "FLAP": "57", "SLAT": "57", "AILERON": "57", "SPOILER": "57",
+        "ELEVATOR": "55", "RUDDER": "55", "STABILIZER": "55",
+        "FUSELAGE": "53", "RADOME": "53", "TAIL": "53"
+    };
 
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
@@ -908,19 +944,22 @@
         } else {
             const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
             
-            // 🚨 NEF인 경우, 행 번호가 아닌 스마트 추적기가 반환한 '대표 문구 범위'만 강력 적용 🚨
+            // 🚨 문서 타입별 스마트 추적 분기 🚨
             if (currentReasonType === 'NEF') {
                 validActions = dbToSearch.filter(d => d.type === 'NEF');
                 repActions = getSmartNefPhrases(); 
+            } else if (currentReasonType === 'MEL') {
+                validActions = dbToSearch.filter(d => d.type === 'MEL' && (d.acType === 'ALL' || d.acType.includes(currentAcType)));
+                repActions = getSmartMelPhrases(currentAcType);
             } else {
                 validActions = dbToSearch.filter(d => {
-                    if (d.type === 'NEF') return true; 
+                    if (currentReasonType && d.type !== currentReasonType) return false;
                     if (d.acType !== 'ALL' && d.acType !== undefined) {
                         return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
                     }
                     return true; 
                 });
-                repActions = validActions.filter(d => d.row >= 83266); 
+                repActions = validActions; 
             }
         }
 
@@ -1093,7 +1132,7 @@
         }
     }
 
-    // 🔥 [핵심 수정 부위 2]: 더보기(팝업창) 열릴 때도 NEF 대표 문구 범위 완전 연동 🔥
+    // 🔥 팝업창(더보기) 오픈 시에도 분기 적용 완료 🔥
     function openFullListModal(id, searchType) {
         currentTargetRowId = id;
         currentSearchType = searchType;
@@ -1112,10 +1151,12 @@
         } else {
             const docType = document.getElementById(`docType-${id}`).value.toUpperCase();
             
-            // 🚨 팝업창에서도 NEF는 스마트 추적기로 추출한 83266~83403 영역만 강제 제한 노출! 🚨
             if (docType === 'NEF') {
                 titleEl.innerText = "[NEF] 적용근거 전체 대표 리스트";
                 dbToSearch = getSmartNefPhrases();
+            } else if (docType === 'MEL') {
+                titleEl.innerText = `[MEL] 적용근거 전체 리스트 (${searchAcType})`;
+                dbToSearch = getSmartMelPhrases(searchAcType);
             } else {
                 titleEl.innerText = docType ? `[${docType}] 적용근거 전체 리스트 (${searchAcType})` : `적용근거 전체 리스트 (${searchAcType})`;
                 dbToSearch = DB.actionDatabase.filter(d => {
@@ -1139,9 +1180,8 @@
             }
         });
 
-        // 사용자가 보기 편하게 코드별 정렬 (NEF 대표 문구는 원래 정비서식 순서대로 정렬 유지)
         if (searchType !== 'ATA' && document.getElementById(`docType-${id}`).value.toUpperCase() === 'NEF') {
-            // NEF는 기입된 순서 보존
+            // NEF는 원래 순서 보존
         } else {
             currentFullList.sort((a, b) => a.code.localeCompare(b.code));
         }
