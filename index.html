@@ -32,7 +32,7 @@
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
         }
-        .search-wrap .dropdown-list { width: max-content; max-width: 50vw; right: 0; left: auto; }
+        .search-wrap .dropdown-list { width: max-content; max-width: 50vw; left: 0; right: auto; }
         .box .dropdown-list { min-width: 100%; width: max-content; left: 0; right: auto; }
         
         .dropdown-opt { 
@@ -717,7 +717,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🚨 [수술 완료 1] 고유 행 번호(Row) 절대 방어막! 쓰레기 완벽 차단! 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         return DB.actionDatabase.filter(d => d.type === 'NEF' && d.row >= 83266 && d.row <= 83403);
@@ -732,9 +731,8 @@
         else if (searchAcType.includes("A350")) searchAcType = "A350";
         else if (searchAcType.includes("A380")) searchAcType = "A380";
         
-        // 정비사님이 명확하게 짚어주신 A330의 행 번호 절대 방어선 적용
         if (searchAcType === "A330") {
-            return DB.actionDatabase.filter(d => d.row >= 84741 && d.row <= 85777);
+            return DB.actionDatabase.filter(d => d.type === 'MEL' && d.row >= 84741 && d.row <= 85777 && (d.acType.includes(searchAcType) || d.acType === 'ALL'));
         }
 
         let startCode = '', endCode = '';
@@ -745,18 +743,24 @@
             return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL'));
         }
 
-        // 전체 DB 배열 안에서 정확한 인덱스 번호를 찾아서 그 사이만 싹둑 자릅니다.
-        let sItem = DB.actionDatabase.find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code === startCode);
-        let eItem = [...DB.actionDatabase].reverse().find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code === endCode);
+        let sItem = DB.actionDatabase.find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code.includes(startCode));
+        let eItem = [...DB.actionDatabase].reverse().find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code.includes(endCode));
 
         if (sItem && eItem) {
             let sRow = sItem.row;
             let eRow = eItem.row;
             if (sRow > eRow) { let t = sRow; sRow = eRow; eRow = t; }
-            return DB.actionDatabase.filter(d => d.row >= sRow && d.row <= eRow);
+            
+            // 🚨 핵심 수술: 자른 행 사이에서도 무조건 해당 기종의 'MEL'만 통과시킴 (찌꺼기 절대 차단) 🚨
+            return DB.actionDatabase.filter(d => 
+                d.type === 'MEL' && 
+                d.row >= sRow && 
+                d.row <= eRow && 
+                (d.acType.includes(searchAcType) || d.acType === 'ALL')
+            );
         }
         
-        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL'));
+        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(searchAcType) || d.acType === 'ALL'));
     }
 
     const ATA_DICT = {
@@ -842,7 +846,7 @@
                     return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                 });
                 
-                // 🚨 [수술 완료 2] 오지랖 삭제! 대표 목록에 없으면 화면에서 쳐낸다! 🚨
+                // 🚨 오지랖 코드 삭제! 없으면 아예 화면에 안 띄웁니다! 🚨
                 currentItemMatched = foundInRep ? foundInRep : null;
             }
 
@@ -919,7 +923,7 @@
                         return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                     });
 
-                    // 🚨 [수술 완료 3] 오지랖 삭제! 대표 목록에 없으면 화면에 안 띄우고 다음 후보로 넘어감! 🚨
+                    // 🚨 [수술 완료 4] 대표 목록에 없으면(A2-9 Brew cup 등) 과감하게 쳐냄! 🚨
                     if (!repItem) continue; 
                     
                     const finalCodeBase = searchType === 'ATA' ? repItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : repItem.code.replace(/[^0-9A-Z]/gi, '');
