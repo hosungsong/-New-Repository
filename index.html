@@ -845,21 +845,13 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🚨 1. NEF 대표 문구 절대 범위 방어 (행 번호 기반) 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        const nefItems = DB.actionDatabase.filter(d => d.type === 'NEF');
-        if (nefItems.length === 0) return [];
-
-        let startIndex = nefItems.findIndex(d => d.code === '99-00-00' && d.searchTarget.includes('general'));
-        let endIndex = nefItems.findIndex(d => d.code === '33-00-12' && d.searchTarget.includes('lenses cracked'));
-
-        if (startIndex === -1) startIndex = 0;
-        if (endIndex === -1) endIndex = nefItems.length - 1;
-        if (startIndex > endIndex) { const temp = startIndex; startIndex = endIndex; endIndex = temp; }
-
-        return nefItems.slice(startIndex, endIndex + 1);
+        return DB.actionDatabase.filter(d => d.type === 'NEF' && d.row >= 83266 && d.row <= 83403);
     }
 
+    // 🚨 2. 기종별 MEL 대표 문구 절대 범위 방어 (행 번호 기반) 🚨
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         
@@ -869,35 +861,26 @@
         else if (searchAcType.includes("A350")) searchAcType = "A350";
         else if (searchAcType.includes("A380")) searchAcType = "A380";
         
-        const melItems = DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL' || d.acType.includes(searchAcType)));
-        if (melItems.length === 0) return [];
+        const targetDb = DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType.includes(searchAcType)));
+        if (targetDb.length === 0) return [];
 
-        let startCode = '', endCode = '', startKeyword = '', endKeyword = '';
+        let startCode = '', endCode = '';
+        if (searchAcType === "A321") { startCode = "21-00-04A"; endCode = "80-12-01A"; }
+        else if (searchAcType === "A330") { startCode = "21-01-01-01A"; endCode = "80-12-01A"; }
+        else if (searchAcType === "A350") { startCode = "21-01-01A"; endCode = "80-12-01A"; }
+        else if (searchAcType === "A380") { startCode = "21-01-01A"; endCode = "80-11-02A"; }
+        else return targetDb; 
 
-        if (searchAcType === "A321") {
-            startCode = "21-00-04A"; startKeyword = "temp ctl";
-            endCode = "80-12-01A"; endKeyword = "eng master";
-        } else if (searchAcType === "A330") {
-            startCode = "21-01-01-01A"; startKeyword = "pack";
-            endCode = "80-12-01A"; endKeyword = "eng master";
-        } else if (searchAcType === "A350") {
-            startCode = "21-01-01A"; startKeyword = "pack";
-            endCode = "80-12-01A"; endKeyword = "engine master";
-        } else if (searchAcType === "A380") {
-            startCode = "21-01-01A"; startKeyword = "pack";
-            endCode = "80-11-02A"; endKeyword = "manual start";
-        } else {
-            return melItems; 
+        let startItem = targetDb.find(d => d.code.includes(startCode));
+        let endItem = [...targetDb].reverse().find(d => d.code.includes(endCode));
+
+        if (startItem && endItem) {
+            let sRow = startItem.row;
+            let eRow = endItem.row;
+            if (sRow > eRow) { let t = sRow; sRow = eRow; eRow = t; }
+            return DB.actionDatabase.filter(d => d.type === 'MEL' && d.row >= sRow && d.row <= eRow && (d.acType === searchAcType || d.acType === 'ALL' || d.acType.includes(searchAcType)));
         }
-
-        let startIndex = melItems.findIndex(d => d.code === startCode && d.searchTarget.includes(startKeyword.toLowerCase()));
-        let endIndex = melItems.findIndex(d => d.code === endCode && d.searchTarget.includes(endKeyword.toLowerCase()));
-
-        if (startIndex === -1) startIndex = 0;
-        if (endIndex === -1) endIndex = melItems.length - 1;
-        if (startIndex > endIndex) { const temp = startIndex; startIndex = endIndex; endIndex = temp; }
-
-        return melItems.slice(startIndex, endIndex + 1);
+        return targetDb; // 시작/끝 못 찾으면 해당 기종 전체 반환 (안전장치)
     }
 
     const ATA_DICT = {
@@ -935,31 +918,33 @@
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
-        // 🚨 검색은 전체에서, 출력은 대표로 완벽히 분리 🚨
-        let validActions = []; // 모든 세부항목이 들어있는 '검색 풀'
-        let repActions = [];   // 화면에 띄울 '출력 대표 문구 풀'
+        // 🚨 풀 1: 무조건 수만 개의 데이터를 다 뒤지는 '검색 풀' (Search Pool) 🚨
+        let searchPool = []; 
+        // 🚨 풀 2: 정비사님이 지정한 깔끔한 제목만 있는 '출력 풀' (Display Pool) 🚨
+        let displayPool = [];   
 
         if (searchType === 'ATA') {
-            validActions = dbToSearch; 
-            repActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
+            searchPool = dbToSearch; 
+            displayPool = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
         } else {
             const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
             
+            // 검색 풀: 종류와 기종에만 맞으면 일단 전체를 다 가져온다.
+            searchPool = dbToSearch.filter(d => {
+                if (currentReasonType && d.type !== currentReasonType) return false;
+                if (d.acType !== 'ALL' && d.acType !== undefined) {
+                    return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
+                }
+                return true; 
+            });
+
+            // 출력 풀: NEF, MEL은 무조건 '대표 문구 리스트'로만 엄격히 제한!
             if (currentReasonType === 'NEF') {
-                validActions = dbToSearch.filter(d => d.type === 'NEF');
-                repActions = getSmartNefPhrases(); 
+                displayPool = getSmartNefPhrases(); 
             } else if (currentReasonType === 'MEL') {
-                validActions = dbToSearch.filter(d => d.type === 'MEL' && (d.acType === 'ALL' || d.acType.includes(currentAcType)));
-                repActions = getSmartMelPhrases(currentAcType);
+                displayPool = getSmartMelPhrases(currentAcType);
             } else {
-                validActions = dbToSearch.filter(d => {
-                    if (currentReasonType && d.type !== currentReasonType) return false;
-                    if (d.acType !== 'ALL' && d.acType !== undefined) {
-                        return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
-                    }
-                    return true; 
-                });
-                repActions = validActions; 
+                displayPool = searchPool; 
             }
         }
 
@@ -970,9 +955,10 @@
         let hasOptions = false;
         let seenCodes = new Set(); 
 
+        // 📌 1. [입력값] 고정 핀 매칭 로직 📌
         if (currentValue) {
-            // 1. 전체 풀(validActions)에서 입력된 번호를 찾습니다.
-            let foundInValid = validActions.find(d => {
+            // STEP 1: 입력한 코드를 '전체 검색 풀(searchPool)'에서 찾음
+            let foundInSearch = searchPool.find(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                 if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
                 return dbBase === cleanCurrent || d.code === currentValue;
@@ -980,16 +966,17 @@
 
             let currentItemMatched = null;
 
-            if (foundInValid) {
-                // 2. 찾은 원본 번호를 '대표 문구 풀(repActions)'에서 찾아 치환합니다!
-                const searchCode = searchType === 'ATA' ? foundInValid.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInValid.code.replace(/[^0-9A-Z]/gi, '');
+            if (foundInSearch) {
+                // STEP 2: 찾은 원본 코드 번호를 '대표 문구 풀(displayPool)'에 들이밀어 예쁜 이름으로 옷을 갈아입힌다!
+                const searchCode = searchType === 'ATA' ? foundInSearch.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInSearch.code.replace(/[^0-9A-Z]/gi, '');
                 
-                let foundInRep = repActions.find(r => {
+                let foundInRep = displayPool.find(r => {
                     const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
-                    return repBase === searchCode && (searchType === 'ATA' || r.type === foundInValid.type);
+                    return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                 });
                 
-                currentItemMatched = foundInRep ? foundInRep : foundInValid;
+                // 만약 대표 문구에 없으면(CDL 등) 원본을 그대로 띄우고, 있으면 예쁜 대표 문구를 띄운다.
+                currentItemMatched = foundInRep ? foundInRep : foundInSearch;
             }
 
             if (currentItemMatched) {
@@ -1017,13 +1004,14 @@
             } else {
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
-                row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 매칭되는 내용 없음`;
+                row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표 목록에 없음`;
                 row.onmousedown = () => { document.getElementById(inputId).value = currentValue; optDiv.style.display = "none"; };
                 optDiv.appendChild(row);
                 hasOptions = true;
             }
         }
 
+        // 🔍 2. [추천 5개] 세부 검색 및 대표 치환 로직 🔍
         if (text.trim()) {
             const stopWords = ['INOP', 'INOPERATIVE', 'DEFECT', 'BROKEN', 'DAMAGED', 'MISSING', 'REPLACED', 'CHECK', 'CHK', 'THE', 'A', 'AN', 'OF', 'FOR', 'AND', 'TO', 'IS', 'NOT', 'PLZ', 'PLEASE', 'NEED'];
             const defectTerms = text.toUpperCase().match(/[A-Z0-9가-힣]{3,}/g)?.filter(t => !stopWords.includes(t)) || [];
@@ -1037,8 +1025,8 @@
                     if (ATA_DICT[term]) targetAtaChapter = ATA_DICT[term];
                 });
 
-                // 🚨 검색은 전체 풀(validActions)로 진행하여 세부 결함 키워드를 모두 스캔합니다! 🚨
-                validActions.forEach(d => {
+                // STEP 1: 세부 결함까지 싹 다 들어있는 '검색 풀(searchPool)'을 채점하여 숨은 결함들을 모조리 찾아낸다!
+                searchPool.forEach(d => {
                     let score = 0;
                     if (d.searchTarget) {
                         defectTerms.forEach(term => {
@@ -1065,41 +1053,39 @@
                 });
 
                 scoredDB.sort((a, b) => b.score - a.score);
-                const topCandidates = scoredDB.map(item => item.data); 
-
                 let finalCandidates = [];
 
-                for (let i = 0; i < topCandidates.length; i++) {
-                    let rawItem = topCandidates[i]; // 전체 풀에서 찾은 세부 결함 항목
-                    const searchCode = searchType === 'ATA' ? rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : rawItem.code.replace(/[^0-9A-Z]/gi, '');
+                for (let i = 0; i < scoredDB.length; i++) {
+                    let foundInSearch = scoredDB[i].data;
+                    const searchCode = searchType === 'ATA' ? foundInSearch.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInSearch.code.replace(/[^0-9A-Z]/gi, '');
                     
-                    // 🚨 출력 직전에 세부 항목을 대표 문구(repActions)로 치환합니다! 🚨
-                    let repItem = repActions.find(r => {
+                    // STEP 2: 찾아낸 녀석의 번호를 들고 '출력 풀(displayPool)'로 가서 대표 문구로 치환한다!
+                    let foundInRep = displayPool.find(r => {
                         const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
-                        return repBase === searchCode && (searchType === 'ATA' || r.type === rawItem.type);
+                        return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                     });
 
-                    if (!repItem) repItem = rawItem; // 방어 로직: 대표 문구가 없으면 찾은 그대로 씀
-                    
-                    const finalCodeBase = searchType === 'ATA' ? repItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : repItem.code.replace(/[^0-9A-Z]/gi, '');
+                    // 대표 문구가 없으면 방어용으로 원래 값을, 있으면 치환된 예쁜 값을 넣는다.
+                    let itemToDisplay = foundInRep ? foundInRep : foundInSearch;
+                    const finalCodeBase = searchType === 'ATA' ? itemToDisplay.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : itemToDisplay.code.replace(/[^0-9A-Z]/gi, '');
 
                     if (seenCodes.has(finalCodeBase)) continue; 
                     
-                    finalCandidates.push(repItem);
+                    finalCandidates.push(itemToDisplay);
                     seenCodes.add(finalCodeBase);
                     
                     if (finalCandidates.length >= 5) break; 
                 }
 
-                // 치환된 대표 문구들을 드롭다운에 출력
-                finalCandidates.forEach(repItem => {
-                    const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
-                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
+                // 드롭다운에 출력!
+                finalCandidates.forEach(itemToDisplay => {
+                    const prefix = searchType !== 'ATA' && itemToDisplay.type ? itemToDisplay.type + ' ' : '';
+                    const fullDisplay = searchType !== 'ATA' ? `${prefix}${itemToDisplay.code}`.trim() : itemToDisplay.code;
 
                     const row = document.createElement('div');
                     row.className = 'dropdown-opt';
-                    row.innerText = `${fullDisplay} :: ${repItem.keyword}`;
-                    row.title = `${fullDisplay} :: ${repItem.keyword}`; 
+                    row.innerText = `${fullDisplay} :: ${itemToDisplay.keyword}`;
+                    row.title = `${fullDisplay} :: ${itemToDisplay.keyword}`; 
                     row.onmousedown = () => { 
                         if (searchType !== 'ATA') {
                             const match = fullDisplay.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
