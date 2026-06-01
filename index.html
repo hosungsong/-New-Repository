@@ -366,8 +366,18 @@
             const data = await res.json();
             if (data && Object.keys(data.ac).length > 0) {
                 DB = data;
-                if(DB.ataDatabase) DB.ataDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
-                if(DB.actionDatabase) DB.actionDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
+
+                if(DB.ataDatabase) {
+                    DB.ataDatabase.forEach(d => {
+                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
+                    });
+                }
+                if(DB.actionDatabase) {
+                    DB.actionDatabase.forEach(d => {
+                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
+                    });
+                }
+
                 console.log("✅ 서버 DB 로드 완료!");
             } else {
                 console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
@@ -404,8 +414,11 @@
         
         if (!emails) {
             emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요.`, "");
-            if (emails && emails.trim() !== "") localStorage.setItem(`logScanner_email_${target}`, emails.trim());
-            else return;
+            if (emails && emails.trim() !== "") {
+                localStorage.setItem(`logScanner_email_${target}`, emails.trim());
+            } else {
+                return;
+            }
         }
 
         const 기번 = document.getElementById('regNo').value.trim() || '미확인';
@@ -434,7 +447,9 @@
 
         let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}` + (defectList.length > 1 ? ` etc` : ``);
         let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
-        defectList.forEach((item, index) => { bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`; });
+        defectList.forEach((item, index) => {
+            bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
+        });
 
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`, '_blank');
     }
@@ -448,13 +463,16 @@
 
         const firstId = rows[0].id.split('-')[1];
         const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
+        
         if (!첫번째구분_raw) return alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않았습니다!");
 
         let 이름 = localStorage.getItem('logScanner_userName');
         if (!이름) {
             이름 = prompt("전송자 성함을 입력해주세요.", "");
-            if (이름 && 이름.trim() !== "") { localStorage.setItem('logScanner_userName', 이름.trim()); updateUserNameDisplay(); }
-            else 이름 = "미상";
+            if (이름 && 이름.trim() !== "") {
+                localStorage.setItem('logScanner_userName', 이름.trim());
+                updateUserNameDisplay();
+            } else 이름 = "미상";
         }
 
         const 기번_raw = document.getElementById('regNo').value.trim();
@@ -470,7 +488,8 @@
         let payload;
         const 공통작성자 = `${첫번째구분_raw} ${첫번째구분_raw === "AP" ? "👨‍✈️" : "🔧"}`;
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-        const 편명구간 = (flightNoRaw || legFromRaw || legToRaw) ? `OZ${flightNoRaw||'미상'} (${legFromRaw||'???'} ➔ ${legToRaw||'???'})` : "";
+
+        let 편명구간 = (flightNoRaw || legFromRaw || legToRaw) ? `OZ${flightNoRaw||'미상'} (${legFromRaw||'???'} ➔ ${legToRaw||'???'})` : "";
 
         if (target === "DUTY") {
             let html결함묶음 = "";
@@ -698,10 +717,9 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🚨 [수술 완료 1] 애매한 찾기 삭제, 고정 행 번호(Row) 절대 방어막 설치 🚨
+    // 🚨 [수술 완료 1] 고유 행 번호(Row) 절대 방어막! 쓰레기 완벽 차단! 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        // NEF 대표문구는 정비사님이 지정한 83266줄부터 83403줄까지의 데이터만 엄격하게 반환!
         return DB.actionDatabase.filter(d => d.type === 'NEF' && d.row >= 83266 && d.row <= 83403);
     }
 
@@ -714,7 +732,7 @@
         else if (searchAcType.includes("A350")) searchAcType = "A350";
         else if (searchAcType.includes("A380")) searchAcType = "A380";
         
-        // A330은 명확하게 지정해주신 줄 번호가 있으므로 절대 방어막 적용
+        // 정비사님이 명확하게 짚어주신 A330의 행 번호 절대 방어선 적용
         if (searchAcType === "A330") {
             return DB.actionDatabase.filter(d => d.row >= 84741 && d.row <= 85777);
         }
@@ -727,7 +745,7 @@
             return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL'));
         }
 
-        // 나머지 기종도 배열 전체를 slice하는게 아니라 시작과 끝의 '고유 행 번호(row)'를 찾아 그 사이만 추출 (쓰레기 원천 차단)
+        // 전체 DB 배열 안에서 정확한 인덱스 번호를 찾아서 그 사이만 싹둑 자릅니다.
         let sItem = DB.actionDatabase.find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code === startCode);
         let eItem = [...DB.actionDatabase].reverse().find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code === endCode);
 
@@ -807,7 +825,6 @@
         let hasOptions = false;
         let seenCodes = new Set(); 
 
-        // 🚨 [수술 완료 2] 입력값 찾기: 전체 DB에서 찾은 뒤, 대표 목록에 없으면 가차 없이 화면에서 버림! 🚨
         if (currentValue) {
             let foundInSearch = searchPool.find(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
@@ -820,13 +837,12 @@
             if (foundInSearch) {
                 const searchCode = searchType === 'ATA' ? foundInSearch.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInSearch.code.replace(/[^0-9A-Z]/gi, '');
                 
-                // 찾은 코드를 대표 목록에 들이민다.
                 let foundInRep = displayPool.find(r => {
                     const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
                     return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                 });
                 
-                // 대표 목록에 있다면 예쁜 이름으로 옷을 입힌다. 없으면 null (버림)
+                // 🚨 [수술 완료 2] 오지랖 삭제! 대표 목록에 없으면 화면에서 쳐낸다! 🚨
                 currentItemMatched = foundInRep ? foundInRep : null;
             }
 
@@ -859,7 +875,6 @@
             }
         }
 
-        // 🚨 [수술 완료 3] 추천 5개 찾기: 전체 DB에서 찾은 뒤, 대표 목록에 없으면 가차 없이 화면에서 버림! 🚨
         if (text.trim()) {
             const stopWords = ['INOP', 'INOPERATIVE', 'DEFECT', 'BROKEN', 'DAMAGED', 'MISSING', 'REPLACED', 'CHECK', 'CHK', 'THE', 'A', 'AN', 'OF', 'FOR', 'AND', 'TO', 'IS', 'NOT', 'PLZ', 'PLEASE', 'NEED'];
             const defectTerms = text.toUpperCase().match(/[A-Z0-9가-힣]{3,}/g)?.filter(t => !stopWords.includes(t)) || [];
@@ -904,7 +919,7 @@
                         return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                     });
 
-                    // 대표 목록에 없으면 화면에 안 띄우고 다음 후보로 넘어감! (쓰레기 원천 차단)
+                    // 🚨 [수술 완료 3] 오지랖 삭제! 대표 목록에 없으면 화면에 안 띄우고 다음 후보로 넘어감! 🚨
                     if (!repItem) continue; 
                     
                     const finalCodeBase = searchType === 'ATA' ? repItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : repItem.code.replace(/[^0-9A-Z]/gi, '');
