@@ -27,7 +27,6 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* 돋보기 드롭다운 (상위 5개 표시용) */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); 
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
@@ -57,7 +56,6 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 정상 화면 레이아웃 (정비사님 원본 사수) */
         .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -81,6 +79,7 @@
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; min-width: 0; width: 100%; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
+        
         .search-wrap button { 
             background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; 
             cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; 
@@ -106,7 +105,7 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 확대 모드 레이아웃 겹침 방지 (절대 사수) */
+        /* 확대 모드 레이아웃 겹침 방지 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
@@ -125,8 +124,6 @@
         .btn-tool:hover { background: var(--secondary); }
         .btn-tool.btn-close { background: #e74c3c; }
         .btn-tool.btn-close:hover { background: #c0392b; }
-        .btn-tool.btn-rotate-left { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
-        .btn-tool.btn-rotate-right { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
 
         .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
         .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
@@ -140,7 +137,7 @@
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
 
-        /* 기존 모달 (학습용) */
+        /* 모달 팝업 디자인 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;}
@@ -153,7 +150,7 @@
         .btn-save { background: var(--secondary); color: white; }
         .btn-save:hover { background: #2980b9; }
 
-        /* 🔥 새롭게 추가된 "전체 리스트 보기 팝업창" 전용 디자인 🔥 */
+        /* 전체 리스트 보기 팝업창 전용 디자인 */
         .full-list-modal-content {
             background: white; padding: 25px; border-radius: 12px;
             width: 800px; max-width: 95vw; height: 85vh;
@@ -261,8 +258,7 @@
         <div class="search-wrap" style="margin-bottom: 10px; height: 45px;">
             <input type="text" id="fullListSearch" placeholder="🔍 원하는 키워드나 숫자를 입력하여 빠르게 찾으세요 (예: 2520, SEAT...)" oninput="filterFullList()" style="font-size: 15px; padding: 0 15px;">
         </div>
-        <div id="fullListContainer" class="full-list-container">
-            </div>
+        <div id="fullListContainer" class="full-list-container"></div>
         <div class="modal-btns">
             <button class="btn-cancel" style="padding: 12px 25px; font-size: 14px;" onclick="closeFullListModal()">닫기</button>
         </div>
@@ -282,7 +278,6 @@
     
     let currentAbortController = null;
 
-    // 🔥 더보기 관련 전역 변수 🔥
     let currentFullList = []; 
     let currentTargetInputId = '';
     let currentTargetRowId = '';
@@ -863,28 +858,33 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    const ATA_DICT = {
-        "SEAT": "25", "SEATS": "25", "BASSINET": "25", "TABLE": "25", "LAV": "25", "LAVATORY": "25", "TOILET": "25", "GALLEY": "25", "CARPET": "25", "CABIN": "25", "OVERHEAD": "25", "BIN": "25", "MONITOR": "25", "SCREEN": "25",
-        "LIGHT": "33", "LAMP": "33", "LED": "33", "READING": "33", "ILLUMINATION": "33", "STROBE": "33", "BEACON": "33", "LOGO": "33",
-        "DOOR": "52", "CARGO": "52", "LATCH": "52", "HANDLE": "52",
-        "WINDOW": "56", "GLASS": "56", "WINDSHIELD": "56",
-        "TIRE": "32", "WHEEL": "32", "BRAKE": "32", "GEAR": "32", "STRUT": "32",
-        "OVEN": "25", "COFFEE": "25", "MAKER": "25", "WATER": "38", "WASTE": "38", "POTABLE": "38",
-        "HANDSET": "23", "PA": "23", "INTERCOM": "23", "AUDIO": "23", "VIDEO": "23", "RADIO": "23", "VHF": "23", "UHF": "23",
-        "OXYGEN": "35", "MASK": "35", "O2": "35",
-        "AIR": "21", "PACK": "21", "TEMP": "21", "CONDITIONING": "21", "VENTILATION": "21",
-        "ENGINE": "71", "COWL": "71", "OIL": "79", "FUEL": "28", "TANK": "28",
-        "APU": "49", "FIRE": "26", "SMOKE": "26", "EXTINGUISHER": "26",
-        "ICE": "30", "RAIN": "30", "WIPER": "30", "HEATER": "30", "PROBE": "30",
-        "NAV": "34", "GPS": "34", "RADAR": "34", "ALTIMETER": "34",
-        "WING": "57", "FLAP": "57", "SLAT": "57", "AILERON": "57", "SPOILER": "57",
-        "ELEVATOR": "55", "RUDDER": "55", "STABILIZER": "55",
-        "FUSELAGE": "53", "RADOME": "53", "TAIL": "53"
-    };
+    // 🔥 [핵심 수정 부위 1]: 행 번호 매칭 전면 폐기 ➡️ 키워드 FROM~TO 스마트 추적기 이식 🔥
+    function getSmartNefPhrases() {
+        if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
+        
+        // 오직 NEF 데이터만 소집
+        const nefItems = DB.actionDatabase.filter(d => d.type === 'NEF');
+        if (nefItems.length === 0) return [];
+
+        // 자석 추적 시작: 시작 문구(General)와 끝 문구(Lenses Cracked) 탐색
+        let startIndex = nefItems.findIndex(d => d.code === '99-00-00' && d.searchTarget.includes('general'));
+        let endIndex = nefItems.findIndex(d => d.code === '33-00-12' && d.searchTarget.includes('lenses cracked'));
+
+        // 만약 검색에 실패할 경우 유연하게 전체 목록을 기본값으로 상속 방어
+        if (startIndex === -1) startIndex = 0;
+        if (endIndex === -1) endIndex = nefItems.length - 1;
+
+        // 시작과 끝이 역전되었을 경우 스왑 방어
+        if (startIndex > endIndex) {
+            const temp = startIndex; startIndex = endIndex; endIndex = temp;
+        }
+
+        // FROM부터 TO까지 예쁘게 잘라내어 반환
+        return nefItems.slice(startIndex, endIndex + 1);
+    }
 
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
-        const btnId = searchType === 'ATA' ? `btn-search-ata-${id}` : `btn-search-reason-${id}`;
         const inputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
         const dropdownId = `dropdown-${searchType}-${id}`;
         const optDiv = document.getElementById(dropdownId);
@@ -906,14 +906,22 @@
             validActions = dbToSearch; 
             repActions = dbToSearch.filter(d => d.row >= 1 && d.row <= 733);
         } else {
-            validActions = dbToSearch.filter(d => {
-                if (d.type === 'NEF') return true; 
-                if (d.acType !== 'ALL' && d.acType !== undefined) {
-                    return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
-                }
-                return true; 
-            });
-            repActions = validActions.filter(d => d.row >= 83266); 
+            const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
+            
+            // 🚨 NEF인 경우, 행 번호가 아닌 스마트 추적기가 반환한 '대표 문구 범위'만 강력 적용 🚨
+            if (currentReasonType === 'NEF') {
+                validActions = dbToSearch.filter(d => d.type === 'NEF');
+                repActions = getSmartNefPhrases(); 
+            } else {
+                validActions = dbToSearch.filter(d => {
+                    if (d.type === 'NEF') return true; 
+                    if (d.acType !== 'ALL' && d.acType !== undefined) {
+                        return currentAcType.includes(d.acType) || d.acType.includes(currentAcType);
+                    }
+                    return true; 
+                });
+                repActions = validActions.filter(d => d.row >= 83266); 
+            }
         }
 
         const currentValue = document.getElementById(inputId).value.trim();
@@ -1065,7 +1073,6 @@
             }
         }
         
-        // 🔥 [더보기] 버튼 추가 로직 🔥
         const moreRow = document.createElement('div');
         moreRow.className = 'dropdown-opt pinned';
         moreRow.style.textAlign = 'center';
@@ -1086,7 +1093,7 @@
         }
     }
 
-    // 🔥 전체 리스트 모달창 제어 로직 🔥
+    // 🔥 [핵심 수정 부위 2]: 더보기(팝업창) 열릴 때도 NEF 대표 문구 범위 완전 연동 🔥
     function openFullListModal(id, searchType) {
         currentTargetRowId = id;
         currentSearchType = searchType;
@@ -1104,18 +1111,23 @@
             dbToSearch = DB.ataDatabase;
         } else {
             const docType = document.getElementById(`docType-${id}`).value.toUpperCase();
-            titleEl.innerText = docType ? `[${docType}] 적용근거 전체 리스트 (${searchAcType})` : `적용근거 전체 리스트 (${searchAcType})`;
-
-            dbToSearch = DB.actionDatabase.filter(d => {
-                if (docType && d.type !== docType) return false;
-                if (d.acType !== 'ALL' && d.acType !== undefined) {
-                    return searchAcType.includes(d.acType) || d.acType.includes(searchAcType);
-                }
-                return true;
-            });
+            
+            // 🚨 팝업창에서도 NEF는 스마트 추적기로 추출한 83266~83403 영역만 강제 제한 노출! 🚨
+            if (docType === 'NEF') {
+                titleEl.innerText = "[NEF] 적용근거 전체 대표 리스트";
+                dbToSearch = getSmartNefPhrases();
+            } else {
+                titleEl.innerText = docType ? `[${docType}] 적용근거 전체 리스트 (${searchAcType})` : `적용근거 전체 리스트 (${searchAcType})`;
+                dbToSearch = DB.actionDatabase.filter(d => {
+                    if (docType && d.type !== docType) return false;
+                    if (d.acType !== 'ALL' && d.acType !== undefined) {
+                        return searchAcType.includes(d.acType) || d.acType.includes(searchAcType);
+                    }
+                    return true;
+                });
+            }
         }
 
-        // 중복 코드 제거 (가장 처음 등장한 것만 살림)
         let seen = new Set();
         currentFullList = [];
         dbToSearch.forEach(item => {
@@ -1127,14 +1139,17 @@
             }
         });
 
-        // 사용자가 보기 편하게 숫자/알파벳 오름차순으로 정렬
-        currentFullList.sort((a, b) => a.code.localeCompare(b.code));
+        // 사용자가 보기 편하게 코드별 정렬 (NEF 대표 문구는 원래 정비서식 순서대로 정렬 유지)
+        if (searchType !== 'ATA' && document.getElementById(`docType-${id}`).value.toUpperCase() === 'NEF') {
+            // NEF는 기입된 순서 보존
+        } else {
+            currentFullList.sort((a, b) => a.code.localeCompare(b.code));
+        }
 
         document.getElementById('fullListSearch').value = '';
         renderFullList(currentFullList);
         document.getElementById('fullListModal').style.display = 'flex';
         
-        // 창 열릴 때 자동으로 검색창에 커서 둠
         setTimeout(() => document.getElementById('fullListSearch').focus(), 100);
     }
 
@@ -1154,7 +1169,6 @@
             const div = document.createElement('div');
             div.className = 'dropdown-opt';
             div.innerHTML = `<b>${fullDisplay}</b> :: ${item.keyword}`;
-            // 팝업 안에서는 mousedown 대신 onclick 사용 가능
             div.onclick = () => {
                 if (currentSearchType !== 'ATA') {
                     const match = fullDisplay.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
@@ -1179,7 +1193,6 @@
             renderFullList(currentFullList);
             return;
         }
-        // 코드와 키워드(내용) 양쪽에서 모두 검색
         const filtered = currentFullList.filter(item => {
             const target = (item.code + item.keyword).toUpperCase().replace(/\s+/g, '');
             return target.includes(keyword);
@@ -1281,9 +1294,7 @@
         updateUserNameDisplay(); 
 
         window.addEventListener('mousedown', (e) => { 
-            // 팝업창 안에서 클릭할 때는 드롭다운 닫히지 않도록 예외 처리
             if (e.target.closest('#fullListModal')) return;
-            
             if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap') && !e.target.closest('.doc-toggle-box')) {
                 document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none");
             }
@@ -1328,23 +1339,12 @@
     };
 
     function applyTransform() { const img = document.getElementById('pastedImg'); if (img) { img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; } }
-    
-    function rotateLeft(e) {
-        if(e) e.stopPropagation();
-        currentRotation -= 90; 
-        applyTransform();
-    }
-
-    function rotateRight(e) {
-        if(e) e.stopPropagation();
-        currentRotation += 90; 
-        applyTransform();
-    }
+    function rotateLeft(e) { if(e) e.stopPropagation(); currentRotation -= 90; applyTransform(); }
+    function rotateRight(e) { if(e) e.stopPropagation(); currentRotation += 90; applyTransform(); }
     
     function toggleExpand() {
         document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; applyTransform();
-        
         setTimeout(refreshAllHeights, 50);
         setTimeout(refreshAllHeights, 150);
         setTimeout(refreshAllHeights, 400); 
@@ -1353,8 +1353,7 @@
     async function extractText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractMain'); 
-        btn.innerText = "분석 중... ⏳"; 
-        btn.disabled = true; 
+        btn.innerText = "분석 중... ⏳"; btn.disabled = true; 
         
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();
@@ -1364,37 +1363,23 @@
         formData.append("file", compressedFile); 
 
         try {
-            const res = await fetch("/ocr", { 
-                method: "POST", 
-                body: formData,
-                signal: currentAbortController.signal 
-            });
+            const res = await fetch("/ocr", { method: "POST", body: formData, signal: currentAbortController.signal });
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             
             if (data.regNo) { 
                 let cleanReg = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, "");
-                document.getElementById('regNo').value = cleanReg; 
-                fillAcType(); 
+                document.getElementById('regNo').value = cleanReg; fillAcType(); 
             }
-            
             if (data.flightNo) { 
                 let cleanFno = String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '');
                 document.getElementById('flightNo').value = cleanFno; 
             } 
-            
-            if (data.legFrom) {
-                document.getElementById('legFrom').value = String(data.legFrom).replace(/[^A-Z]/gi, '').toUpperCase();
-            }
-            if (data.legTo) {
-                document.getElementById('legTo').value = String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase();
-            }
+            if (data.legFrom) document.getElementById('legFrom').value = String(data.legFrom).replace(/[^A-Z]/gi, '').toUpperCase();
+            if (data.legTo) document.getElementById('legTo').value = String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase();
 
-            if (data.flightNo && (!data.legFrom || !data.legTo)) {
-                matchLegsFromFlight();
-            } else if (!data.flightNo && (data.legFrom && data.legTo)) {
-                matchFlightFromLegs();
-            }
+            if (data.flightNo && (!data.legFrom || !data.legTo)) matchLegsFromFlight();
+            else if (!data.flightNo && (data.legFrom && data.legTo)) matchFlightFromLegs();
             
             if (data.items && data.items.length > 0) {
                 document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0;
@@ -1402,28 +1387,19 @@
                 setTimeout(refreshAllHeights, 150); 
             } else {
                 alert("🔍 이월 대상 결함 내역을 찾지 못했습니다.");
-                if (document.querySelectorAll('.defect-row').length === 0) {
-                    addRow();
-                }
+                if (document.querySelectorAll('.defect-row').length === 0) addRow();
             }
         } catch (e) { 
-            if (e.name === 'AbortError') {
-                console.log("분석이 사용자에 의해 취소되었습니다.");
-            } else {
-                alert("⚠️ 에러: " + e.message); 
-            }
+            if (e.name !== 'AbortError') alert("⚠️ 에러: " + e.message); 
         } finally { 
-            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
-            btn.disabled = false; 
-            currentAbortController = null;
+            btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; currentAbortController = null;
         }
     }
 
     async function extractRawText() {
         if (!fileToUpload) return alert("사진을 먼저 첨부하세요!");
         const btn = document.getElementById('btnExtractRaw'); 
-        btn.innerText = "추출 중... ⏳"; 
-        btn.disabled = true;
+        btn.innerText = "추출 중... ⏳"; btn.disabled = true;
         
         if (currentAbortController) currentAbortController.abort();
         currentAbortController = new AbortController();
@@ -1433,25 +1409,15 @@
         formData.append("file", compressedFile);
 
         try {
-            const res = await fetch("/extract_raw", { 
-                method: "POST", 
-                body: formData,
-                signal: currentAbortController.signal
-            });
+            const res = await fetch("/extract_raw", { method: "POST", body: formData, signal: currentAbortController.signal });
             const data = await res.json();
             if (data.error) { alert("⚠️ 서버 오류: " + data.error); return; }
             document.getElementById('rightPanel').classList.add('text-extract-mode');
             const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
         } catch (e) { 
-            if (e.name === 'AbortError') {
-                console.log("추출이 취소되었습니다.");
-            } else {
-                alert("⚠️ 통신 에러: " + e.message); 
-            }
+            if (e.name !== 'AbortError') alert("⚠️ 통신 에러: " + e.message); 
         } finally { 
-            btn.innerText = "📝 TEXT 추출"; 
-            btn.disabled = false; 
-            currentAbortController = null;
+            btn.innerText = "📝 TEXT 추출"; btn.disabled = false; currentAbortController = null;
         }
     }
 </script>
