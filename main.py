@@ -50,15 +50,18 @@ def reload_db_from_lines(lines):
         if len(parts) >= 2:
             type_ = parts[0].upper()
             if type_ == 'ATA':
-                key = parts[2].upper() if len(parts) > 2 else ""
+                # 🚨 쉼표로 잘린 나머지 조각들을 다시 콤마로 이어 붙임!
+                key = ",".join(parts[2:]).upper() if len(parts) > 2 else ""
                 if key and parts[1] and key != 'KEYWORD':
                     APP_DB["ataDatabase"].append({"keyword": key, "code": parts[1], "row": rowNum})
             elif type_ == 'NEF' and len(parts) >= 3:
-                APP_DB["actionDatabase"].append({"type": 'NEF', "code": parts[1].upper(), "acType": 'ALL', "keyword": parts[2].upper(), "row": rowNum})
+                key = ",".join(parts[2:]).upper()
+                APP_DB["actionDatabase"].append({"type": 'NEF', "code": parts[1].upper(), "acType": 'ALL', "keyword": key, "row": rowNum})
             elif type_ == 'MEL' and len(parts) >= 4:
-                APP_DB["actionDatabase"].append({"type": 'MEL', "acType": parts[1].upper(), "code": parts[2].upper(), "keyword": parts[3].upper(), "row": rowNum})
+                key = ",".join(parts[3:]).upper()
+                APP_DB["actionDatabase"].append({"type": 'MEL', "acType": parts[1].upper(), "code": parts[2].upper(), "keyword": key, "row": rowNum})
             elif type_ == 'ACTION' and len(parts) >= 3:
-                key = parts[2].upper() if len(parts) > 2 else ""
+                key = ",".join(parts[2:]).upper()
                 if key and parts[1] and key != 'KEYWORD':
                     APP_DB["actionDatabase"].append({"type": '', "code": parts[1].upper(), "acType": 'ALL', "keyword": key, "row": rowNum})
             elif type_ == 'FLIGHT' and len(parts) >= 4:
