@@ -366,21 +366,11 @@
             const data = await res.json();
             if (data && Object.keys(data.ac).length > 0) {
                 DB = data;
-
-                if(DB.ataDatabase) {
-                    DB.ataDatabase.forEach(d => {
-                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
-                    });
-                }
-                if(DB.actionDatabase) {
-                    DB.actionDatabase.forEach(d => {
-                        d.searchTarget = (d.keyword + " " + d.code).toLowerCase();
-                    });
-                }
-
+                if(DB.ataDatabase) DB.ataDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
+                if(DB.actionDatabase) DB.actionDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
                 console.log("✅ 서버 DB 로드 완료!");
             } else {
-                console.warn("⚠️ 서버에 DB가 없습니다. CSV를 깃허브에 업로드해주세요.");
+                console.warn("⚠️ 서버에 DB가 없습니다.");
             }
         } catch (e) {
             console.error("서버 DB 로드 실패:", e);
@@ -414,11 +404,8 @@
         
         if (!emails) {
             emails = prompt(`📧 [${target} 전송 설정]\n수신할 구글 메일 주소를 입력하세요.`, "");
-            if (emails && emails.trim() !== "") {
-                localStorage.setItem(`logScanner_email_${target}`, emails.trim());
-            } else {
-                return;
-            }
+            if (emails && emails.trim() !== "") localStorage.setItem(`logScanner_email_${target}`, emails.trim());
+            else return;
         }
 
         const 기번 = document.getElementById('regNo').value.trim() || '미확인';
@@ -447,9 +434,7 @@
 
         let subjectText = `[Dispatch Approval] HL${기번}(${acType}) ${defectList[0].defect}` + (defectList.length > 1 ? ` etc` : ``);
         let bodyText = `[Dispatch Approval] HL${기번}(${acType}) 검토 완료 했습니다.\n`;
-        defectList.forEach((item, index) => {
-            bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`;
-        });
+        defectList.forEach((item, index) => { bodyText += `\n[DEFECT ${index + 1}]\n- ${item.defect}\n- ${item.reason}\n`; });
 
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails)}&su=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`, '_blank');
     }
@@ -463,16 +448,13 @@
 
         const firstId = rows[0].id.split('-')[1];
         const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
-        
         if (!첫번째구분_raw) return alert("⚠️ 작성자(AS 또는 AP)가 선택되지 않았습니다!");
 
         let 이름 = localStorage.getItem('logScanner_userName');
         if (!이름) {
             이름 = prompt("전송자 성함을 입력해주세요.", "");
-            if (이름 && 이름.trim() !== "") {
-                localStorage.setItem('logScanner_userName', 이름.trim());
-                updateUserNameDisplay();
-            } else 이름 = "미상";
+            if (이름 && 이름.trim() !== "") { localStorage.setItem('logScanner_userName', 이름.trim()); updateUserNameDisplay(); }
+            else 이름 = "미상";
         }
 
         const 기번_raw = document.getElementById('regNo').value.trim();
@@ -488,8 +470,7 @@
         let payload;
         const 공통작성자 = `${첫번째구분_raw} ${첫번째구분_raw === "AP" ? "👨‍✈️" : "🔧"}`;
         const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-
-        let 편명구간 = (flightNoRaw || legFromRaw || legToRaw) ? `OZ${flightNoRaw||'미상'} (${legFromRaw||'???'} ➔ ${legToRaw||'???'})` : "";
+        const 편명구간 = (flightNoRaw || legFromRaw || legToRaw) ? `OZ${flightNoRaw||'미상'} (${legFromRaw||'???'} ➔ ${legToRaw||'???'})` : "";
 
         if (target === "DUTY") {
             let html결함묶음 = "";
@@ -652,30 +633,22 @@
         const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         
         const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
-        const isAs = asApVal === 'AS';
-        const isAp = asApVal === 'AP';
-
-        let parsedDocType = "";
-        let parsedReasonCode = data.reason || "";
+        let parsedDocType = ""; let parsedReasonCode = data.reason || "";
         if (parsedReasonCode) {
             const match = parsedReasonCode.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
-            if (match) {
-                parsedDocType = match[1].toUpperCase();
-                parsedReasonCode = match[2].trim();
-            }
+            if (match) { parsedDocType = match[1].toUpperCase(); parsedReasonCode = match[2].trim(); }
         }
 
         row.innerHTML = `
             <div class="as-ap-wrapper" style="min-width:0;">
                 <span class="idx-num"></span>
                 <div class="toggle-box">
-                    <button type="button" class="toggle-btn ${isAs ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
-                    <button type="button" class="toggle-btn ${isAp ? 'active' : ''}" onclick="setAsAp(${id},'AP')">AP</button>
+                    <button type="button" class="toggle-btn ${asApVal==='AS' ? 'active' : ''}" onclick="setAsAp(${id},'AS')">AS</button>
+                    <button type="button" class="toggle-btn ${asApVal==='AP' ? 'active' : ''}" onclick="setAsAp(${id},'AP')">AP</button>
                 </div>
                 <input type="hidden" id="asAp-${id}" value="${asApVal}">
             </div>
             <div style="min-width:0;"><textarea id="defect-${id}" rows="1" oninput="autoResize(this);" placeholder="결함 내용">${data.defect || ''}</textarea></div>
-            
             <div style="display:flex; gap:4px; height:38px; width:100%; min-width:0;">
                 <div class="doc-toggle-box" id="doc-toggle-box-${id}">
                     <button type="button" class="doc-toggle-btn" id="btn-mel-${id}" onclick="setDocType(${id}, 'MEL')">MEL</button>
@@ -694,7 +667,6 @@
                 </div>
                 <input type="hidden" id="docType-${id}" value="${parsedDocType}">
             </div>
-
             <div class="ata-wrapper" style="min-width:0; width:100%;">
                 <div class="search-wrap">
                     <input type="text" id="ata-${id}" value="${data.ata || ''}" placeholder="ATA CODE">
@@ -705,9 +677,8 @@
             <button class="btn-remove" onclick="removeDefectRow(this)">-</button>
         `;
         container.appendChild(row); updateNums();
-        
-        if(data.defect) { setTimeout(() => { autoResize(document.getElementById(`defect-${id}`)); }, 100); }
-        if(parsedDocType) { setTimeout(() => { setDocType(id, parsedDocType); }, 10); }
+        if(data.defect) setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 100);
+        if(parsedDocType) setTimeout(() => setDocType(id, parsedDocType), 10);
     }
 
     function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
@@ -717,70 +688,61 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
+    // 🚨 수동 저격 삭제용 함수 🚨
+    const isNotJunk = (d) => !d.code.includes('23-100-01') && !d.keyword.includes('192GB');
+
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
+        let sIdx = DB.actionDatabase.findIndex(d => d.row === 83266 && d.type === 'NEF');
+        let eIdx = DB.actionDatabase.findIndex(d => d.row === 83403 && d.type === 'NEF');
+        
+        if (sIdx !== -1 && eIdx !== -1) {
+            if (sIdx > eIdx) { let t = sIdx; sIdx = eIdx; eIdx = t; }
+            return DB.actionDatabase.slice(sIdx, eIdx + 1);
+        }
         return DB.actionDatabase.filter(d => d.type === 'NEF' && d.row >= 83266 && d.row <= 83403);
     }
 
+    // 🚨 기종별 MEL 필터: 행 번호 사이라도 찌꺼기는 무조건 거르도록 3중 잠금장치 🚨
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        
         let searchAcType = acType.toUpperCase();
         if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
         else if (searchAcType.includes("A330")) searchAcType = "A330";
         else if (searchAcType.includes("A350")) searchAcType = "A350";
         else if (searchAcType.includes("A380")) searchAcType = "A380";
         
-        if (searchAcType === "A330") {
-            return DB.actionDatabase.filter(d => d.type === 'MEL' && d.row >= 84741 && d.row <= 85777 && (d.acType.includes(searchAcType) || d.acType === 'ALL'));
-        }
-
         let startCode = '', endCode = '';
         if (searchAcType === "A321") { startCode = "21-00-04A"; endCode = "80-12-01A"; }
+        else if (searchAcType === "A330") { startCode = "21-01-01-01A"; endCode = "80-12-01A"; }
         else if (searchAcType === "A350") { startCode = "21-01-01A"; endCode = "80-12-01A"; }
         else if (searchAcType === "A380") { startCode = "21-01-01A"; endCode = "80-11-02A"; }
         else {
-            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL'));
+            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL') && isNotJunk(d));
         }
 
-        let sItem = DB.actionDatabase.find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code.includes(startCode));
-        let eItem = [...DB.actionDatabase].reverse().find(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code.includes(endCode));
+        let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType === searchAcType && d.code === startCode);
+        let eIdx = -1;
+        for (let i = DB.actionDatabase.length - 1; i >= 0; i--) {
+            if (DB.actionDatabase[i].type === 'MEL' && DB.actionDatabase[i].acType === searchAcType && DB.actionDatabase[i].code === endCode) {
+                eIdx = i; break;
+            }
+        }
 
-        if (sItem && eItem) {
-            let sRow = sItem.row;
-            let eRow = eItem.row;
-            if (sRow > eRow) { let t = sRow; sRow = eRow; eRow = t; }
-            
-            // 🚨 핵심 수술: 자른 행 사이에서도 무조건 해당 기종의 'MEL'만 통과시킴 (찌꺼기 절대 차단) 🚨
+        if (sIdx !== -1 && eIdx !== -1) {
+            if (sIdx > eIdx) { let t = sIdx; sIdx = eIdx; eIdx = t; }
+            // 행 번호 안쪽이더라도 타입과 기종, 그리고 악성 찌꺼기가 아닌 것만 무조건 필터링!
             return DB.actionDatabase.filter(d => 
                 d.type === 'MEL' && 
-                d.row >= sRow && 
-                d.row <= eRow && 
-                (d.acType.includes(searchAcType) || d.acType === 'ALL')
+                d.row >= DB.actionDatabase[sIdx].row && 
+                d.row <= DB.actionDatabase[eIdx].row && 
+                (d.acType.includes(searchAcType) || d.acType === 'ALL') &&
+                isNotJunk(d)
             );
         }
         
-        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(searchAcType) || d.acType === 'ALL'));
+        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL') && isNotJunk(d));
     }
-
-    const ATA_DICT = {
-        "SEAT": "25", "SEATS": "25", "BASSINET": "25", "TABLE": "25", "LAV": "25", "LAVATORY": "25", "TOILET": "25", "GALLEY": "25", "CARPET": "25", "CABIN": "25", "OVERHEAD": "25", "BIN": "25", "MONITOR": "25", "SCREEN": "25",
-        "LIGHT": "33", "LAMP": "33", "LED": "33", "READING": "33", "ILLUMINATION": "33", "STROBE": "33", "BEACON": "33", "LOGO": "33",
-        "DOOR": "52", "CARGO": "52", "LATCH": "52", "HANDLE": "52",
-        "WINDOW": "56", "GLASS": "56", "WINDSHIELD": "56",
-        "TIRE": "32", "WHEEL": "32", "BRAKE": "32", "GEAR": "32", "STRUT": "32",
-        "OVEN": "25", "COFFEE": "25", "MAKER": "25", "WATER": "38", "WASTE": "38", "POTABLE": "38",
-        "HANDSET": "23", "PA": "23", "INTERCOM": "23", "AUDIO": "23", "VIDEO": "23", "RADIO": "23", "VHF": "23", "UHF": "23",
-        "OXYGEN": "35", "MASK": "35", "O2": "35",
-        "AIR": "21", "PACK": "21", "TEMP": "21", "CONDITIONING": "21", "VENTILATION": "21",
-        "ENGINE": "71", "COWL": "71", "OIL": "79", "FUEL": "28", "TANK": "28",
-        "APU": "49", "FIRE": "26", "SMOKE": "26", "EXTINGUISHER": "26",
-        "ICE": "30", "RAIN": "30", "WIPER": "30", "HEATER": "30", "PROBE": "30",
-        "NAV": "34", "GPS": "34", "RADAR": "34", "ALTIMETER": "34",
-        "WING": "57", "FLAP": "57", "SLAT": "57", "AILERON": "57", "SPOILER": "57",
-        "ELEVATOR": "55", "RUDDER": "55", "STABILIZER": "55",
-        "FUSELAGE": "53", "RADOME": "53", "TAIL": "53"
-    };
 
     function searchSmartDB(id, searchType) {
         const text = document.getElementById(`defect-${id}`).value;
@@ -840,13 +802,11 @@
 
             if (foundInSearch) {
                 const searchCode = searchType === 'ATA' ? foundInSearch.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInSearch.code.replace(/[^0-9A-Z]/gi, '');
-                
                 let foundInRep = displayPool.find(r => {
                     const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
                     return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                 });
                 
-                // 🚨 오지랖 코드 삭제! 없으면 아예 화면에 안 띄웁니다! 🚨
                 currentItemMatched = foundInRep ? foundInRep : null;
             }
 
@@ -923,7 +883,6 @@
                         return repBase === searchCode && (searchType === 'ATA' || r.type === foundInSearch.type);
                     });
 
-                    // 🚨 [수술 완료 4] 대표 목록에 없으면(A2-9 Brew cup 등) 과감하게 쳐냄! 🚨
                     if (!repItem) continue; 
                     
                     const finalCodeBase = searchType === 'ATA' ? repItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : repItem.code.replace(/[^0-9A-Z]/gi, '');
