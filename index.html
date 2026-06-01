@@ -112,6 +112,8 @@
         .btn-tool:hover { background: var(--secondary); }
         .btn-tool.btn-close { background: #e74c3c; }
         .btn-tool.btn-close:hover { background: #c0392b; }
+        .btn-tool.btn-rotate-left { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
+        .btn-tool.btn-rotate-right { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
 
         .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
         .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
@@ -843,7 +845,6 @@
         event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
-    // 🚨 NEF 대표 문구 스마트 추적 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         const nefItems = DB.actionDatabase.filter(d => d.type === 'NEF');
@@ -859,7 +860,6 @@
         return nefItems.slice(startIndex, endIndex + 1);
     }
 
-    // 🚨 기종별 MEL 스마트 추적 로직 추가 🚨
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         
@@ -935,8 +935,9 @@
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
 
-        let validActions = [];
-        let repActions = [];
+        // 🚨 검색은 전체에서, 출력은 대표로 완벽히 분리 🚨
+        let validActions = []; // 모든 세부항목이 들어있는 '검색 풀'
+        let repActions = [];   // 화면에 띄울 '출력 대표 문구 풀'
 
         if (searchType === 'ATA') {
             validActions = dbToSearch; 
@@ -944,7 +945,6 @@
         } else {
             const currentReasonType = document.getElementById(`docType-${id}`).value.toUpperCase();
             
-            // 🚨 문서 타입별 스마트 추적 분기 🚨
             if (currentReasonType === 'NEF') {
                 validActions = dbToSearch.filter(d => d.type === 'NEF');
                 repActions = getSmartNefPhrases(); 
@@ -971,24 +971,28 @@
         let seenCodes = new Set(); 
 
         if (currentValue) {
-            let matchedItems = repActions.filter(d => {
+            // 1. 전체 풀(validActions)에서 입력된 번호를 찾습니다.
+            let foundInValid = validActions.find(d => {
                 const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
                 if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
                 return dbBase === cleanCurrent || d.code === currentValue;
             });
 
-            if (matchedItems.length === 0 && searchType !== 'ATA') {
-                matchedItems = validActions.filter(d => {
-                    const dbBase = d.code.replace(/[^0-9A-Z]/gi, '');
-                    if (searchType === 'ATA') return dbBase.length >= 4 && cleanCurrent.length >= 4 && cleanCurrent.startsWith(dbBase.substring(0,4));
-                    return dbBase === cleanCurrent || d.code === currentValue;
+            let currentItemMatched = null;
+
+            if (foundInValid) {
+                // 2. 찾은 원본 번호를 '대표 문구 풀(repActions)'에서 찾아 치환합니다!
+                const searchCode = searchType === 'ATA' ? foundInValid.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : foundInValid.code.replace(/[^0-9A-Z]/gi, '');
+                
+                let foundInRep = repActions.find(r => {
+                    const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
+                    return repBase === searchCode && (searchType === 'ATA' || r.type === foundInValid.type);
                 });
+                
+                currentItemMatched = foundInRep ? foundInRep : foundInValid;
             }
 
-            if (matchedItems.length > 0) {
-                matchedItems.sort((a, b) => b.row - a.row);
-                let currentItemMatched = matchedItems[0];
-
+            if (currentItemMatched) {
                 const prefix = searchType !== 'ATA' && currentItemMatched.type ? currentItemMatched.type + ' ' : '';
                 const fullDisplay = searchType !== 'ATA' ? `${prefix}${currentItemMatched.code}`.trim() : currentItemMatched.code;
 
@@ -1033,6 +1037,7 @@
                     if (ATA_DICT[term]) targetAtaChapter = ATA_DICT[term];
                 });
 
+                // 🚨 검색은 전체 풀(validActions)로 진행하여 세부 결함 키워드를 모두 스캔합니다! 🚨
                 validActions.forEach(d => {
                     let score = 0;
                     if (d.searchTarget) {
@@ -1065,30 +1070,29 @@
                 let finalCandidates = [];
 
                 for (let i = 0; i < topCandidates.length; i++) {
-                    let rawItem = topCandidates[i];
-                    const pureCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
-                    const searchCode = searchType === 'ATA' ? pureCode.substring(0,4) : pureCode;
+                    let rawItem = topCandidates[i]; // 전체 풀에서 찾은 세부 결함 항목
+                    const searchCode = searchType === 'ATA' ? rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : rawItem.code.replace(/[^0-9A-Z]/gi, '');
                     
-                    if (seenCodes.has(searchCode)) continue; 
+                    // 🚨 출력 직전에 세부 항목을 대표 문구(repActions)로 치환합니다! 🚨
+                    let repItem = repActions.find(r => {
+                        const repBase = searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi, '');
+                        return repBase === searchCode && (searchType === 'ATA' || r.type === rawItem.type);
+                    });
+
+                    if (!repItem) repItem = rawItem; // 방어 로직: 대표 문구가 없으면 찾은 그대로 씀
                     
-                    finalCandidates.push(rawItem);
-                    seenCodes.add(searchCode);
+                    const finalCodeBase = searchType === 'ATA' ? repItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : repItem.code.replace(/[^0-9A-Z]/gi, '');
+
+                    if (seenCodes.has(finalCodeBase)) continue; 
+                    
+                    finalCandidates.push(repItem);
+                    seenCodes.add(finalCodeBase);
                     
                     if (finalCandidates.length >= 5) break; 
                 }
 
-                finalCandidates.forEach(rawItem => {
-                    let repItem = rawItem;
-                    if (searchType === 'ATA') {
-                        const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '').substring(0,4);
-                        const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) === searchCode);
-                        if (foundRep) repItem = foundRep; 
-                    } else {
-                        const searchCode = rawItem.code.replace(/[^0-9A-Z]/gi, '');
-                        const foundRep = repActions.find(r => r.code.replace(/[^0-9A-Z]/gi, '') === searchCode && r.type === rawItem.type);
-                        if (foundRep) repItem = foundRep;
-                    }
-
+                // 치환된 대표 문구들을 드롭다운에 출력
+                finalCandidates.forEach(repItem => {
                     const prefix = searchType !== 'ATA' && repItem.type ? repItem.type + ' ' : '';
                     const fullDisplay = searchType !== 'ATA' ? `${prefix}${repItem.code}`.trim() : repItem.code;
 
@@ -1132,7 +1136,6 @@
         }
     }
 
-    // 🔥 팝업창(더보기) 오픈 시에도 분기 적용 완료 🔥
     function openFullListModal(id, searchType) {
         currentTargetRowId = id;
         currentSearchType = searchType;
