@@ -27,23 +27,22 @@
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
         
-        /* 🔥 드롭다운 말줄임표(...) 및 우측 정렬 (화면 뚫림 방지) 🔥 */
+        /* 돋보기 드롭다운 (상위 5개 표시용) */
         .dropdown-list { 
             position: absolute; top: calc(100% + 2px); 
             background: white; border: 1px solid var(--primary); z-index: 9999; display: none; 
             box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; 
         }
         .search-wrap .dropdown-list {
-            width: max-content; max-width: 50vw; /* 화면 절반까지만 허용 */
-            right: 0; left: auto; /* 돋보기 버튼 쪽에 기준을 맞추고 왼쪽으로 펼쳐짐 */
+            width: max-content; max-width: 50vw; 
+            right: 0; left: auto; 
         }
-        .box .dropdown-list {
-            min-width: 100%; width: max-content; left: 0; right: auto;
-        }
+        .box .dropdown-list { min-width: 100%; width: max-content; left: 0; right: auto; }
+        
         .dropdown-opt { 
             padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; 
             text-align: left; font-weight: bold; color: var(--primary); 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* 글씨 길면 ... 처리 */
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             display: block; width: 100%; box-sizing: border-box;
         }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
@@ -58,7 +57,7 @@
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
         
-        /* 🚨 평상시 레이아웃: 정비사님 세팅 100% 유지 🚨 */
+        /* 정상 화면 레이아웃 (정비사님 원본 사수) */
         .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
@@ -82,13 +81,10 @@
 
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; min-width: 0; width: 100%; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
-        
-        /* 🔥 돋보기 안 눌림 완벽 해결 (z-index 및 relative 부여로 막힘 방지) 🔥 */
         .search-wrap button { 
             background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; 
             cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; 
-            transition: 0.2s; border-radius: 0 4px 4px 0; 
-            position: relative; z-index: 10; 
+            transition: 0.2s; border-radius: 0 4px 4px 0; position: relative; z-index: 10; 
         }
         .search-wrap button:hover { background: #2c3e50; }
 
@@ -110,21 +106,14 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🚨 확대 모드 레이아웃 겹침 방지 (minmax(0, Xfr) 절대 사수) 🚨 */
+        /* 확대 모드 레이아웃 겹침 방지 (절대 사수) */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
-        
-        /* grid가 내용을 뚫고 나가지 못하도록 minmax의 최소값을 0으로 고정 */
-        .top-section.expanded .defect-grid { 
-            grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.8fr) minmax(0, 0.8fr) 30px; 
-            gap: 6px; 
-        } 
-        /* 확대 시 적용근거 스위치 박스 다이어트 */
+        .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.8fr) minmax(0, 0.8fr) 30px; gap: 6px; } 
         .top-section.expanded .doc-toggle-box { width: 85px; }
         .top-section.expanded .doc-toggle-btn { font-size: 9px; padding: 0; }
-
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
         .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
@@ -136,15 +125,8 @@
         .btn-tool:hover { background: var(--secondary); }
         .btn-tool.btn-close { background: #e74c3c; }
         .btn-tool.btn-close:hover { background: #c0392b; }
-
-        .btn-tool.btn-rotate-left {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E");
-            background-size: 20px; background-repeat: no-repeat; background-position: center;
-        }
-        .btn-tool.btn-rotate-right {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E");
-            background-size: 20px; background-repeat: no-repeat; background-position: center;
-        }
+        .btn-tool.btn-rotate-left { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
+        .btn-tool.btn-rotate-right { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
 
         .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
         .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
@@ -158,6 +140,7 @@
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
 
+        /* 기존 모달 (학습용) */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;}
@@ -169,6 +152,19 @@
         .btn-cancel:hover { background: #ced4da; }
         .btn-save { background: var(--secondary); color: white; }
         .btn-save:hover { background: #2980b9; }
+
+        /* 🔥 새롭게 추가된 "전체 리스트 보기 팝업창" 전용 디자인 🔥 */
+        .full-list-modal-content {
+            background: white; padding: 25px; border-radius: 12px;
+            width: 800px; max-width: 95vw; height: 85vh;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column;
+        }
+        .full-list-modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;}
+        .full-list-container {
+            flex: 1; overflow-y: auto; border: 1px solid var(--border);
+            border-radius: 6px; padding: 5px; margin-bottom: 15px; background: #fdfefe;
+        }
     </style>
 </head>
 <body>
@@ -259,6 +255,20 @@
     </div>
 </div>
 
+<div id="fullListModal" class="modal-overlay" style="z-index: 10001;">
+    <div class="full-list-modal-content">
+        <h3 id="fullListTitle">전체 리스트 열람</h3>
+        <div class="search-wrap" style="margin-bottom: 10px; height: 45px;">
+            <input type="text" id="fullListSearch" placeholder="🔍 원하는 키워드나 숫자를 입력하여 빠르게 찾으세요 (예: 2520, SEAT...)" oninput="filterFullList()" style="font-size: 15px; padding: 0 15px;">
+        </div>
+        <div id="fullListContainer" class="full-list-container">
+            </div>
+        <div class="modal-btns">
+            <button class="btn-cancel" style="padding: 12px 25px; font-size: 14px;" onclick="closeFullListModal()">닫기</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const WEBHOOK_URLS = {
         "OCC": "https://chat.googleapis.com/v1/spaces/AAQAkm9cIHk/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DHRSasF0dZDVUu2cb2QUqM5RNjQOD3Q5BIpWOBEjJro",
@@ -271,6 +281,12 @@
     let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
     
     let currentAbortController = null;
+
+    // 🔥 더보기 관련 전역 변수 🔥
+    let currentFullList = []; 
+    let currentTargetInputId = '';
+    let currentTargetRowId = '';
+    let currentSearchType = '';
 
     document.addEventListener('keydown', (e) => {
         if (currentAbortController) return;
@@ -795,7 +811,6 @@
             }
         }
 
-        /* 🔥 min-width: 0 을 명시하여 컨텐츠가 강제로 늘어나는 것을 막습니다 🔥 */
         row.innerHTML = `
             <div class="as-ap-wrapper" style="min-width:0;">
                 <span class="idx-num"></span>
@@ -1050,11 +1065,130 @@
             }
         }
         
+        // 🔥 [더보기] 버튼 추가 로직 🔥
+        const moreRow = document.createElement('div');
+        moreRow.className = 'dropdown-opt pinned';
+        moreRow.style.textAlign = 'center';
+        moreRow.style.background = '#e9ecef';
+        moreRow.style.color = '#2c3e50';
+        moreRow.innerHTML = `➕ <b>[더보기] 전체 리스트 열람</b>`;
+        moreRow.onmousedown = () => { 
+            optDiv.style.display = "none"; 
+            openFullListModal(id, searchType);
+        };
+        optDiv.appendChild(moreRow);
+        hasOptions = true;
+
         if (hasOptions) {
             optDiv.style.display = "block";
         } else {
             alert(`🔍 연관된 항목을 찾지 못했습니다.`); 
         }
+    }
+
+    // 🔥 전체 리스트 모달창 제어 로직 🔥
+    function openFullListModal(id, searchType) {
+        currentTargetRowId = id;
+        currentSearchType = searchType;
+        currentTargetInputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
+
+        const currentAcType = document.getElementById('acType').value.trim().toUpperCase();
+        let searchAcType = currentAcType;
+        if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
+
+        const titleEl = document.getElementById('fullListTitle');
+        let dbToSearch = [];
+
+        if (searchType === 'ATA') {
+            titleEl.innerText = "ATA CODE 전체 리스트";
+            dbToSearch = DB.ataDatabase;
+        } else {
+            const docType = document.getElementById(`docType-${id}`).value.toUpperCase();
+            titleEl.innerText = docType ? `[${docType}] 적용근거 전체 리스트 (${searchAcType})` : `적용근거 전체 리스트 (${searchAcType})`;
+
+            dbToSearch = DB.actionDatabase.filter(d => {
+                if (docType && d.type !== docType) return false;
+                if (d.acType !== 'ALL' && d.acType !== undefined) {
+                    return searchAcType.includes(d.acType) || d.acType.includes(searchAcType);
+                }
+                return true;
+            });
+        }
+
+        // 중복 코드 제거 (가장 처음 등장한 것만 살림)
+        let seen = new Set();
+        currentFullList = [];
+        dbToSearch.forEach(item => {
+            const codeBase = searchType === 'ATA' ? item.code.replace(/[^0-9A-Z]/gi, '').substring(0,4) : item.code.replace(/[^0-9A-Z]/gi, '');
+            const uniqueKey = searchType === 'ATA' ? codeBase : codeBase + item.type;
+            if(!seen.has(uniqueKey)) {
+                seen.add(uniqueKey);
+                currentFullList.push(item);
+            }
+        });
+
+        // 사용자가 보기 편하게 숫자/알파벳 오름차순으로 정렬
+        currentFullList.sort((a, b) => a.code.localeCompare(b.code));
+
+        document.getElementById('fullListSearch').value = '';
+        renderFullList(currentFullList);
+        document.getElementById('fullListModal').style.display = 'flex';
+        
+        // 창 열릴 때 자동으로 검색창에 커서 둠
+        setTimeout(() => document.getElementById('fullListSearch').focus(), 100);
+    }
+
+    function renderFullList(list) {
+        const container = document.getElementById('fullListContainer');
+        container.innerHTML = '';
+        
+        if(list.length === 0) {
+            container.innerHTML = `<div style="padding: 20px; text-align: center; color: #7f8c8d;">해당 조건의 데이터가 없습니다.</div>`;
+            return;
+        }
+
+        list.forEach(item => {
+            const prefix = currentSearchType !== 'ATA' && item.type ? item.type + ' ' : '';
+            const fullDisplay = currentSearchType !== 'ATA' ? `${prefix}${item.code}`.trim() : item.code;
+
+            const div = document.createElement('div');
+            div.className = 'dropdown-opt';
+            div.innerHTML = `<b>${fullDisplay}</b> :: ${item.keyword}`;
+            // 팝업 안에서는 mousedown 대신 onclick 사용 가능
+            div.onclick = () => {
+                if (currentSearchType !== 'ATA') {
+                    const match = fullDisplay.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i);
+                    if (match) {
+                        setDocType(currentTargetRowId, match[1].toUpperCase());
+                        document.getElementById(currentTargetInputId).value = match[2].trim();
+                    } else {
+                        document.getElementById(currentTargetInputId).value = fullDisplay;
+                    }
+                } else {
+                    document.getElementById(currentTargetInputId).value = fullDisplay;
+                }
+                closeFullListModal();
+            };
+            container.appendChild(div);
+        });
+    }
+
+    function filterFullList() {
+        const keyword = document.getElementById('fullListSearch').value.toUpperCase().replace(/\s+/g, '');
+        if (!keyword) {
+            renderFullList(currentFullList);
+            return;
+        }
+        // 코드와 키워드(내용) 양쪽에서 모두 검색
+        const filtered = currentFullList.filter(item => {
+            const target = (item.code + item.keyword).toUpperCase().replace(/\s+/g, '');
+            return target.includes(keyword);
+        });
+        renderFullList(filtered);
+    }
+
+    function closeFullListModal() {
+        document.getElementById('fullListModal').style.display = 'none';
     }
 
     window.addEventListener('paste', function(e) {
@@ -1147,6 +1281,9 @@
         updateUserNameDisplay(); 
 
         window.addEventListener('mousedown', (e) => { 
+            // 팝업창 안에서 클릭할 때는 드롭다운 닫히지 않도록 예외 처리
+            if (e.target.closest('#fullListModal')) return;
+            
             if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap') && !e.target.closest('.doc-toggle-box')) {
                 document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none");
             }
