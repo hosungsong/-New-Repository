@@ -270,8 +270,16 @@
     let currentTargetRowId = '';
     let currentSearchType = '';
 
-    // 🚨 찌꺼기 방어 전역 함수 🚨
-    const isNotJunk = (d) => !d.code.includes('23-100-01') && !d.keyword.includes('192GB');
+    function autoResize(el) {
+        if (!el) return; 
+        el.style.height = '38px'; 
+        const newHeight = el.scrollHeight; 
+        el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
+    }
+
+    function refreshAllHeights() { 
+        document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); 
+    }
 
     document.addEventListener('keydown', (e) => {
         if (currentAbortController) return;
@@ -288,7 +296,6 @@
         }
     });
 
-    // 🚨 Ctrl+V 붙여넣기 완벽 복구 🚨
     window.addEventListener('paste', function(e) {
         if (!e.clipboardData) return;
         const items = e.clipboardData.items;
@@ -620,16 +627,17 @@
         document.getElementById('flightNo').value = ""; matchFlightFromLegs();
     }
 
-    function autoResize(el) {
-        if (!el) return; el.style.height = '38px'; 
-        const newHeight = el.scrollHeight; el.style.height = (newHeight > 38 ? newHeight : 38) + 'px';
-    }
-
-    function refreshAllHeights() { document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx)); }
-
     function removeDefectRow(btn) {
         const container = document.getElementById('defectRowsContainer');
         if (container.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); }
+    }
+
+    function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
+    
+    function setAsAp(id, type) {
+        const row = document.getElementById('row-' + id);
+        row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
     }
 
     function setDocType(id, type) {
@@ -653,7 +661,6 @@
         if(drop) drop.style.display = drop.style.display === 'block' ? 'none' : 'block';
     }
 
-    // 🚨 레이아웃 원상복구: 번호(idx-num) 위치 정확히 복원 🚨
     function addRow(data = {}) {
         rowIdCounter++; const id = rowIdCounter;
         const container = document.getElementById('defectRowsContainer');
@@ -718,19 +725,14 @@
         if(parsedDocType) { setTimeout(() => { setDocType(id, parsedDocType); }, 10); }
     }
 
-    function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
-    
-    function setAsAp(id, type) {
-        const row = document.getElementById('row-' + id);
-        row.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type;
-    }
+    // 🚨 찌꺼기 텍스트 수동 필터 🚨
+    const isNotJunk = (d) => !d.code.includes('23-100-01') && !d.keyword.includes('192GB');
 
-    // 🚨 1. DB 변경에 100% 대응하는 쌍끌이 추적 로직 (NEF) 🚨
+    // 🚨 1. NEF 대표 문구 절대 좌표 지정 (쌍끌이) 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         let sIdx = DB.actionDatabase.findIndex(d => d.type === 'NEF' && d.code === '99-00-00' && d.keyword.includes('GENERAL'));
-        let eIdx = DB.actionDatabase.findIndex(d => d.type === 'NEF' && d.code === '33-00-12' && d.keyword.includes('LENSES CRACKED'));
+        let eIdx = DB.actionDatabase.findIndex(d => d.type === 'NEF' && d.code === '33-00-12' && d.keyword.includes('SERVICE AREA/BAYS - AIR CONDITIONING SVC BAYS - INDICATION LIGHT LENSES CRACKED'));
 
         if (sIdx !== -1 && eIdx !== -1) {
             let start = Math.min(sIdx, eIdx);
@@ -740,53 +742,53 @@
         return DB.actionDatabase.filter(d => d.type === 'NEF');
     }
 
-    // 🚨 2. DB 변경에 100% 대응하는 쌍끌이 추적 로직 (MEL) 🚨
+    // 🚨 2. 기종별 MEL 대표 문구 절대 좌표 지정 (쌍끌이) 🚨
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        let sAc = acType.toUpperCase();
-        if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
-        else if (sAc.includes("A330")) sAc = "A330";
-        else if (sAc.includes("A350")) sAc = "A350";
-        else if (sAc.includes("A380")) sAc = "A380";
-        else if (sAc.includes("B777") || sAc.includes("777")) sAc = "B777";
+        
+        let searchAcType = acType.toUpperCase();
+        if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
+        else if (searchAcType.includes("A330")) searchAcType = "A330";
+        else if (searchAcType.includes("A350")) searchAcType = "A350";
+        else if (searchAcType.includes("A380")) searchAcType = "A380";
+        else if (searchAcType.includes("B777") || searchAcType.includes("777")) searchAcType = "B777";
 
         let startCode = '', endCode = '', startStr = '', endStr = '';
 
-        if (sAc === "A321") {
-            startCode = "21-00-04A"; startStr = "TEMP CTL 1(2) MAINTENANCE MESSAGE";
-            endCode = "80-12-01A"; endStr = "FAULT LIGHT ON THE ENG MASTER PANEL";
+        if (searchAcType === "A321") {
+            startCode = "21-00-04A"; startStr = "TEMP CTL 1(2) MAINTENANCE MESSAGE - MAY BE DISPLAYED ON THE STATUS SD PAGE";
+            endCode = "80-12-01A"; endStr = "FAULT LIGHT ON THE ENG MASTER PANEL - ONE OR BOTH MAY BE INOPERATIVE";
         }
-        else if (sAc === "A330") {
-            startCode = "21-01-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT";
-            endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENG MASTER PANEL";
+        else if (searchAcType === "A330") {
+            startCode = "21-01-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT - ONE OR BOTH MAY BE INOPERATIVE";
+            endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENG MASTER PANEL - ONE OR BOTH MAY BE INOPERATIVE";
         }
-        else if (sAc === "A350") {
+        else if (searchAcType === "A350") {
             startCode = "21-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT";
-            endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENGINE MASTER LEVER";
+            endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENGINE MASTER LEVER - ONE OR BOTH MAY BE INOPERATIVE";
         }
-        else if (sAc === "A380") {
+        else if (searchAcType === "A380") {
             startCode = "21-01-01A"; startStr = "PACK PB-SW FAULT LIGHT";
             endCode = "80-11-02A"; endStr = "ENGINE MANUAL START SYSTEM";
         }
-        else if (sAc === "B777") {
-            startCode = "21-00-01-01"; startStr = "ENVIRONMENTAL CONTROL SYSTEM MISCELLANEOUS CARDS";
+        else if (searchAcType === "B777") {
+            startCode = "21-00-01-01"; startStr = "ENVIRONMENTAL CONTROL SYSTEM MISCELLANEOUS CARDS (ECSMC) - PASSENGER";
             endCode = "80-11-03"; endStr = "START SWITCH HOLDING/CUTOUT SYSTEMS";
         }
         else {
-            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === sAc || d.acType === 'ALL') && isNotJunk(d));
+            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL') && isNotJunk(d));
         }
 
-        let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(sAc) && d.code.includes(startCode) && d.keyword.includes(startStr));
-        let eIdxReverse = [...DB.actionDatabase].reverse().findIndex(d => d.type === 'MEL' && d.acType.includes(sAc) && d.code.includes(endCode) && d.keyword.includes(endStr));
-        let eIdx = eIdxReverse !== -1 ? DB.actionDatabase.length - 1 - eIdxReverse : -1;
+        let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code === startCode && d.keyword.includes(startStr));
+        let eIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code === endCode && d.keyword.includes(endStr));
 
         if (sIdx !== -1 && eIdx !== -1) {
             let start = Math.min(sIdx, eIdx);
             let end = Math.max(sIdx, eIdx);
-            return DB.actionDatabase.slice(start, end + 1).filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
+            return DB.actionDatabase.slice(start, end + 1).filter(d => d.type === 'MEL' && (d.acType.includes(searchAcType) || d.acType === 'ALL') && isNotJunk(d));
         }
 
-        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
+        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(searchAcType) || d.acType === 'ALL') && isNotJunk(d));
     }
 
     const ATA_DICT = {
@@ -823,6 +825,10 @@
         
         let currentAcType = document.getElementById('acType').value.trim().toUpperCase();
         if (currentAcType.includes("A321") || currentAcType.includes("A32N")) currentAcType = "A321";
+        else if (currentAcType.includes("A330")) currentAcType = "A330";
+        else if (currentAcType.includes("A350")) currentAcType = "A350";
+        else if (currentAcType.includes("A380")) currentAcType = "A380";
+        else if (currentAcType.includes("B777") || currentAcType.includes("777")) currentAcType = "B777";
 
         let searchPool = [];   
         let displayPool = [];  
@@ -1116,6 +1122,7 @@
         } catch (e) { alert("사진을 불러오지 못했습니다: " + e.message); }
     }
 
+    // 🚨 ALL CLEAR 선 적용 (입력 필드 초기화) 🚨
     function resetImage(e) {
         if(e) e.stopPropagation();
         if (currentAbortController) { currentAbortController.abort(); currentAbortController = null; }
@@ -1130,6 +1137,15 @@
                     키보드 <b>방향키(←, →)</b>로 회전하고 <b>Enter</b>로 AI 분석
                 </span>
             </div>`;
+            
+        // 상단 헤더 필드 초기화
+        document.getElementById('regNo').value = "";
+        document.getElementById('acType').value = "";
+        document.getElementById('flightNo').value = "";
+        document.getElementById('legFrom').value = "";
+        document.getElementById('legTo').value = "";
+        document.getElementById('handover').checked = false;
+
         document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0; addRow();
         const btnMain = document.getElementById('btnExtractMain'); if (btnMain) { btnMain.innerText = "✨ AI 분석 및 자동 매칭"; btnMain.disabled = false; }
         const btnRaw = document.getElementById('btnExtractRaw'); if (btnRaw) { btnRaw.innerText = "📝 TEXT 추출"; btnRaw.disabled = false; }
@@ -1202,6 +1218,14 @@
 
         const compressedFile = await compressImage(fileToUpload);
         const formData = new FormData(); formData.append("file", compressedFile); 
+
+        // 🚨 ALL CLEAR 선 적용 (입력 필드 초기화) 🚨
+        document.getElementById('regNo').value = "";
+        document.getElementById('acType').value = "";
+        document.getElementById('flightNo').value = "";
+        document.getElementById('legFrom').value = "";
+        document.getElementById('legTo').value = "";
+        document.getElementById('handover').checked = false;
 
         try {
             const res = await fetch("/ocr", { method: "POST", body: formData, signal: currentAbortController.signal });
