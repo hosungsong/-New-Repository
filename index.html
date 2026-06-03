@@ -248,8 +248,14 @@
             if (data && Object.keys(data.ac).length > 0) { DB = data; DB.ataDatabase?.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase()); DB.actionDatabase?.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase()); }
         } catch (e) { console.error(e); }
     }
-    function fillAcType() { let rNo = document.getElementById('regNo').value.toUpperCase().trim().replace(/^HL/, ""); document.getElementById('acType').value = DB.ac[rNo] || DB.ac["HL" + rNo] || ""; }
+    
+    function fillAcType() { 
+        let rNo = document.getElementById('regNo').value.toUpperCase().trim().replace(/^HL/, ""); 
+        document.getElementById('acType').value = DB.ac[rNo] || DB.ac["HL" + rNo] || ""; 
+    }
+    
     function updateUserNameDisplay() { let name = localStorage.getItem('logScanner_userName'); document.getElementById('userNameDisplay').innerText = name ? `(USER : ${name})` : `(USER : 미설정)`; }
+    
     function changeUserName() { let name = prompt("성함을 입력하세요:", localStorage.getItem('logScanner_userName') || ""); if (name) { localStorage.setItem('logScanner_userName', name.trim()); updateUserNameDisplay(); } }
 
     function addRow(data = {}) {
@@ -294,6 +300,7 @@
         else if (sAc.includes("A330")) sAc = "A330"; 
         else if (sAc.includes("A350")) sAc = "A350"; 
         else if (sAc.includes("A380")) sAc = "A380";
+        else if (sAc.includes("B777") || sAc.includes("777")) sAc = "B777";
 
         let startCode = '', endCode = '', startStr = '', endStr = '';
         
@@ -313,11 +320,14 @@
             startCode = "21-01-01A"; startStr = "PACK PB-SW FAULT LIGHT";
             endCode = "80-11-02A"; endStr = "ENGINE MANUAL START SYSTEM";
         }
+        else if (sAc === "B777") {
+            startCode = "21-00-01-01"; startStr = "ENVIRONMENTAL CONTROL SYSTEM MISCELLANEOUS CARDS (ECSMC) - PASSENGER";
+            endCode = "80-11-03"; endStr = "START SWITCH HOLDING/CUTOUT SYSTEMS";
+        }
         else {
             return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === sAc || d.acType === 'ALL') && isNotJunk(d));
         }
 
-        // 전체 텍스트 매칭으로 절대 좌표 획득
         let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(sAc) && d.code === startCode && d.keyword.includes(startStr));
         let eIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(sAc) && d.code === endCode && d.keyword.includes(endStr));
 
@@ -355,7 +365,13 @@
         const dbToSearch = searchType === 'ATA' ? DB.ataDatabase : DB.actionDatabase;
         if (!dbToSearch || dbToSearch.length === 0) return alert("DB가 로드되지 않았습니다.");
         
-        let sAc = document.getElementById('acType').value.trim().toUpperCase(); if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
+        let sAc = document.getElementById('acType').value.trim().toUpperCase(); 
+        if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
+        else if (sAc.includes("A330")) sAc = "A330";
+        else if (sAc.includes("A350")) sAc = "A350";
+        else if (sAc.includes("A380")) sAc = "A380";
+        else if (sAc.includes("B777") || sAc.includes("777")) sAc = "B777";
+        
         let searchPool = [], displayPool = [];
         
         if (searchType === 'ATA') { searchPool = dbToSearch; displayPool = dbToSearch.filter(d => d.row >= 1 && d.row <= 733); } 
@@ -414,7 +430,7 @@
         if (hasOptions) optDiv.style.display = "block"; else alert("항목을 찾지 못했습니다.");
     }
 
-    // 🚨 하단 전송 로직 완벽 복원 🚨
+    // 🚨 하단 전송 로직 등 🚨
     async function sendWebhook(target) {
         const url = WEBHOOK_URLS[target]; if (!url) return alert("웹훅 주소가 없습니다.");
         const rows = document.querySelectorAll('.defect-row'); if (rows.length === 0) return alert("전송할 내용이 없습니다.");
@@ -440,6 +456,7 @@
             payload = { cardsV2: [{ cardId: "dutyCard", card: { sections: [{ widgets: [{ textParagraph: { text: `🛠️ <b>정비 이월 사항 전달</b><br><br>• <b>기번 :</b> HL${기번} (${acType})<br>` + (편명구간 ? `• <b>편명 :</b> ${편명구간}<br>` : "") + `• <b>작성자 :</b> ${공통작성자}<br>• <b>위탁 :</b> ${위탁}<br><br><b>[ 결함내역 및 조치 ]</b><br>${html결함묶음}<i>${이름} / ${현재시간}</i>` } }] }] } }] };
         } else if (target === "OCC") {
             let searchAcType = acType.toUpperCase(); if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
+            else if (searchAcType.includes("B777") || searchAcType.includes("777")) searchAcType = "B777";
             let targetGpsCodes = {"A321":["34-50-09E","34-50-09F","34-50-09G","34-50-09D"],"A330":["34-50-08D","34-50-08F"],"A350":["34-50-01A","34-50-01B","34-50-01C","34-50-06A","34-52-06B","34-50-06C"],"A380":["34-50-01A","34-50-01B","34-50-01C"],"B777":["34-58-01A","34-58-01B"]}[searchAcType] || [];
             let html결함묶음 = ""; let hasGpsIssue = false;
             rows.forEach(row => {
@@ -457,7 +474,13 @@
 
     function openFullListModal(id, searchType) {
         currentTargetRowId = id; currentSearchType = searchType; currentTargetInputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
-        let sAc = document.getElementById('acType').value.trim().toUpperCase(); if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
+        let sAc = document.getElementById('acType').value.trim().toUpperCase(); 
+        if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
+        else if (sAc.includes("A330")) sAc = "A330";
+        else if (sAc.includes("A350")) sAc = "A350";
+        else if (sAc.includes("A380")) sAc = "A380";
+        else if (sAc.includes("B777") || sAc.includes("777")) sAc = "B777";
+        
         const titleEl = document.getElementById('fullListTitle'); let dbToSearch = [];
         if (searchType === 'ATA') { titleEl.innerText = "ATA CODE 전체 리스트"; dbToSearch = DB.ataDatabase; } 
         else {
