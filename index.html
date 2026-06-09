@@ -64,15 +64,18 @@
         .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
+
+        /* 🚨 확대 모드 시 우측 패널 비율/높이 극대화 (수정됨) 🚨 */
         .top-section.expanded .left-panel { flex: 1; }
-        .top-section.expanded .right-panel { flex: 1.3; } 
+        .top-section.expanded .right-panel { flex: 2.5; } /* 우측 사진 영역을 2.5배 쫙 늘림 */
         .top-section.expanded .static-fields { flex-wrap: wrap; }
         .top-section.expanded .static-fields .input-group { flex: 1 1 45%; } 
         .top-section.expanded .defect-grid { grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.8fr) minmax(0, 0.8fr) 30px; gap: 6px; } 
         .top-section.expanded .doc-toggle-box { width: 85px; }
         .top-section.expanded .doc-toggle-btn { font-size: 9px; padding: 0; }
-        .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
-        .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
+        .top-section.expanded #pasteArea { height: 80vh; min-height: 600px; max-height: calc(100vh - 120px); } /* 높이 시원하게 개방 */
+        .top-section.expanded #pasteArea img { max-width: 98%; max-height: 98%; }
+
         .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
         .text-extract-mode #pasteArea img { max-height: 180px; }
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
@@ -568,6 +571,7 @@
                 matches.forEach(m => {
                     const cleanNo = String(m.no).replace(/^0+/, '');
                     const row = document.createElement('div'); row.className = 'dropdown-opt'; row.innerText = `OZ${cleanNo}`;
+                    row.setAttribute('title', `OZ${cleanNo}`);
                     row.onmousedown = () => { input.value = cleanNo; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
                 });
@@ -589,6 +593,7 @@
                 optDiv.style.display = "block";
                 matches.forEach(m => {
                     const row = document.createElement('div'); row.className = 'dropdown-opt'; row.innerText = `${m.from} ➔ ${m.to}`;
+                    row.setAttribute('title', `${m.from} ➔ ${m.to}`);
                     row.onmousedown = () => { document.getElementById('legFrom').value = m.from; document.getElementById('legTo').value = m.to; optDiv.style.display = "none"; };
                     optDiv.appendChild(row);
                 });
@@ -718,50 +723,51 @@
 
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
-        let sAc = acType.toUpperCase();
-        if (sAc.includes("A321") || sAc.includes("A32N")) sAc = "A321";
-        else if (sAc.includes("A330")) sAc = "A330";
-        else if (sAc.includes("A350")) sAc = "A350";
-        else if (sAc.includes("A380")) sAc = "A380";
-        else if (sAc.includes("B777") || sAc.includes("777")) sAc = "B777";
+        
+        let searchAcType = acType.toUpperCase();
+        if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
+        else if (searchAcType.includes("A330")) searchAcType = "A330";
+        else if (searchAcType.includes("A350")) searchAcType = "A350";
+        else if (searchAcType.includes("A380")) searchAcType = "A380";
+        else if (searchAcType.includes("B777") || searchAcType.includes("777")) searchAcType = "B777";
 
         let startCode = '', endCode = '', startStr = '', endStr = '';
 
-        if (sAc === "A321") {
+        if (searchAcType === "A321") {
             startCode = "21-00-04A"; startStr = "TEMP CTL 1(2) MAINTENANCE MESSAGE";
             endCode = "80-12-01A"; endStr = "FAULT LIGHT ON THE ENG MASTER PANEL";
         }
-        else if (sAc === "A330") {
+        else if (searchAcType === "A330") {
             startCode = "21-01-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT";
             endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENG MASTER PANEL";
         }
-        else if (sAc === "A350") {
+        else if (searchAcType === "A350") {
             startCode = "21-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT";
             endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENGINE MASTER LEVER";
         }
-        else if (sAc === "A380") {
+        else if (searchAcType === "A380") {
             startCode = "21-01-01A"; startStr = "PACK PB-SW FAULT LIGHT";
             endCode = "80-11-02A"; endStr = "ENGINE MANUAL START SYSTEM";
         }
-        else if (sAc === "B777") {
+        else if (searchAcType === "B777") {
             startCode = "21-00-01-01"; startStr = "ENVIRONMENTAL CONTROL SYSTEM MISCELLANEOUS CARDS";
             endCode = "80-11-03"; endStr = "START SWITCH HOLDING/CUTOUT SYSTEMS";
         }
         else {
-            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === sAc || d.acType === 'ALL') && isNotJunk(d));
+            return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === searchAcType || d.acType === 'ALL') && isNotJunk(d));
         }
 
-        let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(sAc) && d.code.includes(startCode) && d.keyword.includes(startStr));
-        let eIdxReverse = [...DB.actionDatabase].reverse().findIndex(d => d.type === 'MEL' && d.acType.includes(sAc) && d.code.includes(endCode) && d.keyword.includes(endStr));
+        let sIdx = DB.actionDatabase.findIndex(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code.includes(startCode) && d.keyword.includes(startStr));
+        let eIdxReverse = [...DB.actionDatabase].reverse().findIndex(d => d.type === 'MEL' && d.acType.includes(searchAcType) && d.code.includes(endCode) && d.keyword.includes(endStr));
         let eIdx = eIdxReverse !== -1 ? DB.actionDatabase.length - 1 - eIdxReverse : -1;
 
         if (sIdx !== -1 && eIdx !== -1) {
             let start = Math.min(sIdx, eIdx);
             let end = Math.max(sIdx, eIdx);
-            return DB.actionDatabase.slice(start, end + 1).filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
+            return DB.actionDatabase.slice(start, end + 1).filter(d => d.type === 'MEL' && (d.acType.includes(searchAcType) || d.acType === 'ALL') && isNotJunk(d));
         }
 
-        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
+        return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(searchAcType) || d.acType === 'ALL') && isNotJunk(d));
     }
 
     const ATA_DICT = {
@@ -857,7 +863,6 @@
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
                 row.innerHTML = `📌 <b>[입력값]</b> ${fullDisplay} :: ${currentItemMatched.keyword}`;
-                // 🚨 강제 툴팁 추가 🚨
                 row.setAttribute('title', `[입력값] ${fullDisplay} :: ${currentItemMatched.keyword}`);
                 row.onmousedown = () => { 
                     if (searchType !== 'ATA') {
@@ -874,7 +879,6 @@
                 const row = document.createElement('div');
                 row.className = 'dropdown-opt pinned';
                 row.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표 목록에 매칭되는 규정 없음`;
-                // 🚨 강제 툴팁 추가 🚨
                 row.setAttribute('title', `[입력값] ${currentValue} :: 대표 목록에 매칭되는 규정 없음`);
                 row.onmousedown = () => { document.getElementById(inputId).value = currentValue; optDiv.style.display = "none"; };
                 optDiv.appendChild(row);
@@ -944,7 +948,6 @@
                     const row = document.createElement('div');
                     row.className = 'dropdown-opt';
                     row.innerText = `${fullDisplay} :: ${repItem.keyword}`;
-                    // 🚨 강제 툴팁 추가 🚨
                     row.setAttribute('title', `${fullDisplay} :: ${repItem.keyword}`);
                     row.onmousedown = () => { 
                         if (searchType !== 'ATA') {
@@ -1049,7 +1052,6 @@
             const div = document.createElement('div');
             div.className = 'dropdown-opt';
             div.innerHTML = `<b>${fullDisplay}</b> :: ${item.keyword}`;
-            // 🚨 강제 툴팁 추가 🚨
             div.setAttribute('title', `${fullDisplay} :: ${item.keyword}`);
             div.onclick = () => {
                 if (currentSearchType !== 'ATA') {
@@ -1162,15 +1164,11 @@
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform();
         });
-
-        // 🚨 우클릭 방지 / 좌클릭(e.button === 0)만 확대 허용 🚨
         window.addEventListener('mouseup', (e) => {
             if (isDragging) {
-                let diffX = Math.abs(e.clientX - clickStartX); 
-                let diffY = Math.abs(e.clientY - clickStartY);
-                if (diffX < 5 && diffY < 5 && e.button === 0) { 
-                    if (e.target.id === 'pastedImg') toggleExpand(); 
-                }
+                let diffX = Math.abs(e.clientX - clickStartX); let diffY = Math.abs(e.clientY - clickStartY);
+                // 🚨 오직 좌클릭(e.button === 0)일 때만 확대/축소 작동 🚨
+                if (diffX < 5 && diffY < 5 && e.button === 0) { if (e.target.id === 'pastedImg') toggleExpand(); }
             }
             isDragging = false;
         });
