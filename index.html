@@ -50,6 +50,7 @@
         .doc-toggle-btn.active { background: var(--primary); color: white; }
         .etc-dropdown { min-width: 60px; left: auto; right: 0; text-align: center; border-radius: 4px; padding: 0; overflow: hidden !important; }
         .etc-dropdown .dropdown-opt { width: 100%; margin: 0; padding: 8px 0; font-size: 11px; text-align: center; border: none; border-bottom: 1px solid #eee; box-sizing: border-box; }
+        .etc-dropdown .dropdown-opt:last-child { border-bottom: none; }
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; min-width: 0; width: 100%; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; position: relative; z-index: 10; }
@@ -60,7 +61,6 @@
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; }
         #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; }
         #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; }
-        #pasteArea img:active { cursor: grabbing; }
         .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
@@ -72,21 +72,16 @@
         .top-section.expanded .doc-toggle-box { width: 85px; }
         .top-section.expanded .doc-toggle-btn { font-size: 9px; padding: 0; }
         .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
-        .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
         .text-extract-mode #pasteArea { min-height: 200px; flex: none; }
         .text-extract-mode #pasteArea img { max-height: 180px; }
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
         .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn-tool:hover { background: var(--secondary); }
         .btn-tool.btn-close { background: #e74c3c; }
-        .btn-tool.btn-close:hover { background: #c0392b; }
-        .btn-tool.btn-rotate-left { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
-        .btn-tool.btn-rotate-right { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
         .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
         .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
         .btn-extract.main { flex: 2; background: #27ae60; }
         .btn-extract.sub { flex: 1; background: #8e44ad; }
-        .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
         #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
         .bottom-section { display: flex; gap: 10px; margin-top: 15px; padding-bottom: 5px; flex-shrink: 0; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
@@ -99,9 +94,7 @@
         .modal-btns { display: flex; justify-content: flex-end; gap: 10px; }
         .modal-btns button { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s;}
         .btn-cancel { background: #e9ecef; color: #495057; }
-        .btn-cancel:hover { background: #ced4da; }
         .btn-save { background: var(--secondary); color: white; }
-        .btn-save:hover { background: #2980b9; }
         .full-list-modal-content { background: white; padding: 25px; border-radius: 12px; width: 800px; max-width: 95vw; height: 85vh; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
         .full-list-modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;}
         .full-list-container { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 5px; margin-bottom: 15px; background: #fdfefe; }
@@ -116,51 +109,14 @@
     <div class="top-section" id="mainTopSection">
         <div class="left-panel">
             <div class="static-fields">
-                <div class="input-group">
-                    <label>기번 / 기종</label>
-                    <div class="box">
-                        <span class="prefix">HL</span>
-                        <input type="text" id="regNo" style="flex: 1;" oninput="fillAcType()">
-                        <input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center; border-left: 1px solid var(--border); font-weight: bold; color: #495057;">
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>편명</label>
-                    <div class="box">
-                        <span class="prefix">OZ</span>
-                        <input type="text" id="flightNo" oninput="matchLegsFromFlight()">
-                        <div id="flightOptions" class="dropdown-list" style="display:none;"></div>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>구간</label>
-                    <div class="box leg-box">
-                        <input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <button type="button" style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button>
-                        <input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()" style="text-transform: uppercase;">
-                        <div id="legOptions" class="dropdown-list" style="display:none;"></div>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>위탁</label>
-                    <div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();">
-                        <input type="checkbox" id="handover" onclick="event.stopPropagation();">
-                    </div>
-                </div>
+                <div class="input-group"><label>기번 / 기종</label><div class="box"><span class="prefix">HL</span><input type="text" id="regNo" oninput="fillAcType()"><input type="text" id="acType" readonly placeholder="기종" style="width: 55px; background: #e9ecef; text-align: center; border-left: 1px solid var(--border); font-weight: bold; color: #495057;"></div></div>
+                <div class="input-group"><label>편명</label><div class="box"><span class="prefix">OZ</span><input type="text" id="flightNo" oninput="matchLegsFromFlight()"><div id="flightOptions" class="dropdown-list" style="display:none;"></div></div></div>
+                <div class="input-group"><label>구간</label><div class="box leg-box"><input type="text" id="legFrom" maxlength="3" placeholder="FROM" oninput="matchFlightFromLegs()"><button type="button" style="background:none; border:none; cursor:pointer;" onclick="swapLegs()">⇄</button><input type="text" id="legTo" maxlength="3" placeholder="TO" oninput="matchFlightFromLegs()"><div id="legOptions" class="dropdown-list" style="display:none;"></div></div></div>
+                <div class="input-group"><label>위탁</label><div class="box" style="justify-content:center; cursor:pointer;" onclick="document.getElementById('handover').click();"><input type="checkbox" id="handover" onclick="event.stopPropagation();"></div></div>
             </div>
-
             <div class="dynamic-container">
-                <div class="dynamic-header">
-                    <span ondblclick="openLearningModal()" style="cursor:help;">결함 및 조치내역</span>
-                    <button type="button" class="btn-add" onclick="addRow()">+</button>
-                </div>
-                <div class="defect-grid defect-header-row">
-                    <span>AS/AP</span>
-                    <span>DEFECT</span>
-                    <span>적용근거</span>
-                    <span>ATA</span>
-                    <span>삭제</span>
-                </div>
+                <div class="dynamic-header"><span ondblclick="openLearningModal()" style="cursor:help;">결함 및 조치내역</span><button type="button" class="btn-add" onclick="addRow()">+</button></div>
+                <div class="defect-grid defect-header-row"><span>AS/AP</span><span>DEFECT</span><span>적용근거</span><span>ATA</span><span>삭제</span></div>
                 <div id="defectRowsContainer"></div>
             </div>
         </div>
@@ -168,12 +124,7 @@
             <input type="file" id="imageFileInput" style="position: absolute; width: 1px; height: 1px; opacity: 0; z-index: -1;" accept="image/*" onchange="handleImageFile(event)">
             <div id="pasteArea">
                 <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
-                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
-                    이곳을 터치하여 사진 첨부<br>
-                    <span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal; line-height: 1.6;">
-                        또는 화면 어디서든 <b>Ctrl + V</b> 로 붙여넣기<br>
-                        키보드 <b>방향키(←, →)</b>로 회전하고 <b>Enter</b>로 AI 분석
-                    </span>
+                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치하여 사진 첨부
                 </div>
             </div>
             <textarea id="rawTextArea" placeholder="추출된 텍스트가 이곳에 표시됩니다..."></textarea>
@@ -194,27 +145,18 @@
 <div id="learningModal" class="modal-overlay">
     <div class="modal-content">
         <h3>🤖 AI 오답 교정 학습</h3>
-        <label>오답</label>
-        <input type="text" id="wrongWord">
-        <label>정답</label>
-        <input type="text" id="rightWord">
-        <div class="modal-btns">
-            <button type="button" class="btn-cancel" onclick="closeLearningModal()">취소</button>
-            <button type="button" class="btn-save" onclick="saveLearning()">저장</button>
-        </div>
+        <label>오답</label><input type="text" id="wrongWord">
+        <label>정답</label><input type="text" id="rightWord">
+        <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeLearningModal()">취소</button><button type="button" class="btn-save" onclick="saveLearning()">저장</button></div>
     </div>
 </div>
 
 <div id="fullListModal" class="modal-overlay" style="z-index: 10001;">
     <div class="full-list-modal-content">
         <h3 id="fullListTitle">전체 리스트 열람</h3>
-        <div class="search-wrap" style="margin-bottom: 10px; height: 45px;">
-            <input type="text" id="fullListSearch" oninput="filterFullList()">
-        </div>
+        <div class="search-wrap" style="margin-bottom: 10px; height: 45px;"><input type="text" id="fullListSearch" oninput="filterFullList()"></div>
         <div id="fullListContainer" class="full-list-container"></div>
-        <div class="modal-btns">
-            <button type="button" class="btn-cancel" onclick="closeFullListModal()">닫기</button>
-        </div>
+        <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeFullListModal()">닫기</button></div>
     </div>
 </div>
 
@@ -223,19 +165,10 @@
         "OCC": "https://chat.googleapis.com/v1/spaces/AAQAkm9cIHk/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=DHRSasF0dZDVUu2cb2QUqM5RNjQOD3Q5BIpWOBEjJro",
         "DUTY": "https://chat.googleapis.com/v1/spaces/AAQAyIkJVWM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=vrARRhME-upDKnSnLiWZ2qnycamT6XyxhaSSZH8vOXg"
     };
+    let fileToUpload = null; let rowIdCounter = 0; let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
+    let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0, isDragging = false, currentAbortController = null;
+    let currentFullList = [], currentTargetInputId = '', currentTargetRowId = '', currentSearchType = '';
 
-    let fileToUpload = null; 
-    let rowIdCounter = 0; 
-    let DB = { flights: [], ataDatabase: [], actionDatabase: [], ac: {}, emails: {} };
-    let currentRotation = 0, currentScale = 1, translateX = 0, translateY = 0;
-    let isDragging = false, clickStartX = 0, clickStartY = 0, startDragX = 0, startDragY = 0;
-    let currentAbortController = null;
-    let currentFullList = []; 
-    let currentTargetInputId = '';
-    let currentTargetRowId = '';
-    let currentSearchType = '';
-
-    // 자동 높이 조절
     function autoResize(el) {
         if (!el) return;
         el.style.height = '38px'; 
@@ -247,76 +180,41 @@
         document.querySelectorAll('.defect-row textarea').forEach(tx => autoResize(tx));
     }
 
-    // Levenshtein Distance (오차율 계산 로직)
     function getEditDistance(a, b) {
-        if (a.length === 0) return b.length;
-        if (b.length === 0) return a.length;
+        if(a.length === 0) return b.length;
+        if(b.length === 0) return a.length;
         let matrix = [];
-        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-        for (let i = 1; i <= b.length; i++) {
-            for (let j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) == a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
+        for(let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for(let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for(let i = 1; i <= b.length; i++){
+            for(let j = 1; j <= a.length; j++){
+                if(b.charAt(i-1) == a.charAt(j-1)) {
+                    matrix[i][j] = matrix[i-1][j-1];
                 } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1, 
-                        Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-                    );
+                    matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
                 }
             }
         }
         return matrix[b.length][a.length];
     }
 
-    // 단축키 설정
     document.addEventListener('keydown', (e) => {
         if (currentAbortController) return;
-        const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
-        if (e.key === 'F8') { e.preventDefault(); sendWebhook('OCC'); return; }
-        if (e.key === 'F9') { e.preventDefault(); sendWebhook('DUTY'); return; }
-        if (!isTyping) {
-            if (e.key === 'Enter') { 
-                e.preventDefault(); 
-                if (fileToUpload) extractText(); 
-            }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); rotateLeft(null); }
-            if (e.key === 'ArrowRight') { e.preventDefault(); rotateRight(null); }
-        }
-    });
-
-    // 붙여넣기 (Ctrl+V) 설정
-    window.addEventListener('paste', function(e) {
-        if (!e.clipboardData) return;
-        const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                e.preventDefault();
-                const file = items[i].getAsFile();
-                if (file) loadAndDisplayImage(file);
-                return; 
-            }
+        if (e.key === 'F8') { e.preventDefault(); sendWebhook('OCC'); }
+        if (e.key === 'F9') { e.preventDefault(); sendWebhook('DUTY'); }
+        if (!['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+            if (e.key === 'Enter' && fileToUpload) extractText();
+            if (e.key === 'ArrowLeft') rotateLeft(null);
+            if (e.key === 'ArrowRight') rotateRight(null);
         }
     });
 
     function openLearningModal() { document.getElementById('learningModal').style.display = 'flex'; document.getElementById('wrongWord').focus(); }
     function closeLearningModal() { document.getElementById('learningModal').style.display = 'none'; document.getElementById('wrongWord').value = ''; document.getElementById('rightWord').value = ''; }
-    
     async function saveLearning() {
-        const wrong = document.getElementById('wrongWord').value.trim(); 
-        const right = document.getElementById('rightWord').value.trim();
+        const wrong = document.getElementById('wrongWord').value.trim(); const right = document.getElementById('rightWord').value.trim();
         if(!wrong || !right) return alert("값을 입력하세요.");
-        try { 
-            await fetch('/save_learning', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({wrong, right}) 
-            }); 
-            alert("저장 완료"); 
-            closeLearningModal(); 
-        } catch (err) { 
-            alert(err.message); 
-        }
+        try { await fetch('/save_learning', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({wrong, right}) }); alert("저장 완료"); closeLearningModal(); } catch (err) { alert(err.message); }
     }
 
     function compressImage(file) {
@@ -325,21 +223,13 @@
             reader.onload = (event) => {
                 const img = new Image(); img.src = event.target.result;
                 img.onload = () => {
-                    const canvas = document.createElement('canvas'); 
-                    let w = img.width, h = img.height;
-                    let deg = (currentRotation % 360 + 360) % 360; 
-                    let isV = (deg === 90 || deg === 270);
+                    const canvas = document.createElement('canvas'); let w = img.width, h = img.height;
+                    let deg = (currentRotation % 360 + 360) % 360; let isV = (deg === 90 || deg === 270);
                     let tw = isV ? h : w, th = isV ? w : h;
-                    
-                    if (tw > 1200) { th *= 1200 / tw; tw = 1200; } 
-                    if (th > 1200) { tw *= 1200 / th; th = 1200; }
-                    
-                    canvas.width = tw; canvas.height = th; 
-                    const ctx = canvas.getContext('2d');
-                    ctx.translate(tw / 2, th / 2); 
-                    ctx.rotate(deg * Math.PI / 180);
+                    if (tw > 1200) { th *= 1200 / tw; tw = 1200; } if (th > 1200) { tw *= 1200 / th; th = 1200; }
+                    canvas.width = tw; canvas.height = th; const ctx = canvas.getContext('2d');
+                    ctx.translate(tw / 2, th / 2); ctx.rotate(deg * Math.PI / 180);
                     ctx.drawImage(img, -(isV ? th : tw) / 2, -(isV ? tw : th) / 2, isV ? th : tw, isV ? tw : th);
-                    
                     canvas.toBlob((b) => resolve(new File([b], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.7);
                 };
             };
@@ -348,120 +238,51 @@
 
     async function loadDB() {
         try {
-            const res = await fetch("/api/db"); 
-            const data = await res.json();
-            if (data && Object.keys(data.ac).length > 0) { 
-                DB = data; 
-                if (DB.ataDatabase) DB.ataDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase()); 
-                if (DB.actionDatabase) DB.actionDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase()); 
-            }
+            const res = await fetch("/api/db"); const data = await res.json();
+            if (data && Object.keys(data.ac).length > 0) { DB = data; DB.ataDatabase?.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase()); DB.actionDatabase?.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase()); }
         } catch (e) { console.error(e); }
     }
+    function fillAcType() { let rNo = document.getElementById('regNo').value.toUpperCase().trim().replace(/^HL/, ""); document.getElementById('acType').value = DB.ac[rNo] || DB.ac["HL" + rNo] || ""; }
+    function updateUserNameDisplay() { let name = localStorage.getItem('logScanner_userName'); document.getElementById('userNameDisplay').innerText = name ? `(USER : ${name})` : `(USER : 미설정)`; }
+    function changeUserName() { let name = prompt("성함을 입력하세요:", localStorage.getItem('logScanner_userName') || ""); if (name) { localStorage.setItem('logScanner_userName', name.trim()); updateUserNameDisplay(); } }
 
-    function fillAcType() { 
-        let rNo = document.getElementById('regNo').value.toUpperCase().trim().replace(/^HL/, ""); 
-        document.getElementById('acType').value = DB.ac[rNo] || DB.ac["HL" + rNo] || ""; 
-    }
-
-    function updateUserNameDisplay() { 
-        let name = localStorage.getItem('logScanner_userName'); 
-        document.getElementById('userNameDisplay').innerText = name ? `(USER : ${name})` : `(USER : 미설정)`; 
-    }
-
-    function changeUserName() { 
-        let name = prompt("성함을 입력하세요:", localStorage.getItem('logScanner_userName') || ""); 
-        if (name) { 
-            localStorage.setItem('logScanner_userName', name.trim()); 
-            updateUserNameDisplay(); 
-        } 
-    }
-
-    // 🚨 결함 행 추가 🚨
     function addRow(data = {}) {
-        rowIdCounter++; 
-        const id = rowIdCounter; 
-        const container = document.getElementById('defectRowsContainer');
-        const row = document.createElement('div'); 
-        row.className = 'defect-grid defect-row'; 
-        row.id = `row-${id}`;
-        
+        rowIdCounter++; const id = rowIdCounter; const container = document.getElementById('defectRowsContainer');
+        const row = document.createElement('div'); row.className = 'defect-grid defect-row'; row.id = `row-${id}`;
         const asApVal = (data.asAp === 'AP' || data.asAp === 'AS') ? data.asAp : '';
         let pType = "", pCode = data.reason || "";
-        if (pCode) { 
-            const m = pCode.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); 
-            if (m) { 
-                pType = m[1].toUpperCase(); 
-                pCode = m[2].trim(); 
-            } 
-        }
+        if (pCode) { const m = pCode.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); if (m) { pType = m[1].toUpperCase(); pCode = m[2].trim(); } }
         
         row.innerHTML = `
-            <div class="as-ap-wrapper">
-                <span class="idx-num"></span>
-                <div class="toggle-box">
-                    <button type="button" class="toggle-btn ${asApVal==='AS'?'active':''}" onclick="setAsAp(${id},'AS')">AS</button>
-                    <button type="button" class="toggle-btn ${asApVal==='AP'?'active':''}" onclick="setAsAp(${id},'AP')">AP</button>
-                </div>
-                <input type="hidden" id="asAp-${id}" value="${asApVal}">
-            </div>
-            <div>
-                <textarea id="defect-${id}" rows="1" oninput="autoResize(this);">${data.defect || ''}</textarea>
-            </div>
-            <div style="display:flex; gap:4px; height:38px;">
-                <div class="doc-toggle-box" id="doc-toggle-box-${id}">
-                    <button type="button" class="doc-toggle-btn" id="btn-mel-${id}" onclick="setDocType(${id},'MEL')">MEL</button>
-                    <button type="button" class="doc-toggle-btn" id="btn-nef-${id}" onclick="setDocType(${id},'NEF')">NEF</button>
-                    <button type="button" class="doc-toggle-btn" id="btn-etc-${id}" onclick="toggleEtcDropdown(${id})">ETC</button>
-                    <div id="dropdown-etc-${id}" class="dropdown-list etc-dropdown">
-                        <div class="dropdown-opt" onclick="setDocType(${id},'CDL')">CDL</div>
-                        <div class="dropdown-opt" onclick="setDocType(${id},'AMM')">AMM</div>
-                        <div class="dropdown-opt" onclick="setDocType(${id},'SRM')">SRM</div>
-                    </div>
-                </div>
-                <div class="search-wrap">
-                    <input type="text" id="reason-${id}" value="${pCode}">
-                    <button type="button" id="btn-search-reason-${id}" onclick="searchSmartDB(${id},'ACTION')">🔍</button>
-                    <div id="dropdown-ACTION-${id}" class="dropdown-list"></div>
-                </div>
-                <input type="hidden" id="docType-${id}" value="${pType}">
-            </div>
-            <div>
-                <div class="search-wrap">
-                    <input type="text" id="ata-${id}" value="${data.ata || ''}">
-                    <button type="button" id="btn-search-ata-${id}" onclick="searchSmartDB(${id},'ATA')">🔍</button>
-                    <div id="dropdown-ATA-${id}" class="dropdown-list"></div>
-                </div>
-            </div>
+            <div class="as-ap-wrapper"><span class="idx-num"></span><div class="toggle-box"><button type="button" class="toggle-btn ${asApVal==='AS'?'active':''}" onclick="setAsAp(${id},'AS')">AS</button><button type="button" class="toggle-btn ${asApVal==='AP'?'active':''}" onclick="setAsAp(${id},'AP')">AP</button></div><input type="hidden" id="asAp-${id}" value="${asApVal}"></div>
+            <div><textarea id="defect-${id}" rows="1" oninput="autoResize(this);">${data.defect || ''}</textarea></div>
+            <div style="display:flex; gap:4px; height:38px;"><div class="doc-toggle-box" id="doc-toggle-box-${id}"><button type="button" class="doc-toggle-btn" id="btn-mel-${id}" onclick="setDocType(${id},'MEL')">MEL</button><button type="button" class="doc-toggle-btn" id="btn-nef-${id}" onclick="setDocType(${id},'NEF')">NEF</button><button type="button" class="doc-toggle-btn" id="btn-etc-${id}" onclick="toggleEtcDropdown(${id})">ETC</button><div id="dropdown-etc-${id}" class="dropdown-list etc-dropdown"><div class="dropdown-opt" onclick="setDocType(${id},'CDL')">CDL</div><div class="dropdown-opt" onclick="setDocType(${id},'AMM')">AMM</div><div class="dropdown-opt" onclick="setDocType(${id},'SRM')">SRM</div></div></div><div class="search-wrap"><input type="text" id="reason-${id}" value="${pCode}"><button type="button" id="btn-search-reason-${id}" onclick="searchSmartDB(${id},'ACTION')">🔍</button><div id="dropdown-ACTION-${id}" class="dropdown-list"></div></div><input type="hidden" id="docType-${id}" value="${pType}"></div>
+            <div><div class="search-wrap"><input type="text" id="ata-${id}" value="${data.ata || ''}"><button type="button" id="btn-search-ata-${id}" onclick="searchSmartDB(${id},'ATA')">🔍</button><div id="dropdown-ATA-${id}" class="dropdown-list"></div></div></div>
             <button type="button" class="btn-remove" onclick="removeDefectRow(this)">-</button>
         `;
-        container.appendChild(row); 
-        updateNums();
-        
-        if (data.defect) setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 100);
-        if (pType) setTimeout(() => setDocType(id, pType), 10);
+        container.appendChild(row); updateNums();
+        if(data.defect) setTimeout(() => autoResize(document.getElementById(`defect-${id}`)), 100);
+        if(pType) setTimeout(() => setDocType(id, pType), 10);
     }
 
     const isNotJunk = (d) => !d.code.includes('23-100-01') && !d.keyword.includes('192GB');
 
-    // 🚨 쌍끌이 로직 (NEF) 🚨
     function getSmartNefPhrases() {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         let sIdx = DB.actionDatabase.findIndex(d => d.type === 'NEF' && d.code === '99-00-00' && d.keyword.includes('GENERAL'));
         let eIdx = DB.actionDatabase.findIndex(d => d.type === 'NEF' && d.code === '33-00-12' && d.keyword.includes('LENSES CRACKED'));
 
         if (sIdx !== -1 && eIdx !== -1) {
-            let start = Math.min(sIdx, eIdx);
-            let end = Math.max(sIdx, eIdx);
-            return DB.actionDatabase.slice(start, end + 1);
+            if (sIdx > eIdx) { let t = sIdx; sIdx = eIdx; eIdx = t; }
+            return DB.actionDatabase.slice(sIdx, eIdx + 1);
         }
         return DB.actionDatabase.filter(d => d.type === 'NEF');
     }
 
-    // 🚨 쌍끌이 로직 (MEL) 🚨
     function getSmartMelPhrases(acType) {
         if (!DB.actionDatabase || DB.actionDatabase.length === 0) return [];
         let sAc = acType.toUpperCase(); 
-        if (sAc.includes("A321") || sAc.includes("A32N")) sAc = "A321"; 
+        if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321"; 
         else if (sAc.includes("A330")) sAc = "A330"; 
         else if (sAc.includes("A350")) sAc = "A350"; 
         else if (sAc.includes("A380")) sAc = "A380";
@@ -472,19 +293,24 @@
         if (sAc === "A321") {
             startCode = "21-00-04A"; startStr = "TEMP CTL 1(2) MAINTENANCE MESSAGE";
             endCode = "80-12-01A"; endStr = "FAULT LIGHT ON THE ENG MASTER PANEL";
-        } else if (sAc === "A330") {
+        }
+        else if (sAc === "A330") {
             startCode = "21-01-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT";
             endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENG MASTER PANEL";
-        } else if (sAc === "A350") {
+        }
+        else if (sAc === "A350") {
             startCode = "21-01-01A"; startStr = "PACK 1(2) PB-SW FAULT LIGHT";
             endCode = "80-12-01A"; endStr = "FAULT LIGHT ON ENGINE MASTER LEVER";
-        } else if (sAc === "A380") {
+        }
+        else if (sAc === "A380") {
             startCode = "21-01-01A"; startStr = "PACK PB-SW FAULT LIGHT";
             endCode = "80-11-02A"; endStr = "ENGINE MANUAL START SYSTEM";
-        } else if (sAc === "B777") {
+        }
+        else if (sAc === "B777") {
             startCode = "21-00-01-01"; startStr = "ENVIRONMENTAL CONTROL SYSTEM MISCELLANEOUS CARDS";
             endCode = "80-11-03"; endStr = "START SWITCH HOLDING/CUTOUT SYSTEMS";
-        } else {
+        }
+        else {
             return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType === sAc || d.acType === 'ALL') && isNotJunk(d));
         }
 
@@ -493,10 +319,10 @@
         let eIdx = eIdxReverse !== -1 ? DB.actionDatabase.length - 1 - eIdxReverse : -1;
 
         if (sIdx !== -1 && eIdx !== -1) {
-            let start = Math.min(sIdx, eIdx);
-            let end = Math.max(sIdx, eIdx);
-            return DB.actionDatabase.slice(start, end + 1).filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
+            if (sIdx > eIdx) { let t = sIdx; sIdx = eIdx; eIdx = t; }
+            return DB.actionDatabase.slice(sIdx, eIdx + 1).filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
         }
+
         return DB.actionDatabase.filter(d => d.type === 'MEL' && (d.acType.includes(sAc) || d.acType === 'ALL') && isNotJunk(d));
     }
 
@@ -520,191 +346,89 @@
     };
 
     function searchSmartDB(id, searchType) {
-        const text = document.getElementById(`defect-${id}`).value; 
-        const inputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
+        const text = document.getElementById(`defect-${id}`).value; const inputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
         const optDiv = document.getElementById(`dropdown-${searchType}-${id}`);
-        
-        document.querySelectorAll('.dropdown-list').forEach(el => { 
-            if (!el.id.includes('flight') && !el.id.includes('leg')) el.style.display = 'none'; 
-        });
-        
+        document.querySelectorAll('.dropdown-list').forEach(el => { if (!el.id.includes('flight') && !el.id.includes('leg')) el.style.display = 'none'; });
         const dbToSearch = searchType === 'ATA' ? DB.ataDatabase : DB.actionDatabase;
         if (!dbToSearch || dbToSearch.length === 0) return alert("DB가 로드되지 않았습니다.");
         
-        let sAc = document.getElementById('acType').value.trim().toUpperCase(); 
-        if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
-        
+        let sAc = document.getElementById('acType').value.trim().toUpperCase(); if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
         let searchPool = [], displayPool = [];
         
-        if (searchType === 'ATA') { 
-            searchPool = dbToSearch; 
-            displayPool = dbToSearch.filter(d => d.row >= 1 && d.row <= 733); 
-        } else {
+        if (searchType === 'ATA') { searchPool = dbToSearch; displayPool = dbToSearch.filter(d => d.row >= 1 && d.row <= 733); } 
+        else {
             const docT = document.getElementById(`docType-${id}`).value.toUpperCase();
-            searchPool = dbToSearch.filter(d => { 
-                if (docT && d.type !== docT) return false; 
-                return d.acType === 'ALL' || sAc.includes(d.acType) || d.acType.includes(sAc); 
-            });
-            if (docT === 'NEF') displayPool = getSmartNefPhrases(); 
-            else if (docT === 'MEL') displayPool = getSmartMelPhrases(sAc); 
-            else displayPool = searchPool;
+            searchPool = dbToSearch.filter(d => { if (docT && d.type !== docT) return false; return d.acType === 'ALL' || sAc.includes(d.acType) || d.acType.includes(sAc); });
+            if (docT === 'NEF') displayPool = getSmartNefPhrases(); else if (docT === 'MEL') displayPool = getSmartMelPhrases(sAc); else displayPool = searchPool;
         }
-        
-        const currentValue = document.getElementById(inputId).value.trim(); 
-        const cleanC = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
-        optDiv.innerHTML = ""; 
-        let hasOptions = false; 
-        let seenCodes = new Set();
+        const currentValue = document.getElementById(inputId).value.trim(); const cleanC = currentValue.replace(/^(MEL|NEF|CDL|SRM|AMM)\s+/i, '').replace(/[^0-9A-Z]/gi, '');
+        optDiv.innerHTML = ""; let hasOptions = false; let seenCodes = new Set();
         
         if (currentValue) {
-            let fSearch = searchPool.find(d => { 
-                let b = d.code.replace(/[^0-9A-Z]/gi, ''); 
-                if (searchType === 'ATA') return b.startsWith(cleanC.substring(0,4)); 
-                return b === cleanC || d.code === currentValue; 
-            });
+            let fSearch = searchPool.find(d => { let b = d.code.replace(/[^0-9A-Z]/gi, ''); if (searchType==='ATA') return b.startsWith(cleanC.substring(0,4)); return b === cleanC || d.code === currentValue; });
             let matched = null;
             if (fSearch) { 
-                let sc = searchType === 'ATA' ? fSearch.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : fSearch.code.replace(/[^0-9A-Z]/gi,''); 
-                matched = displayPool.find(r => (searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi,'')) === sc && (searchType === 'ATA' || r.type === fSearch.type)); 
+                let sc = searchType==='ATA'?fSearch.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):fSearch.code.replace(/[^0-9A-Z]/gi,''); 
+                matched = displayPool.find(r => (searchType==='ATA'?r.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):r.code.replace(/[^0-9A-Z]/gi,'')) === sc && (searchType==='ATA'||r.type===fSearch.type)); 
             }
             if (matched) {
-                const px = searchType !== 'ATA' && matched.type ? matched.type + ' ' : ''; 
-                const fDisp = searchType !== 'ATA' ? `${px}${matched.code}`.trim() : matched.code;
-                const r = document.createElement('div'); 
-                r.className = 'dropdown-opt pinned'; 
-                r.innerHTML = `📌 <b>[입력값]</b> ${fDisp} :: ${matched.keyword}`;
-                r.onmousedown = () => { 
-                    if (searchType !== 'ATA') {
-                        const m = fDisp.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); 
-                        if (m) {
-                            setDocType(id, m[1].toUpperCase()); 
-                            document.getElementById(inputId).value = m[2].trim();
-                        } else {
-                            document.getElementById(inputId).value = fDisp;
-                        }
-                    } else {
-                        document.getElementById(inputId).value = fDisp;
-                    } 
-                    optDiv.style.display = 'none'; 
-                };
-                optDiv.appendChild(r); 
-                hasOptions = true; 
-                seenCodes.add(searchType === 'ATA' ? matched.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : matched.code.replace(/[^0-9A-Z]/gi,''));
+                const px = searchType!=='ATA'&&matched.type?matched.type+' ':''; const fDisp = searchType!=='ATA'?`${px}${matched.code}`.trim():matched.code;
+                const r = document.createElement('div'); r.className = 'dropdown-opt pinned'; r.innerHTML = `📌 <b>[입력값]</b> ${fDisp} :: ${matched.keyword}`;
+                r.title = `[입력값] ${fDisp} :: ${matched.keyword}`; // 🚨 마우스 오버 툴팁 추가 🚨
+                r.onmousedown = () => { if(searchType!=='ATA'){const m=fDisp.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); if(m){setDocType(id,m[1].toUpperCase()); document.getElementById(inputId).value=m[2].trim();}}else{document.getElementById(inputId).value=fDisp;} optDiv.style.display='none'; };
+                optDiv.appendChild(r); hasOptions = true; seenCodes.add(searchType==='ATA'?matched.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):matched.code.replace(/[^0-9A-Z]/gi,''));
             } else {
-                const r = document.createElement('div'); 
-                r.className = 'dropdown-opt pinned'; 
-                r.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표 목록에 없음`;
-                r.onmousedown = () => { optDiv.style.display = 'none'; }; 
-                optDiv.appendChild(r); 
-                hasOptions = true;
+                const r = document.createElement('div'); r.className = 'dropdown-opt pinned'; r.innerHTML = `📌 <b>[입력값]</b> ${currentValue} :: 대표 목록에 없음`;
+                r.title = `[입력값] ${currentValue} :: 대표 목록에 없음`; // 🚨 마우스 오버 툴팁 추가 🚨
+                r.onmousedown = () => { optDiv.style.display='none'; }; optDiv.appendChild(r); hasOptions = true;
             }
         }
-        
         if (text.trim()) {
             const sw = ['INOP','INOPERATIVE','DEFECT','BROKEN','DAMAGED','MISSING','REPLACED','CHECK','CHK','THE','A','AN','OF','FOR','AND','TO','IS','NOT','PLZ','PLEASE','NEED'];
             const terms = text.toUpperCase().match(/[A-Z0-9가-힣]{3,}/g)?.filter(t => !sw.includes(t)) || [];
             if (terms.length > 0) {
-                let scored = []; 
-                let targetAta = null; 
-                terms.forEach(t => { if (ATA_DICT[t]) targetAta = ATA_DICT[t]; });
-                
+                let scored = []; let targetAta = null; terms.forEach(t => { if (ATA_DICT[t]) targetAta = ATA_DICT[t]; });
                 searchPool.forEach(d => {
-                    let s = 0; 
-                    if(d.searchTarget) terms.forEach(t => { 
-                        if(new RegExp(`\\b${t}\\b`,'i').test(d.searchTarget)) s += 50; 
-                        else if(d.searchTarget.includes(t.toLowerCase())) s += 10; 
-                    });
-                    if(searchType === 'ATA' && targetAta && d.code.replace(/[^0-9A-Z]/gi,'').startsWith(targetAta)) s += 5000;
-                    if(s > 0) { 
-                        if(searchType !== 'ATA' && d.type) { 
-                            const cRT = document.getElementById(`docType-${id}`).value.toUpperCase(); 
-                            if(cRT.includes('NEF') && d.type === 'NEF') s += 1000; 
-                            if(cRT.includes('MEL') && d.type === 'MEL') s += 1000; 
-                        } 
-                        s += (d.row / 100000); 
-                        scored.push({data: d, score: s}); 
-                    }
+                    let s = 0; if(d.searchTarget) terms.forEach(t => { if(new RegExp(`\\b${t}\\b`,'i').test(d.searchTarget)) s+=50; else if(d.searchTarget.includes(t.toLowerCase())) s+=10; });
+                    if(searchType==='ATA'&&targetAta&&d.code.replace(/[^0-9A-Z]/gi,'').startsWith(targetAta)) s+=5000;
+                    if(s>0){ if(searchType!=='ATA'&&d.type){ const cRT=document.getElementById(`docType-${id}`).value.toUpperCase(); if(cRT.includes('NEF')&&d.type==='NEF') s+=1000; if(cRT.includes('MEL')&&d.type==='MEL') s+=1000; } s+=(d.row/100000); scored.push({data:d, score:s}); }
                 });
-                scored.sort((a,b) => b.score - a.score); 
-                let finalC = [];
-                for (let i = 0; i < scored.length; i++) {
-                    let fSearch = scored[i].data; 
-                    const sc = searchType === 'ATA' ? fSearch.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : fSearch.code.replace(/[^0-9A-Z]/gi,'');
-                    let rItem = displayPool.find(r => (searchType === 'ATA' ? r.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : r.code.replace(/[^0-9A-Z]/gi,'')) === sc && (searchType === 'ATA' || r.type === fSearch.type));
-                    if (!rItem) continue; 
-                    const fCodeB = searchType === 'ATA' ? rItem.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : rItem.code.replace(/[^0-9A-Z]/gi,'');
-                    if (seenCodes.has(fCodeB)) continue; 
-                    finalC.push(rItem); 
-                    seenCodes.add(fCodeB); 
-                    if (finalC.length >= 5) break;
+                scored.sort((a,b) => b.score - a.score); let finalC = [];
+                for(let i=0; i<scored.length; i++) {
+                    let fSearch = scored[i].data; const sc = searchType==='ATA'?fSearch.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):fSearch.code.replace(/[^0-9A-Z]/gi,'');
+                    let rItem = displayPool.find(r => (searchType==='ATA'?r.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):r.code.replace(/[^0-9A-Z]/gi,'')) === sc && (searchType==='ATA'||r.type===fSearch.type));
+                    if(!rItem) continue; const fCodeB = searchType==='ATA'?rItem.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):rItem.code.replace(/[^0-9A-Z]/gi,'');
+                    if(seenCodes.has(fCodeB)) continue; finalC.push(rItem); seenCodes.add(fCodeB); if(finalC.length>=5) break;
                 }
                 finalC.forEach(rItem => {
-                    const px = searchType !== 'ATA' && rItem.type ? rItem.type + ' ' : ''; 
-                    const fDisp = searchType !== 'ATA' ? `${px}${rItem.code}`.trim() : rItem.code;
-                    const r = document.createElement('div'); 
-                    r.className = 'dropdown-opt'; 
-                    r.innerText = `${fDisp} :: ${rItem.keyword}`;
-                    r.onmousedown = () => { 
-                        if (searchType !== 'ATA') {
-                            const m = fDisp.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); 
-                            if(m) {
-                                setDocType(id, m[1].toUpperCase()); 
-                                document.getElementById(inputId).value = m[2].trim();
-                            } else {
-                                document.getElementById(inputId).value = fDisp;
-                            }
-                        } else {
-                            document.getElementById(inputId).value = fDisp;
-                        } 
-                        optDiv.style.display = 'none'; 
-                    };
-                    optDiv.appendChild(r); 
-                    hasOptions = true;
+                    const px = searchType!=='ATA'&&rItem.type?rItem.type+' ':''; const fDisp = searchType!=='ATA'?`${px}${rItem.code}`.trim():rItem.code;
+                    const r = document.createElement('div'); r.className = 'dropdown-opt'; r.innerText = `${fDisp} :: ${rItem.keyword}`;
+                    r.title = `${fDisp} :: ${rItem.keyword}`; // 🚨 마우스 오버 툴팁 추가 🚨
+                    r.onmousedown = () => { if(searchType!=='ATA'){const m=fDisp.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); if(m){setDocType(id,m[1].toUpperCase()); document.getElementById(inputId).value=m[2].trim();}}else{document.getElementById(inputId).value=fDisp;} optDiv.style.display='none'; };
+                    optDiv.appendChild(r); hasOptions = true;
                 });
             }
         }
-        const more = document.createElement('div'); 
-        more.className = 'dropdown-opt pinned'; 
-        more.style.textAlign = 'center'; 
-        more.style.background = '#e9ecef'; 
-        more.innerHTML = `➕ <b>[더보기] 전체 리스트 열람</b>`;
-        more.onmousedown = () => { optDiv.style.display = 'none'; openFullListModal(id, searchType); }; 
-        optDiv.appendChild(more);
-        
-        if (hasOptions) optDiv.style.display = "block"; 
-        else alert("항목을 찾지 못했습니다.");
+        const more = document.createElement('div'); more.className = 'dropdown-opt pinned'; more.style.textAlign='center'; more.style.background='#e9ecef'; more.innerHTML = `➕ <b>[더보기] 전체 리스트 열람</b>`;
+        more.onmousedown = () => { optDiv.style.display='none'; openFullListModal(id, searchType); }; optDiv.appendChild(more);
+        if (hasOptions) optDiv.style.display = "block"; else alert("항목을 찾지 못했습니다.");
     }
 
     function openFullListModal(id, searchType) {
         currentTargetRowId = id; currentSearchType = searchType; currentTargetInputId = searchType === 'ATA' ? `ata-${id}` : `reason-${id}`;
-        let sAc = document.getElementById('acType').value.trim().toUpperCase(); 
-        if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
+        let sAc = document.getElementById('acType').value.trim().toUpperCase(); if (sAc.includes("A321")||sAc.includes("A32N")) sAc = "A321";
         const titleEl = document.getElementById('fullListTitle'); let dbToSearch = [];
-        
-        if (searchType === 'ATA') { 
-            titleEl.innerText = "ATA CODE 전체 리스트"; 
-            dbToSearch = DB.ataDatabase; 
-        } else {
+        if (searchType === 'ATA') { titleEl.innerText = "ATA CODE 전체 리스트"; dbToSearch = DB.ataDatabase; } 
+        else {
             const docT = document.getElementById(`docType-${id}`).value.toUpperCase();
             if (docT === 'NEF') { titleEl.innerText = "[NEF] 전체 대표 리스트"; dbToSearch = getSmartNefPhrases(); } 
             else if (docT === 'MEL') { titleEl.innerText = `[MEL] 전체 리스트 (${sAc})`; dbToSearch = getSmartMelPhrases(sAc); } 
             else dbToSearch = DB.actionDatabase.filter(d => d.type === docT && (d.acType === 'ALL' || sAc.includes(d.acType)));
         }
-        
         let seen = new Set(); currentFullList = [];
-        dbToSearch.forEach(item => { 
-            const cb = searchType === 'ATA' ? item.code.replace(/[^0-9A-Z]/gi,'').substring(0,4) : item.code.replace(/[^0-9A-Z]/gi,''); 
-            if(!seen.has(cb+item.type)){ seen.add(cb+item.type); currentFullList.push(item); } 
-        });
-        
-        if (searchType !== 'ATA' && document.getElementById(`docType-${id}`).value.toUpperCase() === 'NEF') {
-        } else { 
-            currentFullList.sort((a,b) => a.code.localeCompare(b.code)); 
-        }
-        
-        document.getElementById('fullListSearch').value = ''; 
-        renderFullList(currentFullList); 
-        document.getElementById('fullListModal').style.display = 'flex';
+        dbToSearch.forEach(item => { const cb = searchType==='ATA'?item.code.replace(/[^0-9A-Z]/gi,'').substring(0,4):item.code.replace(/[^0-9A-Z]/gi,''); if(!seen.has(cb+item.type)){ seen.add(cb+item.type); currentFullList.push(item); } });
+        if (searchType !== 'ATA' && document.getElementById(`docType-${id}`).value.toUpperCase() === 'NEF') {} else { currentFullList.sort((a,b) => a.code.localeCompare(b.code)); }
+        document.getElementById('fullListSearch').value = ''; renderFullList(currentFullList); document.getElementById('fullListModal').style.display = 'flex';
         setTimeout(() => document.getElementById('fullListSearch').focus(), 100);
     }
 
@@ -712,257 +436,61 @@
         const container = document.getElementById('fullListContainer'); container.innerHTML = '';
         if(list.length === 0) { container.innerHTML = `<div style="padding:20px; text-align:center; color:#7f8c8d;">데이터가 없습니다.</div>`; return; }
         list.forEach(item => {
-            const px = currentSearchType !== 'ATA' && item.type ? item.type + ' ' : ''; 
-            const fDisp = currentSearchType !== 'ATA' ? `${px}${item.code}`.trim() : item.code;
+            const px = currentSearchType!=='ATA'&&item.type?item.type+' ':''; const fDisp = currentSearchType!=='ATA'?`${px}${item.code}`.trim():item.code;
             const div = document.createElement('div'); div.className = 'dropdown-opt'; div.innerHTML = `<b>${fDisp}</b> :: ${item.keyword}`;
-            div.onclick = () => { 
-                if (currentSearchType !== 'ATA') {
-                    const m = fDisp.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); 
-                    if(m){
-                        setDocType(currentTargetRowId, m[1].toUpperCase()); 
-                        document.getElementById(currentTargetInputId).value = m[2].trim();
-                    } else document.getElementById(currentTargetInputId).value = fDisp;
-                } else document.getElementById(currentTargetInputId).value = fDisp; 
-                closeFullListModal(); 
-            };
+            div.title = `${fDisp} :: ${item.keyword}`; // 🚨 마우스 오버 툴팁 추가 🚨
+            div.onclick = () => { if (currentSearchType!=='ATA'){const m=fDisp.match(/^(MEL|NEF|CDL|AMM|SRM)\s*(.*)/i); if(m){setDocType(currentTargetRowId,m[1].toUpperCase()); document.getElementById(currentTargetInputId).value=m[2].trim();}else document.getElementById(currentTargetInputId).value=fDisp;}else document.getElementById(currentTargetInputId).value=fDisp; closeFullListModal(); };
             container.appendChild(div);
         });
     }
 
-    function filterFullList() { 
-        const kw = document.getElementById('fullListSearch').value.toUpperCase().replace(/\s+/g,''); 
-        if(!kw) { renderFullList(currentFullList); return; } 
-        renderFullList(currentFullList.filter(item => (item.code + item.keyword).toUpperCase().replace(/\s+/g,'').includes(kw))); 
-    }
-
+    function filterFullList() { const kw = document.getElementById('fullListSearch').value.toUpperCase().replace(/\s+/g,''); if(!kw){renderFullList(currentFullList); return;} renderFullList(currentFullList.filter(item => (item.code+item.keyword).toUpperCase().replace(/\s+/g,'').includes(kw))); }
     function closeFullListModal() { document.getElementById('fullListModal').style.display = 'none'; }
-    
-    function matchFlightFromLegs() { 
-        const f = document.getElementById('legFrom').value.toUpperCase(), t = document.getElementById('legTo').value.toUpperCase(), input = document.getElementById('flightNo'), opt = document.getElementById('flightOptions'); 
-        opt.innerHTML = ""; opt.style.display = "none"; input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, ''); 
-        if (f.length === 3 && t.length === 3 && DB.flights.length > 0) { 
-            const m = DB.flights.filter(item => item.from === f && item.to === t); 
-            if (m.length === 1) input.value = String(m[0].no).replace(/^0+/, ''); 
-            else if (m.length > 1) { 
-                opt.style.display = "block"; 
-                m.forEach(item => { 
-                    const r = document.createElement('div'); r.className = 'dropdown-opt'; r.innerText = `OZ${String(item.no).replace(/^0+/,'')}`; 
-                    r.onmousedown = () => { input.value = String(item.no).replace(/^0+/,''); opt.style.display = "none"; }; 
-                    opt.appendChild(r); 
-                }); 
-            } 
-        } 
-    }
-
-    function matchLegsFromFlight() { 
-        const input = document.getElementById('flightNo'); input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, ''); 
-        const fNo = input.value.trim(), opt = document.getElementById('legOptions'); opt.innerHTML = ""; opt.style.display = "none"; 
-        if (fNo && DB.flights.length > 0) { 
-            const m = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo); 
-            if (m.length === 1) { document.getElementById('legFrom').value = m[0].from; document.getElementById('legTo').value = m[0].to; } 
-            else if (m.length > 1) { 
-                opt.style.display = "block"; 
-                m.forEach(item => { 
-                    const r = document.createElement('div'); r.className = 'dropdown-opt'; r.innerText = `${item.from} ➔ ${item.to}`; 
-                    r.onmousedown = () => { document.getElementById('legFrom').value = item.from; document.getElementById('legTo').value = item.to; opt.style.display = "none"; }; 
-                    opt.appendChild(r); 
-                }); 
-            } 
-        } 
-    }
-
-    function swapLegs() { 
-        const f = document.getElementById('legFrom'), t = document.getElementById('legTo'), tmp = f.value; 
-        f.value = t.value; t.value = tmp; document.getElementById('flightNo').value = ""; matchFlightFromLegs(); 
-    }
-    
+    function matchFlightFromLegs() { const f = document.getElementById('legFrom').value.toUpperCase(), t = document.getElementById('legTo').value.toUpperCase(), input = document.getElementById('flightNo'), opt = document.getElementById('flightOptions'); opt.innerHTML = ""; opt.style.display = "none"; input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, ''); if (f.length === 3 && t.length === 3 && DB.flights.length > 0) { const m = DB.flights.filter(item => item.from === f && item.to === t); if (m.length === 1) input.value = String(m[0].no).replace(/^0+/, ''); else if (m.length > 1) { opt.style.display = "block"; m.forEach(item => { const r = document.createElement('div'); r.className = 'dropdown-opt'; r.innerText = `OZ${String(item.no).replace(/^0+/,'')}`; r.title = `OZ${String(item.no).replace(/^0+/,'')}`; r.onmousedown = () => { input.value = String(item.no).replace(/^0+/,''); opt.style.display = "none"; }; opt.appendChild(r); }); } } }
+    function matchLegsFromFlight() { const input = document.getElementById('flightNo'); input.value = input.value.replace(/^OZ/i, '').replace(/^0+/, ''); const fNo = input.value.trim(), opt = document.getElementById('legOptions'); opt.innerHTML = ""; opt.style.display = "none"; if (fNo && DB.flights.length > 0) { const m = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === fNo); if (m.length === 1) { document.getElementById('legFrom').value = m[0].from; document.getElementById('legTo').value = m[0].to; } else if (m.length > 1) { opt.style.display = "block"; m.forEach(item => { const r = document.createElement('div'); r.className = 'dropdown-opt'; r.innerText = `${item.from} ➔ ${item.to}`; r.title = `${item.from} ➔ ${item.to}`; r.onmousedown = () => { document.getElementById('legFrom').value = item.from; document.getElementById('legTo').value = item.to; opt.style.display = "none"; }; opt.appendChild(r); }); } } }
+    function swapLegs() { const f = document.getElementById('legFrom'), t = document.getElementById('legTo'), tmp = f.value; f.value = t.value; t.value = tmp; document.getElementById('flightNo').value = ""; matchFlightFromLegs(); }
     function removeDefectRow(btn) { if(document.querySelectorAll('.defect-row').length > 1) { btn.parentElement.remove(); updateNums(); } }
     function updateNums() { document.querySelectorAll('.idx-num').forEach((el, i) => el.innerText = (i + 1) + '.'); }
     function setAsAp(id, type) { const r = document.getElementById('row-'+id); r.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); document.getElementById(`asAp-${id}`).value = type; }
-    
-    function setDocType(id, type) { 
-        if(!type) return; 
-        document.getElementById(`docType-${id}`).value = type; 
-        const box = document.getElementById(`doc-toggle-box-${id}`); 
-        if(box) box.querySelectorAll('.doc-toggle-btn').forEach(btn => btn.classList.remove('active')); 
-        const etcBtn = document.getElementById(`btn-etc-${id}`); 
-        if(etcBtn) etcBtn.innerText = 'ETC'; 
-        
-        if (type === 'MEL') { 
-            const btn = document.getElementById(`btn-mel-${id}`); 
-            if(btn) btn.classList.add('active'); 
-        } else if (type === 'NEF') { 
-            const btn = document.getElementById(`btn-nef-${id}`); 
-            if(btn) btn.classList.add('active'); 
-        } else if (['CDL', 'AMM', 'SRM'].includes(type)) { 
-            if(etcBtn) { etcBtn.innerText = type; etcBtn.classList.add('active'); } 
-        } 
-        const drop = document.getElementById(`dropdown-etc-${id}`); 
-        if(drop) drop.style.display = 'none'; 
-    }
-    
     function toggleEtcDropdown(id) { const d = document.getElementById(`dropdown-etc-${id}`); d.style.display = d.style.display === 'block' ? 'none' : 'block'; }
     function applyTransform() { const img = document.getElementById('pastedImg'); if (img) img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; }
     function rotateLeft(e) { if(e) e.stopPropagation(); currentRotation -= 90; applyTransform(); }
     function rotateRight(e) { if(e) e.stopPropagation(); currentRotation += 90; applyTransform(); }
     function toggleExpand() { document.getElementById('mainTopSection').classList.toggle('expanded'); translateX = 0; translateY = 0; currentScale = 1; applyTransform(); setTimeout(refreshAllHeights, 150); }
-    
-    function loadAndDisplayImage(file) { 
-        fileToUpload = file; 
-        const url = URL.createObjectURL(fileToUpload); 
-        document.getElementById('mainTopSection').classList.remove('expanded'); 
-        document.getElementById('rightPanel').classList.remove('text-extract-mode'); 
-        document.getElementById('rawTextArea').style.display = 'none'; 
-        document.getElementById('pasteArea').innerHTML = `
-            <div class="img-tools">
-                <button type="button" class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
-                <button type="button" class="btn-tool btn-rotate-left" onclick="rotateLeft(event)"></button>
-                <button type="button" class="btn-tool btn-rotate-right" onclick="rotateRight(event)"></button>
-                <button type="button" class="btn-tool btn-close" onclick="resetImage(event)">✖</button>
-            </div>
-            <img src="${url}" id="pastedImg" draggable="false">
-        `; 
-        setTimeout(refreshAllHeights, 50); 
-    }
-
+    function loadAndDisplayImage(file) { fileToUpload = file; const url = URL.createObjectURL(fileToUpload); document.getElementById('mainTopSection').classList.remove('expanded'); document.getElementById('rightPanel').classList.remove('text-extract-mode'); document.getElementById('rawTextArea').style.display = 'none'; document.getElementById('pasteArea').innerHTML = `<div class="img-tools"><button type="button" class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button><button type="button" class="btn-tool btn-rotate-left" onclick="rotateLeft(event)"></button><button type="button" class="btn-tool btn-rotate-right" onclick="rotateRight(event)"></button><button type="button" class="btn-tool btn-close" onclick="resetImage(event)">✖</button></div><img src="${url}" id="pastedImg" draggable="false">`; setTimeout(refreshAllHeights, 50); }
     function resetImage(e) { 
-        if(e) e.stopPropagation(); 
-        if(currentAbortController) currentAbortController.abort(); 
-        fileToUpload = null; document.getElementById('imageFileInput').value = ""; 
-        document.getElementById('mainTopSection').classList.remove('expanded'); 
-        
-        // 🚨 ALL CLEAR 초기화 🚨
-        document.getElementById('regNo').value = ""; 
-        document.getElementById('acType').value = ""; 
-        document.getElementById('flightNo').value = ""; 
-        document.getElementById('legFrom').value = ""; 
-        document.getElementById('legTo').value = ""; 
-        document.getElementById('handover').checked = false;
-
-        document.getElementById('pasteArea').innerHTML = `<div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()"><div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치하여 사진 첨부</div>`; 
-        document.getElementById('defectRowsContainer').innerHTML = ""; 
-        rowIdCounter = 0; 
-        addRow(); 
-        setTimeout(refreshAllHeights, 50); 
+        if(e) e.stopPropagation(); if(currentAbortController) currentAbortController.abort(); fileToUpload = null; document.getElementById('imageFileInput').value = ""; document.getElementById('mainTopSection').classList.remove('expanded'); 
+        document.getElementById('pasteArea').innerHTML = `<div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()"><div style="font-size: 40px; margin-bottom: 10px;">📸</div>이곳을 터치하여 사진 첨부<br><span style="font-size: 12px; color: #7f8c8d; margin-top: 5px; font-weight: normal; line-height: 1.6;">또는 <b>Ctrl + V</b> 로 붙여넣기<br>방향키로 회전, <b>Enter</b>로 분석</span></div>`; 
+        document.getElementById('regNo').value = ""; document.getElementById('acType').value = ""; document.getElementById('flightNo').value = ""; document.getElementById('legFrom').value = ""; document.getElementById('legTo').value = ""; document.getElementById('handover').checked = false;
+        document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0; addRow(); setTimeout(refreshAllHeights, 50); 
     }
-
     function handleImageFile(event) { const file = event.target.files[0]; if (file) loadAndDisplayImage(file); event.target.value = ""; }
 
     window.onload = async () => {
-        addRow(); 
-        await loadDB(); 
-        updateUserNameDisplay();
-        
-        window.addEventListener('mousedown', (e) => { 
-            if (e.target.closest('#fullListModal')) return; 
-            if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap') && !e.target.closest('.doc-toggle-box')) { 
-                document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none"); 
-            } 
-        });
-
+        addRow(); await loadDB(); updateUserNameDisplay();
+        window.addEventListener('mousedown', (e) => { if (e.target.closest('#fullListModal')) return; if (!e.target.closest('.input-group') && !e.target.closest('.search-wrap') && !e.target.closest('.doc-toggle-box')) { document.querySelectorAll('.dropdown-list').forEach(el => el.style.display = "none"); } });
         const p = document.getElementById('pasteArea');
-        p.addEventListener('dragover', (e) => { e.preventDefault(); p.classList.add('drag-over'); }); 
-        p.addEventListener('dragleave', (e) => { e.preventDefault(); p.classList.remove('drag-over'); });
+        p.addEventListener('dragover', (e) => { e.preventDefault(); p.classList.add('drag-over'); }); p.addEventListener('dragleave', (e) => { e.preventDefault(); p.classList.remove('drag-over'); });
         p.addEventListener('drop', (e) => { e.preventDefault(); p.classList.remove('drag-over'); if (e.dataTransfer.files?.length > 0) { const file = e.dataTransfer.files[0]; if (file.type.startsWith('image/')) loadAndDisplayImage(file); } });
         p.addEventListener('wheel', (e) => { if (!document.getElementById('pastedImg')) return; e.preventDefault(); currentScale += e.deltaY < 0 ? 0.15 : -0.15; currentScale = Math.max(0.2, Math.min(currentScale, 6)); applyTransform(); });
         p.addEventListener('mousedown', (e) => { if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return; e.preventDefault(); isDragging = true; clickStartX = e.clientX; clickStartY = e.clientY; startDragX = e.clientX - translateX; startDragY = e.clientY - translateY; });
         window.addEventListener('mousemove', (e) => { if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; applyTransform(); });
         window.addEventListener('mouseup', (e) => { if (isDragging && Math.abs(e.clientX - clickStartX) < 5 && Math.abs(e.clientY - clickStartY) < 5 && e.target.id === 'pastedImg') toggleExpand(); isDragging = false; });
+        window.addEventListener('paste', (e) => { if (!e.clipboardData) return; const items = e.clipboardData.items; for (let i=0; i<items.length; i++) { if (items[i].type.indexOf("image") !== -1) { e.preventDefault(); const file = items[i].getAsFile(); if (file) loadAndDisplayImage(file); return; } } });
     };
 
-    async function sendWebhook(target) {
-        const url = WEBHOOK_URLS[target]; if (!url) return alert("웹훅 주소가 없습니다.");
-        const rows = document.querySelectorAll('.defect-row'); if (rows.length === 0) return alert("전송할 내용이 없습니다.");
-        const firstId = rows[0].id.split('-')[1]; const 첫번째구분_raw = document.getElementById(`asAp-${firstId}`).value;
-        if (!첫번째구분_raw) return alert("⚠️ 작성자가 선택되지 않았습니다!");
-        
-        let 이름 = localStorage.getItem('logScanner_userName');
-        if (!이름) { 이름 = prompt("전송자 성함을 입력하세요.", ""); if (이름) { localStorage.setItem('logScanner_userName', 이름.trim()); updateUserNameDisplay(); } else 이름 = "미상"; }
-        
-        const 기번 = document.getElementById('regNo').value.trim() || '미확인'; 
-        const acType = document.getElementById('acType').value.trim() || '기종미상';
-        const flightNoRaw = document.getElementById('flightNo').value.trim(); 
-        const legFromRaw = document.getElementById('legFrom').value.trim().toUpperCase(); 
-        const legToRaw = document.getElementById('legTo').value.trim().toUpperCase();
-        const 위탁 = document.getElementById('handover').checked ? 'Y 🔹' : 'N 🔸'; 
-        const 현재시간 = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-        
-        let defectCount = 0; let payload; 
-        const 공통작성자 = `${첫번째구분_raw} ${첫번째구분_raw === "AP" ? "👨‍✈️" : "🔧"}`;
-        const numBadges = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-        const 편명구간 = (flightNoRaw || legFromRaw || legToRaw) ? `OZ${flightNoRaw||'미상'} (${legFromRaw||'???'} ➔ ${legToRaw||'???'})` : "";
-        
-        if (target === "DUTY") {
-            let html결함묶음 = "";
-            rows.forEach(row => {
-                const id = row.id.split('-')[1]; const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                const docType = document.getElementById(`docType-${id}`).value; const reasonCode = document.getElementById(`reason-${id}`).value.trim();
-                let 근거_raw = (docType && reasonCode) ? `${docType} ${reasonCode}` : docType || reasonCode || '미입력'; 
-                const ata_raw = document.getElementById(`ata-${id}`).value.trim();
-                if (결함_raw) { defectCount++; html결함묶음 += `<b>${defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`} DEFECT INFO</b><br>&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` + (ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "") + `<br>`; }
-            });
-            if (defectCount === 0) return alert("전송할 결함 내용이 없습니다.");
-            payload = { cardsV2: [{ cardId: "dutyCard", card: { sections: [{ widgets: [{ textParagraph: { text: `🛠️ <b>정비 이월 사항 전달</b><br><br>• <b>기번 :</b> HL${기번} (${acType})<br>` + (편명구간 ? `• <b>편명 :</b> ${편명구간}<br>` : "") + `• <b>작성자 :</b> ${공통작성자}<br>• <b>위탁 :</b> ${위탁}<br><br><b>[ 결함내역 및 조치 ]</b><br>${html결함묶음}<i>${이름} / ${현재시간}</i>` } }] }] } }] };
-        } else if (target === "OCC") {
-            let searchAcType = acType.toUpperCase(); if (searchAcType.includes("A321") || searchAcType.includes("A32N")) searchAcType = "A321";
-            let targetGpsCodes = {"A321":["34-50-09E","34-50-09F","34-50-09G","34-50-09D"],"A330":["34-50-08D","34-50-08F"],"A350":["34-50-01A","34-50-01B","34-50-01C","34-50-06A","34-52-06B","34-50-06C"],"A380":["34-50-01A","34-50-01B","34-50-01C"],"B777":["34-58-01A","34-58-01B"]}[searchAcType] || [];
-            let html결함묶음 = ""; let hasGpsIssue = false;
-            rows.forEach(row => {
-                const id = row.id.split('-')[1]; const 결함_raw = document.getElementById(`defect-${id}`).value.trim();
-                const docType = document.getElementById(`docType-${id}`).value; const reasonCode = document.getElementById(`reason-${id}`).value.trim();
-                let 근거_raw = (docType && reasonCode) ? `${docType} ${reasonCode}` : docType || reasonCode || '미입력'; const ata_raw = document.getElementById(`ata-${id}`).value.trim();
-                if (결함_raw) { defectCount++; html결함묶음 += `<b>${defectCount <= 10 ? numBadges[defectCount] : `[${defectCount}]`} DEFECT INFO</b><br>&nbsp;&nbsp;• <b>결함:</b> ${결함_raw}<br>&nbsp;&nbsp;• <b>근거:</b> ${근거_raw}<br>` + (ata_raw ? `&nbsp;&nbsp;• <b>ATA:</b> ${ata_raw}<br>` : "") + `<br>`; if (!hasGpsIssue) hasGpsIssue = targetGpsCodes.some(code => 근거_raw.toUpperCase().replace(/\s+/g, '').includes(code.toUpperCase().replace(/\s+/g, ''))); }
-            });
-            if (defectCount === 0) return alert("전송할 결함 내용이 없습니다.");
-            payload = { cardsV2: [{ cardId: "occCard", card: { sections: [{ widgets: [{ textParagraph: { text: `📢 <b>정비통제SE - Dispatch Approval 검토 요청</b><br><br>• <b>기번 :</b> HL${기번} (${acType})<br>` + (편명구간 ? `• <b>편명 :</b> ${편명구간.replace('➔','-')}<br><br>` : "<br>") + `<b>[ 결함내역 및 조치 ]</b><br>${html결함묶음}${hasGpsIssue ? `<br>※ <font color="#4DD0E1"><b>${searchAcType.includes("A350")?"GNSS":"GPS"}</b></font> 관련 결함으로 항공고시보도 함께 검토 요청드립니다.` : ""}<i>${이름} / ${현재시간}</i>` } }] }] } }] };
-        }
-        
-        const btn = document.getElementById(`btn-${target.toLowerCase()}`); 
-        const originText = btn.innerText; 
-        btn.innerText = "전송 중... ⏳"; 
-        btn.disabled = true;
-        try { 
-            const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); 
-            if (res.ok) alert(`✅ 전송 완료!`); else alert(`⚠️ 실패: ${res.status}`); 
-        } catch (error) { 
-            alert(`⚠️ 에러: ${error.message}`); 
-        } finally { 
-            btn.innerText = originText; 
-            btn.disabled = false; 
-        }
-    }
-
     async function extractText() {
-        if (!fileToUpload) return alert("사진을 첨부하세요!"); 
-        const btn = document.getElementById('btnExtractMain'); 
-        btn.innerText = "분석 중... ⏳"; 
-        btn.disabled = true;
-        if (currentAbortController) currentAbortController.abort(); 
-        currentAbortController = new AbortController();
+        if (!fileToUpload) return alert("사진을 첨부하세요!"); const btn = document.getElementById('btnExtractMain'); btn.innerText = "분석 중... ⏳"; btn.disabled = true;
+        if (currentAbortController) currentAbortController.abort(); currentAbortController = new AbortController();
+        const cf = await compressImage(fileToUpload); const fd = new FormData(); fd.append("file", cf);
         
-        const cf = await compressImage(fileToUpload); 
-        const fd = new FormData(); 
-        fd.append("file", cf);
-        
-        // 🚨 ALL CLEAR 선 적용 (입력 필드 초기화) 🚨
-        document.getElementById('regNo').value = ""; 
-        document.getElementById('acType').value = ""; 
-        document.getElementById('flightNo').value = ""; 
-        document.getElementById('legFrom').value = ""; 
-        document.getElementById('legTo').value = ""; 
-        document.getElementById('handover').checked = false;
+        document.getElementById('regNo').value = ""; document.getElementById('acType').value = ""; document.getElementById('flightNo').value = ""; document.getElementById('legFrom').value = ""; document.getElementById('legTo').value = ""; document.getElementById('handover').checked = false;
 
         try {
-            const res = await fetch("/ocr", { method: "POST", body: fd, signal: currentAbortController.signal }); 
-            const data = await res.json();
+            const res = await fetch("/ocr", { method: "POST", body: fd, signal: currentAbortController.signal }); const data = await res.json();
             if (data.error) return alert(data.error);
+            if (data.regNo) { document.getElementById('regNo').value = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, ""); fillAcType(); }
             
-            if (data.regNo) { 
-                document.getElementById('regNo').value = String(data.regNo).replace(/[^0-9A-Z]/gi, '').replace(/^HL/i, ""); 
-                fillAcType(); 
-            }
-            
-            // 🚨 1번 전략 탑재: 편명 우선, 유사도로 자동 교정 🚨
             let ocrFno = data.flightNo ? String(data.flightNo).toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^OZ/i, '').replace(/^0+/, '') : "";
             let ocrFrom = data.legFrom ? String(data.legFrom).replace(/[^A-Z]/gi, '').toUpperCase() : "";
             let ocrTo = data.legTo ? String(data.legTo).replace(/[^A-Z]/gi, '').toUpperCase() : "";
@@ -970,63 +498,31 @@
             if (ocrFno && DB.flights.length > 0) {
                 let matches = DB.flights.filter(item => String(item.no).replace(/^0+/, '') === ocrFno);
                 if (matches.length === 1) { 
-                    let dbFrom = matches[0].from; 
-                    let dbTo = matches[0].to;
+                    let dbFrom = matches[0].from; let dbTo = matches[0].to;
                     let fromDiff = ocrFrom ? getEditDistance(ocrFrom, dbFrom) : 0;
                     let toDiff = ocrTo ? getEditDistance(ocrTo, dbTo) : 0;
-                    // 유사도가 가깝거나(2 이하) 비어있으면 DB 데이터로 덮어쓰기
                     if (!ocrFrom || fromDiff <= 2) ocrFrom = dbFrom;
                     if (!ocrTo || toDiff <= 2) ocrTo = dbTo;
                 }
             }
-            
             document.getElementById('flightNo').value = ocrFno;
             document.getElementById('legFrom').value = ocrFrom;
             document.getElementById('legTo').value = ocrTo;
 
-            if (data.items?.length > 0) { 
-                document.getElementById('defectRowsContainer').innerHTML = ""; 
-                rowIdCounter = 0; 
-                data.items.forEach(item => addRow(item)); 
-                setTimeout(refreshAllHeights, 150); 
-            } else { 
-                alert("결함을 찾지 못했습니다."); 
-                if (document.querySelectorAll('.defect-row').length === 0) addRow(); 
-            }
-        } catch (e) { 
-            if (e.name !== 'AbortError') alert(e.message); 
-        } finally { 
-            btn.innerText = "✨ AI 분석 및 자동 매칭"; 
-            btn.disabled = false; 
-            currentAbortController = null; 
-        }
+            if (data.items?.length > 0) { document.getElementById('defectRowsContainer').innerHTML = ""; rowIdCounter = 0; data.items.forEach(item => addRow(item)); setTimeout(refreshAllHeights, 150); }
+            else { alert("결함을 찾지 못했습니다."); if (document.querySelectorAll('.defect-row').length === 0) addRow(); }
+        } catch (e) { if (e.name !== 'AbortError') alert(e.message); } finally { btn.innerText = "✨ AI 분석 및 자동 매칭"; btn.disabled = false; currentAbortController = null; }
     }
 
     async function extractRawText() {
-        if (!fileToUpload) return alert("사진을 첨부하세요!"); 
-        const btn = document.getElementById('btnExtractRaw'); 
-        btn.innerText = "추출 중... ⏳"; 
-        btn.disabled = true;
-        if (currentAbortController) currentAbortController.abort(); 
-        currentAbortController = new AbortController();
-        const cf = await compressImage(fileToUpload); 
-        const fd = new FormData(); 
-        fd.append("file", cf);
+        if (!fileToUpload) return alert("사진을 첨부하세요!"); const btn = document.getElementById('btnExtractRaw'); btn.innerText = "추출 중... ⏳"; btn.disabled = true;
+        if (currentAbortController) currentAbortController.abort(); currentAbortController = new AbortController();
+        const cf = await compressImage(fileToUpload); const fd = new FormData(); fd.append("file", cf);
         try {
-            const res = await fetch("/extract_raw", { method: "POST", body: fd, signal: currentAbortController.signal }); 
-            const data = await res.json();
-            if (data.error) return alert(data.error); 
-            document.getElementById('rightPanel').classList.add('text-extract-mode');
-            const ta = document.getElementById('rawTextArea'); 
-            ta.style.display = 'block'; 
-            ta.value = data.text || "텍스트가 없습니다.";
-        } catch (e) { 
-            if (e.name !== 'AbortError') alert(e.message); 
-        } finally { 
-            btn.innerText = "📝 TEXT 추출"; 
-            btn.disabled = false; 
-            currentAbortController = null; 
-        }
+            const res = await fetch("/extract_raw", { method: "POST", body: fd, signal: currentAbortController.signal }); const data = await res.json();
+            if (data.error) return alert(data.error); document.getElementById('rightPanel').classList.add('text-extract-mode');
+            const ta = document.getElementById('rawTextArea'); ta.style.display = 'block'; ta.value = data.text || "텍스트가 없습니다.";
+        } catch (e) { if (e.name !== 'AbortError') alert(e.message); } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; currentAbortController = null; }
     }
 </script>
 </body>
