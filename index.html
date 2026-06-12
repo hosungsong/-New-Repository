@@ -59,7 +59,6 @@
         .btn-remove:hover { background: #c0392b; }
         .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; align-items: center; }
         
-        /* 🚨 초기 pasteArea는 기존처럼 유연하게 유지 */
         #pasteArea { flex: 1; width: 100%; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: all 0.2s; }
         #pasteArea img { cursor: grab; }
         #pasteArea img:active { cursor: grabbing; }
@@ -67,7 +66,6 @@
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
-        /* 🚨 확대 모드 시 레이아웃 비율 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
@@ -76,8 +74,11 @@
         .top-section.expanded .doc-toggle-box { width: 85px; }
         .top-section.expanded .doc-toggle-btn { font-size: 9px; padding: 0; }
         
-        .text-extract-mode #pasteArea { min-height: 200px; flex: none; width: 100%; }
-        .text-extract-mode #pasteArea img { max-height: 180px; height: auto; width: auto; position: static !important; transform: none !important; margin: 0 !important; }
+        .top-section.expanded #pasteArea { height: calc(100vh - 250px); min-height: 350px; max-height: 800px; } 
+        .top-section.expanded #pasteArea img { width: 100%; height: 100%; object-fit: contain; transform-origin: center center; transition: transform 0.2s ease-out; }
+
+        /* 🚨 수정됨: TEXT 추출 모드에서도 JS로 사진 크기 조절이 가능하도록 강제 속성 삭제 🚨 */
+        .text-extract-mode #pasteArea { min-height: 250px; height: 35vh; flex: none; width: 100%; }
         
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
         .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -372,9 +373,6 @@
                 DB = data;
                 if(DB.ataDatabase) DB.ataDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
                 if(DB.actionDatabase) DB.actionDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
-                console.log("✅ 서버 DB 로드 완료!");
-            } else {
-                console.warn("⚠️ 서버에 DB가 없습니다.");
             }
         } catch (e) {
             console.error("서버 DB 로드 실패:", e);
@@ -1086,13 +1084,7 @@
             document.getElementById('rightPanel').classList.remove('text-extract-mode');
             document.getElementById('rawTextArea').style.display = 'none';
 
-            const pasteArea = document.getElementById('pasteArea');
-            pasteArea.style.flex = ''; 
-            pasteArea.style.width = ''; 
-            pasteArea.style.height = ''; 
-            pasteArea.style.margin = '';
-
-            pasteArea.innerHTML = `
+            document.getElementById('pasteArea').innerHTML = `
                 <div class="img-tools">
                     <button type="button" class="btn-tool" onclick="document.getElementById('imageFileInput').click()">📸</button>
                     <button type="button" class="btn-tool btn-rotate-left" onclick="rotateLeft(event)" title="좌회전 90도"></button>
@@ -1102,10 +1094,7 @@
                 <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
             `;
             
-            const img = document.getElementById('pastedImg');
-            img.onload = () => { applyTransform(false); };
-            
-            setTimeout(refreshAllHeights, 50);
+            setTimeout(() => { applyTransform(); }, 50);
         } catch (e) { alert("사진을 불러오지 못했습니다: " + e.message); }
     }
 
@@ -1122,13 +1111,7 @@
         document.getElementById('legTo').value = "";
         document.getElementById('handover').checked = false;
 
-        const pasteArea = document.getElementById('pasteArea');
-        pasteArea.style.flex = ''; 
-        pasteArea.style.width = ''; 
-        pasteArea.style.height = ''; 
-        pasteArea.style.margin = '';
-
-        pasteArea.innerHTML = `
+        document.getElementById('pasteArea').innerHTML = `
             <div class="upload-prompt" onclick="document.getElementById('imageFileInput').click()">
                 <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
                 이곳을 터치(클릭)하여 사진 첨부<br>
@@ -1172,7 +1155,7 @@
             if (!document.getElementById('pastedImg')) return; e.preventDefault(); 
             currentScale += e.deltaY < 0 ? 0.15 : -0.15; 
             currentScale = Math.max(0.2, Math.min(currentScale, 6)); 
-            applyTransform(true); // 🚨 회전/프레임 계산 생략하고 확대만!
+            applyTransform(); 
         });
         pasteArea.addEventListener('mousedown', (e) => {
             if (!document.getElementById('pastedImg') || e.target.closest('.img-tools')) return;
@@ -1181,7 +1164,7 @@
         });
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return; translateX = e.clientX - startDragX; translateY = e.clientY - startDragY; 
-            applyTransform(true); // 🚨 드래그 시 렉 방지
+            applyTransform();
         });
 
         window.addEventListener('mouseup', (e) => {
@@ -1194,79 +1177,23 @@
             }
             isDragging = false;
         });
-        
-        window.addEventListener('resize', () => {
-            if(document.getElementById('pastedImg')) applyTransform(false);
-        });
     };
 
-    // 🚨 핵심 로직: 프레임을 회전된 사진 크기에 완벽하게 재단 (JS 개입) 🚨
-    function applyTransform(onlyTransform = false) { 
+    function applyTransform() { 
         const img = document.getElementById('pastedImg'); 
-        const pasteArea = document.getElementById('pasteArea');
-        if (!img || !pasteArea) return;
-
-        if (!onlyTransform) {
-            pasteArea.style.width = '';
-            pasteArea.style.height = '';
-            pasteArea.style.flex = '';
-
-            const rightPanel = document.getElementById('rightPanel');
-            const maxWidth = rightPanel.clientWidth;
-            
-            // 🚨 하단 전송 버튼이 절대 짤리지 않도록 높이 락(Lock)
-            let maxHeight = window.innerHeight - 320; 
-            if (maxHeight < 300) maxHeight = 300;
-
-            const iw = img.naturalWidth;
-            const ih = img.naturalHeight;
-            
-            if (iw && ih) {
-                const deg = ((currentRotation % 360) + 360) % 360;
-                const isVert = (deg === 90 || deg === 270);
-
-                const rw = isVert ? ih : iw;
-                const rh = isVert ? iw : ih;
-
-                // 사진을 꽉 채우기 위한 핏 스케일 (넘치면 축소)
-                const fitScale = Math.min(maxWidth / rw, maxHeight / rh);
-
-                const targetW = rw * fitScale;
-                const targetH = rh * fitScale;
-
-                // 🚨 회색 점선 프레임을 사진 크기로 완벽하게 잘라냄 (여백 제거)
-                pasteArea.style.flex = 'none';
-                pasteArea.style.width = targetW + 'px';
-                pasteArea.style.height = targetH + 'px';
-                pasteArea.style.margin = '0 auto';
-
-                const unrotatedW = isVert ? targetH : targetW;
-                const unrotatedH = isVert ? targetW : targetH;
-
-                img.style.position = 'absolute';
-                img.style.left = '50%';
-                img.style.top = '50%';
-                img.style.width = unrotatedW + 'px';
-                img.style.height = unrotatedH + 'px';
-                img.style.marginLeft = -(unrotatedW / 2) + 'px';
-                img.style.marginTop = -(unrotatedH / 2) + 'px';
-            }
-        }
-        
-        img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; 
+        if (img) { 
+            img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale}) rotate(${currentRotation}deg)`; 
+        } 
     }
     
-    function rotateLeft(e) { if(e) e.stopPropagation(); currentRotation -= 90; applyTransform(false); }
-    function rotateRight(e) { if(e) e.stopPropagation(); currentRotation += 90; applyTransform(false); }
+    function rotateLeft(e) { if(e) e.stopPropagation(); currentRotation -= 90; applyTransform(); }
+    function rotateRight(e) { if(e) e.stopPropagation(); currentRotation += 90; applyTransform(); }
     
     function toggleExpand() {
         document.getElementById('mainTopSection').classList.toggle('expanded');
         translateX = 0; translateY = 0; currentScale = 1; 
-        
-        setTimeout(() => {
-            applyTransform(false);
-            refreshAllHeights();
-        }, 50);
+        applyTransform();
+        setTimeout(refreshAllHeights, 50); setTimeout(refreshAllHeights, 150); setTimeout(refreshAllHeights, 400); 
     }
 
     async function extractText() {
@@ -1337,8 +1264,19 @@
             const res = await fetch("/extract_raw", { method: "POST", body: formData, signal: currentAbortController.signal });
             const data = await res.json();
             if (data.error) return alert("⚠️ 서버 오류: " + data.error);
+            
+            // TEXT 추출 모드 활성화
             document.getElementById('rightPanel').classList.add('text-extract-mode');
-            const textArea = document.getElementById('rawTextArea'); textArea.style.display = 'block'; textArea.value = data.text || "추출된 텍스트가 없습니다.";
+            const textArea = document.getElementById('rawTextArea'); 
+            textArea.style.display = 'block'; 
+            textArea.value = data.text || "추출된 텍스트가 없습니다.";
+            
+            // 🚨 1번 문제 완벽 해결: TEXT 모드 창 사이즈 변경 시 JS 강제 개입으로 찌그러짐/기능 상실 방지 🚨
+            setTimeout(() => { 
+                applyTransform(); 
+                refreshAllHeights(); 
+            }, 50);
+            
         } catch (e) { if (e.name !== 'AbortError') alert("⚠️ 통신 에러: " + e.message); 
         } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; currentAbortController = null; }
     }
