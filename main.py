@@ -157,6 +157,7 @@ async def extract_text(file: UploadFile = File(...)):
         [4. 🚨 결함 항목 추출 조건 (종결 결함 원천 차단 및 이월 절대 방어선) 🚨]
         - 이 규칙이 1순위 절대 규칙입니다. 종결된 결함을 추출하면 시스템에 치명적인 오류가 발생합니다.
         - 🔴 추출 절대 금지 (종결 결함): 우측의 'ACTION TAKEN' 칸에 "REPLACED", "CHANGE", "CHECKED", "INSPECTED", "COMPLETED", "NORMAL", "OPS" 등의 조치 완료 단어가 있고, 'DEFER No.' 칸이 비어있다면 ➡️ 무조건 무시하세요.
+        - 주의: 조치사항(Action Taken) 텍스트에 'DEP'D', 'DEFERRED', 'DUE TIME CONSTR' 등 지연/이월을 의미하는 단어가 포함되어 있다면, 앞부분에 부품 교체(CHANGED) 같은 문구가 있더라도 무조건 이월 결함으로 판단하여 추출할 것."
         - 🟢 🚨 [이월 절대 방어선] 🚨: 단, 'DEFER No.' 칸에 번호나 체크가 명확히 적혀 있거나, 'ACTION TAKEN' 칸에 "DEFER" 라는 단어가 명시되어 있다면 ➡️ 뒤에 "COMPLETED", "PULLED" 같은 단어가 있더라도 절대 버리지 마세요! 이것은 무조건 추출해야 하는 이월(Deferred) 건입니다.
         - 🟢 추출 O (오픈 결함): 'DEFECT' 내용은 적혀 있는데, 우측 칸들이 완전히 비어 있는 경우 ➡️ 추출하세요.
 
