@@ -9,63 +9,82 @@
         :root { --primary: #2c3e50; --secondary: #3498db; --border: #ced4da; --bg: #f4f7f6; --warning: #e67e22; }
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; overflow-x: hidden; }
+        
         .main-container { width: 100%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); position: relative; }
+        
         .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
         .header h2 { margin: 0; display: flex; align-items: baseline; }
+        
         .user-display { font-size: 13px; color: #95a5a6; font-weight: normal; cursor: pointer; margin-left: 10px; transition: 0.2s; }
         .user-display:hover { color: var(--secondary); text-decoration: underline; }
+
         .top-section { display: flex; gap: 25px; margin-bottom: 20px; align-items: stretch; }
         .left-panel { flex: 1.3; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
+        
         .static-fields { display: flex; flex-wrap: nowrap; width: 100%; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
         .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
         .input-group label { font-size: 12px; font-weight: bold; color: var(--primary); padding-left: 2px; }
         .input-group .box { display: flex; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: visible; height: 38px; align-items: center; position: relative; }
         .input-group input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; height: 100%; background: transparent; min-width: 0; }
+        
         .dropdown-list { position: absolute; top: calc(100% + 2px); background: white; border: 1px solid var(--primary); z-index: 9999; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-radius: 4px; }
         .search-wrap .dropdown-list { width: max-content; max-width: 50vw; left: 0; right: auto; }
         .box .dropdown-list { min-width: 100%; width: max-content; left: 0; right: auto; }
+        
         .dropdown-opt { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; text-align: left; font-weight: bold; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; box-sizing: border-box; }
         .dropdown-opt:hover { background: var(--secondary); color: white; }
         .dropdown-opt.pinned { background: #e1f0fa; border-bottom: 2px solid var(--secondary); }
         .dropdown-opt.pinned:hover { background: #d0e7f9; color: var(--primary); }
+
         .prefix { background: #e9ecef; color: #495057; font-weight: bold; padding: 0 10px; font-size: 13px; border-right: 1px solid var(--border); height: 100%; display: flex; align-items: center; }
         .leg-box { padding: 0 5px; gap: 2px; justify-content: space-between; }
         .leg-box input { text-align: center; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+
         .dynamic-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: white; flex: 1; min-width: 0; overflow: visible; }
         .dynamic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
         .btn-add { background: var(--secondary); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+        
         .defect-grid { display: grid; grid-template-columns: 85px minmax(130px, 1.8fr) minmax(210px, 2.3fr) minmax(70px, 1fr) 30px; gap: 8px; align-items: start; }
         .defect-header-row { margin-bottom: 8px; padding-bottom: 5px; border-bottom: 2px solid var(--border); }
         .defect-header-row span { font-size: 11px; font-weight: bold; color: #7f8c8d; text-align: center; }
         .defect-row { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--border); }
         .defect-row:last-child { border-bottom: none; }
+        
         .as-ap-wrapper { display: flex; align-items: center; gap: 6px; height: 38px; min-width: 0; }
         .idx-num { font-weight: bold; color: var(--secondary); font-size: 14px; width: 15px; text-align: right; }
         .toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 100%; flex: 1; min-width: 0; }
         .toggle-btn { flex: 1; background: white; color: var(--primary); border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
+
         .doc-toggle-box { display: flex; border: 1px solid var(--primary); border-radius: 4px; height: 100%; width: 105px; flex-shrink: 0; position: relative; background: white;}
         .doc-toggle-btn { flex: 1; background: transparent; color: var(--primary); border: none; font-weight: bold; font-size: 10px; cursor: pointer; padding: 0; transition: 0.2s; }
         .doc-toggle-btn:not(:last-child) { border-right: 1px solid var(--border); }
         .doc-toggle-btn.active { background: var(--primary); color: white; }
+        
         .etc-dropdown { min-width: 60px; left: auto; right: 0; text-align: center; border-radius: 4px; padding: 0; overflow: hidden !important; }
         .etc-dropdown .dropdown-opt { width: 100%; margin: 0; padding: 8px 0; font-size: 11px; text-align: center; border: none; border-bottom: 1px solid #eee; box-sizing: border-box; }
+        
         .search-wrap { display: flex; border: 1px solid var(--border); border-radius: 4px; position: relative; overflow: visible; height: 38px; background: white; min-width: 0; width: 100%; }
         .search-wrap input { flex: 1; border: none; padding: 0 8px; outline: none; font-size: 13px; min-width: 0; border-radius: 4px 0 0 4px; }
         .search-wrap button { background: #34495e; color: white; border: none; width: 32px; flex-shrink: 0; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 0 4px 4px 0; position: relative; z-index: 10; }
         .search-wrap button:hover { background: #2c3e50; }
+
         .defect-row textarea { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 8px; box-sizing: border-box; font-size: 13px; min-height: 38px; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; } 
         .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; height: 38px; width: 30px; flex-shrink: 0; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
         .btn-remove:hover { background: #c0392b; }
-        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; align-items: center; }
+
+        .right-panel { flex: 0.7; display: flex; flex-direction: column; gap: 15px; position: relative; min-width: 0; }
         
-        #pasteArea { flex: 1; width: 100%; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; transition: all 0.2s; }
-        #pasteArea img { cursor: grab; }
+        /* 🚨 레이아웃 롤백: 가장 안정적이었던 CSS 원상복구 (사진 찌그러짐 차단) 🚨 */
+        #pasteArea { flex: 1; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fafbfc; min-height: 350px; position: relative; text-align: center; overflow: hidden; }
+        #pasteArea img { max-width: 95%; max-height: 330px; object-fit: contain; cursor: grab; transition: transform 0.1s ease-out; }
         #pasteArea img:active { cursor: grabbing; }
+        
         .drag-over { background: #e1f0fa !important; border-color: var(--secondary) !important; border-style: solid !important; }
         .upload-prompt { cursor: pointer; padding: 20px; transition: 0.2s; color: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: bold; box-sizing: border-box; }
         .upload-prompt:hover { background: #e9ecef; border-radius: 8px; }
 
+        /* 확대 모드 시 레이아웃 */
         .top-section.expanded .left-panel { flex: 1; }
         .top-section.expanded .right-panel { flex: 1.3; } 
         .top-section.expanded .static-fields { flex-wrap: wrap; }
@@ -74,12 +93,13 @@
         .top-section.expanded .doc-toggle-box { width: 85px; }
         .top-section.expanded .doc-toggle-btn { font-size: 9px; padding: 0; }
         
-        .top-section.expanded #pasteArea { height: calc(100vh - 250px); min-height: 350px; max-height: 800px; } 
-        .top-section.expanded #pasteArea img { width: 100%; height: 100%; object-fit: contain; transform-origin: center center; transition: transform 0.2s ease-out; }
+        .top-section.expanded #pasteArea { height: 60vh; min-height: 350px; max-height: calc(100vh - 280px); } 
+        .top-section.expanded #pasteArea img { max-width: 95%; max-height: 95%; }
 
-        /* 🚨 수정됨: TEXT 추출 모드에서도 JS로 사진 크기 조절이 가능하도록 강제 속성 삭제 🚨 */
-        .text-extract-mode #pasteArea { min-height: 250px; height: 35vh; flex: none; width: 100%; }
-        
+        /* 🚨 TEXT 추출 모드 픽스: transform 족쇄 풀어서 회전/확대 가능하게 조치 🚨 */
+        .text-extract-mode #pasteArea { min-height: 200px; flex: none; height: auto; padding: 10px; }
+        .text-extract-mode #pasteArea img { max-height: 200px; width: auto; object-fit: contain; cursor: grab; }
+
         .img-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 10; }
         .btn-tool { background: #34495e; color: white; border: none; width: 35px; height: 35px; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn-tool:hover { background: var(--secondary); }
@@ -87,15 +107,18 @@
         .btn-tool.btn-close:hover { background: #c0392b; }
         .btn-tool.btn-rotate-left { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
         .btn-tool.btn-rotate-right { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M11.5,8C14.15,8 16.55,9 18.4,10.6L22,7V16H13L16.62,12.38C15.23,11.22 13.46,10.5 11.5,10.5C7.96,10.5 4.95,12.81 3.9,16L1.53,15.22C2.92,11.03 6.85,8 11.5,8Z'/%3E%3C/svg%3E"); background-size: 20px; background-repeat: no-repeat; background-position: center; }
-        .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; width: 100%; }
+        
+        .action-buttons { display: flex; gap: 10px; flex-shrink: 0; height: 50px; }
         .btn-extract { color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; padding: 0; height: 100%; }
         .btn-extract.main { flex: 2; background: #27ae60; }
         .btn-extract.sub { flex: 1; background: #8e44ad; }
         .btn-extract:disabled { background: #95a5a6; cursor: not-allowed; }
+        
         #rawTextArea { display: none; width: 100%; height: 180px; padding: 10px; box-sizing: border-box; border: 1px solid var(--primary); border-radius: 8px; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: #fdfefe; }
         .bottom-section { display: flex; gap: 10px; margin-top: 15px; padding-bottom: 5px; flex-shrink: 0; }
         .btn-mail { flex: 1; color: white; border: none; padding: 12px 5px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .bg-occ { background: #2980b9; } .bg-icn { background: #16a085; } .bg-gmp { background: #8e44ad; } .bg-duty { background: #e67e22; }
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;}
@@ -104,9 +127,8 @@
         .modal-btns { display: flex; justify-content: flex-end; gap: 10px; }
         .modal-btns button { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s;}
         .btn-cancel { background: #e9ecef; color: #495057; }
-        .btn-cancel:hover { background: #ced4da; }
         .btn-save { background: var(--secondary); color: white; }
-        .btn-save:hover { background: #2980b9; }
+        
         .full-list-modal-content { background: white; padding: 25px; border-radius: 12px; width: 800px; max-width: 95vw; height: 85vh; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
         .full-list-modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;}
         .full-list-container { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 5px; margin-bottom: 15px; background: #fdfefe; }
@@ -373,7 +395,7 @@
                 DB = data;
                 if(DB.ataDatabase) DB.ataDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
                 if(DB.actionDatabase) DB.actionDatabase.forEach(d => d.searchTarget = (d.keyword + " " + d.code).toLowerCase());
-            }
+            } 
         } catch (e) {
             console.error("서버 DB 로드 실패:", e);
         }
@@ -1093,8 +1115,7 @@
                 </div>
                 <img src="${url}" id="pastedImg" draggable="false" style="cursor: grab;">
             `;
-            
-            setTimeout(() => { applyTransform(); }, 50);
+            setTimeout(refreshAllHeights, 50);
         } catch (e) { alert("사진을 불러오지 못했습니다: " + e.message); }
     }
 
@@ -1179,6 +1200,7 @@
         });
     };
 
+    // 🚨 완전히 롤백된 깔끔한 transform 적용 (억지 픽셀 강제 주입 삭제) 🚨
     function applyTransform() { 
         const img = document.getElementById('pastedImg'); 
         if (img) { 
@@ -1265,17 +1287,13 @@
             const data = await res.json();
             if (data.error) return alert("⚠️ 서버 오류: " + data.error);
             
-            // TEXT 추출 모드 활성화
             document.getElementById('rightPanel').classList.add('text-extract-mode');
             const textArea = document.getElementById('rawTextArea'); 
             textArea.style.display = 'block'; 
             textArea.value = data.text || "추출된 텍스트가 없습니다.";
             
-            // 🚨 1번 문제 완벽 해결: TEXT 모드 창 사이즈 변경 시 JS 강제 개입으로 찌그러짐/기능 상실 방지 🚨
-            setTimeout(() => { 
-                applyTransform(); 
-                refreshAllHeights(); 
-            }, 50);
+            // TEXT 모드 활성화 후 상태 적용
+            setTimeout(() => { applyTransform(); refreshAllHeights(); }, 50);
             
         } catch (e) { if (e.name !== 'AbortError') alert("⚠️ 통신 에러: " + e.message); 
         } finally { btn.innerText = "📝 TEXT 추출"; btn.disabled = false; currentAbortController = null; }
